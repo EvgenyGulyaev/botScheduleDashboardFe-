@@ -27,26 +27,26 @@ jobs:
         run: npm run build
 
       - name: 📤 Copy to VPS (temp)
-        uses: appleboy/scp-action@v1.0.3
+        uses: appleboy/scp-action@v0.1.7  # ✅ Рабочая версия
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
-          source: "dist/*"
+          source: "dist/**/*"
           target: "/tmp/bot-admin-dist"
-          strip_components: 1
 
       - name: 🎯 Activate on VPS
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.0.3  # ✅ Эта рабочая
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
           script: |
             set -e
+            sudo mkdir -p /var/www/bot-admin
             sudo rm -rf /var/www/bot-admin/*
             sudo cp -r /tmp/bot-admin-dist/* /var/www/bot-admin/
             sudo chown -R www-data:www-data /var/www/bot-admin
             sudo chmod -R 755 /var/www/bot-admin
             sudo rm -rf /tmp/bot-admin-dist
-            sudo nginx -s reload || true
+            sudo nginx -s reload || sudo systemctl reload nginx
