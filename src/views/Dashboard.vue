@@ -114,7 +114,7 @@ const loadStatus = async () => {
     botStatus.value = res.data.status || 'unknown'
 
     // Обновляем статистику
-    stats.value = res.data.stats || stats.value
+    stats.value = res.data.Stats || stats.value
   } catch (error) {
     console.error('Status error:', error)
     botStatus.value = 'error'
