@@ -54,11 +54,11 @@ export const useAuthStore = defineStore('auth', {
             // this.logout()
           }
           return Promise.reject(error)
-        }
+        },
       )
     },
 
-    async login(email, password) {
+    async login({ email, password } = {}) {
       this.loading = true
       this.error = null
       try {
