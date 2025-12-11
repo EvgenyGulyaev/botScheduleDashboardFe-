@@ -87,7 +87,7 @@ const stats = ref({
   tasks: '1,234'
 })
 
-const services = ['default', 'schedule', 'loyalty', 'payments']
+const services = ['bot']
 
 // Статусы
 const statusClass = computed(() =>
