@@ -42,14 +42,44 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div class="text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-2xl font-bold text-green-600">{{ stats.uptime }}</div>
-            <div class="text-gray-500">Uptime</div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+          <!-- PID -->
+          <div class="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+              <span class="text-lg font-semibold">PID</span>
+            </div>
+            <div class="ml-4">
+              <div class="text-xs uppercase tracking-wide text-gray-500">Process ID</div>
+              <div class="text-xl font-semibold text-blue-700 mt-1">
+                {{ stats.pid || '—' }}
+              </div>
+            </div>
           </div>
-          <div class="text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-2xl font-bold text-blue-600">{{ stats.tasks }}</div>
-            <div class="text-gray-500">Задач</div>
+
+          <!-- CPU -->
+          <div class="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+              <span class="text-lg font-semibold">CPU</span>
+            </div>
+            <div class="ml-4">
+              <div class="text-xs uppercase tracking-wide text-gray-500">CPU time</div>
+              <div class="text-xl font-semibold text-orange-700 mt-1">
+                {{ stats.cpu || '—' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- MEM -->
+          <div class="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+              <span class="text-lg font-semibold">RAM</span>
+            </div>
+            <div class="ml-4">
+              <div class="text-xs uppercase tracking-wide text-gray-500">Memory</div>
+              <div class="text-xl font-semibold text-green-700 mt-1">
+                {{ stats.memory || '—' }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -83,8 +113,9 @@ const serviceStatus = ref({})
 
 // Статистика (заглушки)
 const stats = ref({
-  uptime: '99.9%',
-  tasks: '1,234'
+  pid: '',
+  cpu: '',
+  memory: '',
 })
 
 const services = ['bot']
