@@ -30,7 +30,7 @@
     </div>
 
     <!-- Статус карточка -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="grid grid-cols-1">
       <div class="bg-white p-8 rounded-xl shadow-lg border-l-8" :class="statusBorderClass">
         <div class="flex items-center justify-between mb-6">
           <div>
