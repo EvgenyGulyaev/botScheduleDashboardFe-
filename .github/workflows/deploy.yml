@@ -24,18 +24,17 @@ jobs:
       - name: 🔨 Build
         run: npm run build
 
-      - name: 📤 Deploy dist to VPS
+      - name: 📤 Deploy dist CONTENTS to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
-          source: "dist/**"
-          target: "/var/www/bot-admin"
-          overwrite: true
-          rm: true
+          source: "dist/*"
+          target: "/var/www/bot-admin/"
+          strip_components: 1  # ← КЛЮЧЕВОЕ! убирает dist/
 
-      - name: 🎯 Fix permissions & reload nginx
+      - name: 🎯 Fix permissions
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -44,4 +43,4 @@ jobs:
           script: |
             sudo chown -R www-data:www-data /var/www/bot-admin
             sudo chmod -R 755 /var/www/bot-admin
-            sudo nginx -t && sudo nginx -s reload || sudo systemctl reload nginx
+            sudo nginx -s reload || sudo systemctl reload nginx
