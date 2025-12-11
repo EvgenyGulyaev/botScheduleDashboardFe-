@@ -60,4 +60,4 @@ jobs:
             echo "🔄 Reloading nginx..."
             sudo nginx -t && sudo nginx -s reload || sudo systemctl reload nginx
             
-            echo "✅ Deployment complete!"
+            echo "✅ Deployment complete! Check site"
