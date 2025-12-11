@@ -140,7 +140,7 @@ const loadAllServices = async () => {
 const restartBot = async () => {
   loading.value = true
   try {
-    await authStore.api.post(`/bot/restart?service=${selectedService.value}`, {})
+    await authStore.api.post(`/bot/restart`, {service: selectedService.value})
     alert(`✅ Сервис ${selectedService.value} перезапущен!`)
     await loadStatus()
   } catch (error) {
