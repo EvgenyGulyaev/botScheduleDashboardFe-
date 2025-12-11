@@ -76,7 +76,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 
 const authStore = useAuthStore()
-const selectedService = ref('default')
+const selectedService = ref('bot')
 const botStatus = ref('unknown')
 const loading = ref(false)
 const serviceStatus = ref({})
