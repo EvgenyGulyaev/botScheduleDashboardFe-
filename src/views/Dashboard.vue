@@ -14,7 +14,8 @@
           @change="loadStatus"
           class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
-          <option value="bot">Bot</option>
+          <option value="bot">Бот для расписания</option>
+          <option value="dashboard">Панель</option>
         </select>
 
         <!-- Быстрые действия -->
@@ -89,7 +90,7 @@
     <div class="bg-white p-6 rounded-lg shadow">
       <h3 class="text-lg font-semibold mb-4">Все сервисы</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div v-for="service in allServices" :key="service"
+        <div v-for="service in services" :key="service"
              @click="selectedService = service; loadStatus()"
              class="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 cursor-pointer hover:shadow-md transition-all">
           <div class="text-2xl mb-2">{{ serviceStatus[service]?.icon || '🟡' }}</div>
