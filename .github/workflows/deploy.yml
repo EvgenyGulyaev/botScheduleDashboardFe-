@@ -3,61 +3,45 @@ name: 🚀 Deploy Vue SPA to VPS
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js
+      - name: 🟢 Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install deps
         run: npm ci
 
-      - name: 🔨 Build production
+      - name: 🔨 Build
         run: npm run build
 
-      - name: 📤 Copy dist to VPS (temp folder)
+      - name: 📤 Deploy dist to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
-          source: "dist/**/*"
-          target: "/tmp/bot-admin-dist"
+          source: "dist/**"
+          target: "/var/www/bot-admin"
           overwrite: true
+          rm: true
 
-      - name: 🎯 Deploy & activate on VPS
+      - name: 🎯 Fix permissions & reload nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_KEY }}
           script: |
-            set -e
-            echo "🔄 Cleaning old deployment..."
-            sudo rm -rf /var/www/bot-admin/*
-            
-            echo "📂 Copying new build..."
-            sudo cp -r /tmp/bot-admin-dist/* /var/www/bot-admin/
-            
-            echo "🔒 Fixing permissions..."
             sudo chown -R www-data:www-data /var/www/bot-admin
             sudo chmod -R 755 /var/www/bot-admin
-            
-            echo "🧹 Cleaning temp..."
-            sudo rm -rf /tmp/bot-admin-dist
-            
-            echo "🔄 Reloading nginx..."
             sudo nginx -t && sudo nginx -s reload || sudo systemctl reload nginx
-            
-            echo "✅ Deployment complete! Check site"
