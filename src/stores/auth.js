@@ -66,8 +66,8 @@ export const useAuthStore = defineStore('auth', {
 
         // Ожидаем от бэка:
         // { token: '...', user: { ... } }
-        this.token = res.data.token
-        this.user = res.data.user || null
+        this.token = res.data.Token
+        this.user = res.data || null
 
         localStorage.setItem('token', this.token)
         if (this.user) {
