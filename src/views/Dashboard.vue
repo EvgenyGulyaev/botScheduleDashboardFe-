@@ -118,7 +118,7 @@ const stats = ref({
   memory: '',
 })
 
-const services = ['bot']
+const services = ['bot', 'dashboard']
 
 // Статусы
 const statusClass = computed(() =>
