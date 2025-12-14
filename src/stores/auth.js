@@ -50,8 +50,7 @@ export const useAuthStore = defineStore('auth', {
         (response) => response,
         (error) => {
           if (error.response && error.response.status === 401) {
-            // Можно разлогинить и кикнуть на /login
-            // this.logout()
+            this.logout()
           }
           return Promise.reject(error)
         },
