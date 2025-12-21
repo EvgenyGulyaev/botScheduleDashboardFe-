@@ -232,7 +232,7 @@ const startAutoRefresh = () => {
   loadChats()
   refreshInterval.value = setInterval(() => {
     loadChats()
-  }, 10000)
+  }, 60000)
 }
 
 const stopAutoRefresh = () => {
