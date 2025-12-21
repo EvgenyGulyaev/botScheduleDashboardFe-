@@ -123,9 +123,8 @@
     </div>
   </div>
 </template>
-
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
 
 const authStore = useAuthStore()
@@ -139,8 +138,9 @@ const selectedChatId = ref('')
 const message = ref('')
 
 // локальные (отправленные с этой страницы) сообщения:
-// [{ localId, chatId, text, createdAt }]
 const localMessages = ref([])
+
+const refreshInterval = ref(null)
 
 // выбранный чат
 const selectedChat = computed(() =>
@@ -151,7 +151,7 @@ const selectedChat = computed(() =>
 const serverMessages = computed(() => {
   if (!selectedChat.value || !selectedChat.value.messages) return []
 
-  const msgs = selectedChat.value.messages // объект { id: "text", ... }
+  const msgs = selectedChat.value.messages
   return Object.entries(msgs).map(([id, text]) => ({
     localId: `srv-${id}`,
     id,
@@ -190,9 +190,29 @@ const loadChats = async () => {
       selectedChatId.value = chats.value[0].id
     }
   } catch (e) {
-    alert('❌ Не удалось загрузить чаты')
+    console.error('Ошибка загрузки чатов:', e)
+    // не показываем alert при автообновлении, только в первый раз
   } finally {
     loadingChats.value = false
+  }
+}
+
+const startAutoRefresh = () => {
+  if (refreshInterval.value) return // уже запущено
+
+  // первый вызов сразу
+  loadChats()
+
+  // потом каждые 5 секунд
+  refreshInterval.value = setInterval(() => {
+    loadChats()
+  }, 5000)
+}
+
+const stopAutoRefresh = () => {
+  if (refreshInterval.value) {
+    clearInterval(refreshInterval.value)
+    refreshInterval.value = null
   }
 }
 
@@ -223,11 +243,18 @@ const sendMessage = async () => {
     message.value = ''
   } catch (error) {
     alert('❌ ' + (error.response?.data?.message || 'Ошибка отправки'))
-    // при ошибке можно, например, пометить сообщение как failed или удалить
+    // при ошибке сообщение остаётся в localMessages как "отправленное"
   } finally {
     loading.value = false
   }
 }
 
-onMounted(loadChats)
+onMounted(() => {
+  loadChats()
+  startAutoRefresh()
+})
+
+onUnmounted(() => {
+  stopAutoRefresh()
+})
 </script>
