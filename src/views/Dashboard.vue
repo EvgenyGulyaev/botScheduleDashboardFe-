@@ -1,101 +1,155 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-      <h2 class="text-3xl font-bold text-gray-900">Dashboard</h2>
-      <p class="mt-2 text-lg text-gray-600">Статус ботов по сервисам</p>
-    </div>
-
-    <!-- Выбор сервиса -->
-    <div class="bg-white p-6 rounded-lg shadow mb-8">
-      <div class="flex items-center space-x-4">
-        <label class="text-sm font-medium text-gray-700">Сервис:</label>
-        <select
-          v-model="selectedService"
-          @change="loadStatus"
-          class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-          <option value="bot">Бот для расписания</option>
-          <option value="dashboard">Панель</option>
-        </select>
-
-        <!-- Быстрые действия -->
-        <button
-          @click="restartBot"
-          :disabled="loading"
-          class="ml-auto px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 font-medium"
-        >
-          {{ loading ? '🔄 Перезапуск...' : '🔄 Перезапустить' }}
-        </button>
+  <div class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <!-- Заголовок -->
+      <div class="mb-8 text-center sm:text-left">
+        <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
+        <p class="text-base sm:text-lg text-gray-600">Статус ботов по сервисам</p>
       </div>
-    </div>
 
-    <!-- Статус карточка -->
-    <div class="grid grid-cols-1">
-      <div class="bg-white p-8 rounded-xl shadow-lg border-l-8" :class="statusBorderClass">
-        <div class="flex items-center justify-between mb-6">
-          <div>
-            <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">{{ selectedService }}</p>
-            <p class="mt-1 text-4xl font-bold text-gray-900">{{ botStatus }}</p>
-            <p class="mt-1 text-sm text-gray-500">Статус сервиса</p>
+      <!-- Выбор сервиса + быстрые действия -->
+      <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg mb-6 sm:mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
+          <div class="flex items-center w-full sm:w-auto">
+            <label class="text-sm font-medium text-gray-700 whitespace-nowrap mr-3 sm:mr-4">Сервис:</label>
+            <select
+              v-model="selectedService"
+              @change="loadStatus"
+              class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white min-w-0"
+            >
+              <option value="bot">Бот для расписания</option>
+              <option value="dashboard">Панель</option>
+            </select>
           </div>
-          <div :class="statusClass" class="w-24 h-24 rounded-2xl flex items-center justify-center text-4xl shadow-lg">
-            {{ statusIcon }}
+
+          <!-- Быстрые действия -->
+          <button
+            @click="restartBot"
+            :disabled="loading"
+            class="w-full sm:w-auto px-6 py-2.5 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 disabled:opacity-50 font-medium text-sm shadow-md transition-colors whitespace-nowrap"
+          >
+            {{ loading ? '🔄 Перезапуск...' : '🔄 Перезапустить' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Статус карточка (полная ширина на мобилке) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border-l-4 lg:border-l-8" :class="statusBorderClass">
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 lg:mb-8 space-y-4 lg:space-y-0">
+            <div class="space-y-2">
+              <p class="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide">
+                {{ selectedService }}
+              </p>
+              <p class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                {{ botStatus }}
+              </p>
+              <p class="text-xs sm:text-sm text-gray-500">Статус сервиса</p>
+            </div>
+            <div :class="statusClass" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl shadow-lg self-center lg:self-auto mx-auto lg:mx-0">
+              {{ statusIcon }}
+            </div>
+          </div>
+
+          <!-- Статистика -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- PID -->
+            <div class="flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-sm border">
+              <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white text-lg font-bold">
+                PID
+              </div>
+              <div class="ml-4 min-w-0 flex-1">
+                <div class="text-xs uppercase tracking-wide text-blue-700 font-medium">Process ID</div>
+                <div class="text-lg sm:text-xl font-bold text-blue-900 mt-1 truncate">
+                  {{ stats.pid || '—' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- CPU -->
+            <div class="flex items-center p-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl shadow-sm border">
+              <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white text-lg font-bold">
+                CPU
+              </div>
+              <div class="ml-4 min-w-0 flex-1">
+                <div class="text-xs uppercase tracking-wide text-orange-700 font-medium">CPU time</div>
+                <div class="text-lg sm:text-xl font-bold text-orange-900 mt-1 truncate">
+                  {{ stats.cpu || '—' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- MEM -->
+            <div class="flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-xl shadow-sm border">
+              <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center text-white text-lg font-bold">
+                RAM
+              </div>
+              <div class="ml-4 min-w-0 flex-1">
+                <div class="text-xs uppercase tracking-wide text-green-700 font-medium">Memory</div>
+                <div class="text-lg sm:text-xl font-bold text-green-900 mt-1 truncate">
+                  {{ stats.memory || '—' }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-          <!-- PID -->
-          <div class="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-              <span class="text-lg font-semibold">PID</span>
-            </div>
-            <div class="ml-4">
-              <div class="text-xs uppercase tracking-wide text-gray-500">Process ID</div>
-              <div class="text-xl font-semibold text-blue-700 mt-1">
-                {{ stats.pid || '—' }}
-              </div>
-            </div>
-          </div>
-
-          <!-- CPU -->
-          <div class="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-              <span class="text-lg font-semibold">CPU</span>
-            </div>
-            <div class="ml-4">
-              <div class="text-xs uppercase tracking-wide text-gray-500">CPU time</div>
-              <div class="text-xl font-semibold text-orange-700 mt-1">
-                {{ stats.cpu || '—' }}
-              </div>
-            </div>
-          </div>
-
-          <!-- MEM -->
-          <div class="flex items-center p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-              <span class="text-lg font-semibold">RAM</span>
-            </div>
-            <div class="ml-4">
-              <div class="text-xs uppercase tracking-wide text-gray-500">Memory</div>
-              <div class="text-xl font-semibold text-green-700 mt-1">
-                {{ stats.memory || '—' }}
-              </div>
-            </div>
+        <!-- Быстрые ссылки (на мобилке сворачивается) -->
+        <div class="hidden lg:block bg-white p-6 rounded-2xl shadow-lg">
+          <h3 class="text-lg font-semibold mb-6 text-gray-900">Быстрые действия</h3>
+          <div class="space-y-3">
+            <button
+              @click="restartBot"
+              :disabled="loading"
+              class="w-full p-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-xl hover:from-yellow-600 hover:to-yellow-700 disabled:opacity-50 font-semibold shadow-lg transition-all"
+            >
+              🔄 Перезапустить {{ selectedService }}
+            </button>
+            <button
+              @click="loadAllServices"
+              :disabled="loadingAll"
+              class="w-full p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 font-semibold shadow-lg transition-all"
+            >
+              🔄 Обновить все сервисы
+            </button>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Все сервисы (опционально) -->
-    <div class="bg-white p-6 rounded-lg shadow">
-      <h3 class="text-lg font-semibold mb-4">Все сервисы</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div v-for="service in services" :key="service"
-             @click="selectedService = service; loadStatus()"
-             class="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 cursor-pointer hover:shadow-md transition-all">
-          <div class="text-2xl mb-2">{{ serviceStatus[service]?.icon || '🟡' }}</div>
-          <div class="font-medium">{{ service }}</div>
-          <div class="text-sm text-gray-500">{{ serviceStatus[service]?.status || 'unknown' }}</div>
+      <!-- Все сервисы (адаптивная сетка) -->
+      <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
+        <h3 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900 flex items-center">
+          Все сервисы
+          <button
+            @click="loadAllServices"
+            :disabled="loadingAll"
+            class="ml-auto text-sm bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 transition-colors"
+          >
+            🔄 Обновить
+          </button>
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div
+            v-for="service in services"
+            :key="service"
+            @click="selectedService = service; loadStatus()"
+            class="group p-5 sm:p-6 rounded-2xl hover:shadow-2xl cursor-pointer transition-all border-2 hover:border-blue-300 hover:bg-blue-50 border-gray-200 bg-gradient-to-br from-white/80 to-gray-50"
+          >
+            <div class="flex items-start justify-between mb-3">
+              <div class="text-3xl sm:text-4xl">{{ serviceStatus[service]?.icon || '🟡' }}</div>
+              <div class="w-6 h-6 rounded-full bg-gray-200 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                <svg class="w-3 h-3 text-gray-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="font-semibold text-gray-900 text-sm sm:text-base mb-1 leading-tight">
+              {{ service }}
+            </div>
+            <div class="text-xs sm:text-sm text-gray-500 leading-tight">
+              {{ serviceStatus[service]?.status || 'unknown' }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -110,9 +164,10 @@ const authStore = useAuthStore()
 const selectedService = ref('bot')
 const botStatus = ref('unknown')
 const loading = ref(false)
+const loadingAll = ref(false)
 const serviceStatus = ref({})
 
-// Статистика (заглушки)
+// Статистика
 const stats = ref({
   pid: '',
   cpu: '',
@@ -144,8 +199,6 @@ const loadStatus = async () => {
   try {
     const res = await authStore.api.get(`/bot/status?service=${selectedService.value}`)
     botStatus.value = res.data.status || 'unknown'
-
-    // Обновляем статистику
     stats.value = res.data.Stats || stats.value
   } catch (error) {
     console.error('Status error:', error)
@@ -156,23 +209,30 @@ const loadStatus = async () => {
 }
 
 const loadAllServices = async () => {
-  for (const service of services) {
-    try {
-      const res = await authStore.api.get(`/bot/status?service=${service}`)
-      serviceStatus.value[service] = {
-        status: res.data.status || 'unknown',
-        icon: res.data.status === 'active' ? '🟢' : res.data.status === 'error' ? '🔴' : '🟡'
-      }
-    } catch {
-      serviceStatus.value[service] = { status: 'error', icon: '🔴' }
-    }
+  loadingAll.value = true
+  try {
+    await Promise.all(
+      services.map(async (service) => {
+        try {
+          const res = await authStore.api.get(`/bot/status?service=${service}`)
+          serviceStatus.value[service] = {
+            status: res.data.status || 'unknown',
+            icon: res.data.status === 'active' ? '🟢' : res.data.status === 'error' ? '🔴' : '🟡'
+          }
+        } catch {
+          serviceStatus.value[service] = { status: 'error', icon: '🔴' }
+        }
+      })
+    )
+  } finally {
+    loadingAll.value = false
   }
 }
 
 const restartBot = async () => {
   loading.value = true
   try {
-    await authStore.api.post(`/bot/restart`, {service: selectedService.value})
+    await authStore.api.post(`/bot/restart`, { service: selectedService.value })
     alert(`✅ Сервис ${selectedService.value} перезапущен!`)
     await loadStatus()
   } catch (error) {
