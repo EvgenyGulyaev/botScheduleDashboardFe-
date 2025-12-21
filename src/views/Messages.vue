@@ -2,7 +2,7 @@
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
     <div>
       <h2 class="text-3xl font-bold text-gray-900">Отправка сообщений</h2>
-      <p class="mt-2 text-lg text-gray-600">Быстрая отправка в Telegram</p>
+      <p class="mt-2 text-lg text-gray-600">Быстрая отправка</p>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
@@ -106,8 +106,9 @@
               Сообщение
             </label>
             <textarea
+              style="margin-bottom: 10px"
               v-model="message"
-              rows="7"
+              rows="2"
               required
               placeholder="Введите текст сообщения..."
               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
@@ -231,7 +232,7 @@ const startAutoRefresh = () => {
   loadChats()
   refreshInterval.value = setInterval(() => {
     loadChats()
-  }, 5000)
+  }, 10000)
 }
 
 const stopAutoRefresh = () => {
