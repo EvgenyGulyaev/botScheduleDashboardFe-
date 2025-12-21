@@ -101,7 +101,7 @@
           @submit.prevent="sendMessage"
           class="bg-white p-8 rounded-2xl shadow-xl space-y-6"
         >
-          <div>
+          <div style="margin-bottom: 5px">
             <label class="block text-sm font-semibold text-gray-700 mb-3">
               Сообщение
             </label>
