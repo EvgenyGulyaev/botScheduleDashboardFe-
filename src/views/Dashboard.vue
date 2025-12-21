@@ -22,7 +22,7 @@
             </select>
           </div>
 
-          <!-- Быстрые действия -->
+          <!-- Кнопка перезапуска -->
           <button
             @click="restartBot"
             :disabled="loading"
@@ -33,8 +33,8 @@
         </div>
       </div>
 
-      <!-- Статус карточка (полная ширина на мобилке) -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Статус карточка (полная ширина) -->
+      <div class="grid grid-cols-1 gap-6 mb-8">
         <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border-l-4 lg:border-l-8" :class="statusBorderClass">
           <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 lg:mb-8 space-y-4 lg:space-y-0">
             <div class="space-y-2">
@@ -93,37 +93,16 @@
             </div>
           </div>
         </div>
-
-        <!-- Быстрые ссылки (на мобилке сворачивается) -->
-        <div class="hidden lg:block bg-white p-6 rounded-2xl shadow-lg">
-          <h3 class="text-lg font-semibold mb-6 text-gray-900">Быстрые действия</h3>
-          <div class="space-y-3">
-            <button
-              @click="restartBot"
-              :disabled="loading"
-              class="w-full p-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-xl hover:from-yellow-600 hover:to-yellow-700 disabled:opacity-50 font-semibold shadow-lg transition-all"
-            >
-              🔄 Перезапустить {{ selectedService }}
-            </button>
-            <button
-              @click="loadAllServices"
-              :disabled="loadingAll"
-              class="w-full p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 font-semibold shadow-lg transition-all"
-            >
-              🔄 Обновить все сервисы
-            </button>
-          </div>
-        </div>
       </div>
 
-      <!-- Все сервисы (адаптивная сетка) -->
+      <!-- Все сервисы -->
       <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
-        <h3 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900 flex items-center">
-          Все сервисы
+        <h3 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+          <span>Все сервисы</span>
           <button
             @click="loadAllServices"
             :disabled="loadingAll"
-            class="ml-auto text-sm bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 transition-colors"
+            class="text-sm bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 transition-colors w-full sm:w-auto"
           >
             🔄 Обновить
           </button>
