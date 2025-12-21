@@ -2,7 +2,7 @@
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
     <div>
       <h2 class="text-3xl font-bold text-gray-900">Отправка сообщений</h2>
-      <p class="mt-2 text-lg text-gray-600">Быстрая отправка</p>
+      <p class="mt-2 text-lg text-gray-600">Быстрая отправка в Telegram</p>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
@@ -94,35 +94,63 @@
         </div>
       </div>
 
-      <!-- Правая колонка: форма отправки -->
-      <form
-        @submit.prevent="sendMessage"
-        class="bg-white p-8 rounded-2xl shadow-xl space-y-6"
-      >
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-3">
-            Сообщение
-          </label>
-          <textarea
-            v-model="message"
-            rows="7"
-            required
-            placeholder="Введите текст сообщения..."
-            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-          />
-        </div>
-
-        <button
-          type="submit"
-          :disabled="loading || !selectedChat || !message"
-          class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 font-semibold text-lg shadow-lg"
+      <!-- Правая колонка: форма отправки + блокировка -->
+      <div class="space-y-6">
+        <!-- форма отправки -->
+        <form
+          @submit.prevent="sendMessage"
+          class="bg-white p-8 rounded-2xl shadow-xl space-y-6"
         >
-          📤 {{ loading ? 'Отправляем...' : 'Отправить сообщение' }}
-        </button>
-      </form>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-3">
+              Сообщение
+            </label>
+            <textarea
+              v-model="message"
+              rows="7"
+              required
+              placeholder="Введите текст сообщения..."
+              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+            />
+          </div>
+
+          <button
+            type="submit"
+            :disabled="loading || !selectedChat || !message"
+            class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 font-semibold text-lg shadow-lg"
+          >
+            📤 {{ loading ? 'Отправляем...' : 'Отправить сообщение' }}
+          </button>
+        </form>
+
+        <!-- кнопка блокировки -->
+        <div v-if="selectedChat" class="bg-white p-8 rounded-2xl shadow-xl">
+          <h4 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 2a1 1 0 10-2 0v6a1 1 0 102 0V7zm-6 3a1 1 0 10-2 0v3a1 1 0 102 0v-3z" clip-rule="evenodd"></path>
+            </svg>
+            Блокировка пользователя
+          </h4>
+          <p class="text-sm text-gray-600 mb-6">
+            Заблокировать пользователя <strong>{{ selectedChat.username }}</strong> ({{ selectedChat.network }})
+          </p>
+          <button
+            @click="blockUser"
+            :disabled="blocking"
+            class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-6 rounded-xl hover:from-red-600 hover:to-red-700 disabled:opacity-50 font-semibold shadow-lg flex items-center justify-center"
+          >
+            <svg v-if="blocking" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ blocking ? '🔒 Блокируем...' : '🔒 Заблокировать пользователя' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth.js'
@@ -133,6 +161,7 @@ const authStore = useAuthStore()
 const chats = ref([])
 const loadingChats = ref(false)
 const loading = ref(false)
+const blocking = ref(false)  // состояние блокировки
 
 const selectedChatId = ref('')
 const message = ref('')
@@ -191,19 +220,15 @@ const loadChats = async () => {
     }
   } catch (e) {
     console.error('Ошибка загрузки чатов:', e)
-    // не показываем alert при автообновлении, только в первый раз
   } finally {
     loadingChats.value = false
   }
 }
 
 const startAutoRefresh = () => {
-  if (refreshInterval.value) return // уже запущено
+  if (refreshInterval.value) return
 
-  // первый вызов сразу
   loadChats()
-
-  // потом каждые 5 секунд
   refreshInterval.value = setInterval(() => {
     loadChats()
   }, 5000)
@@ -224,7 +249,6 @@ const sendMessage = async () => {
 
   loading.value = true
 
-  // добавляем локальное сообщение до ответа сервера
   const localId = Date.now().toString() + Math.random().toString(16).slice(2)
   localMessages.value.push({
     localId,
@@ -243,9 +267,28 @@ const sendMessage = async () => {
     message.value = ''
   } catch (error) {
     alert('❌ ' + (error.response?.data?.message || 'Ошибка отправки'))
-    // при ошибке сообщение остаётся в localMessages как "отправленное"
   } finally {
     loading.value = false
+  }
+}
+
+const blockUser = async () => {
+  if (!selectedChat.value) return
+
+  const chat = selectedChat.value
+
+  blocking.value = true
+  try {
+    await authStore.api.post('/user/block', {
+      user: chat.id,
+      net: chat.network,
+    })
+
+    alert(`✅ Пользователь ${chat.username} (${chat.network}) заблокирован!`)
+  } catch (error) {
+    alert('❌ ' + (error.response?.data?.message || 'Ошибка блокировки'))
+  } finally {
+    blocking.value = false
   }
 }
 
