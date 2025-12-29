@@ -19,6 +19,7 @@
             >
               <option value="bot">Бот для расписания</option>
               <option value="dashboard">Панель</option>
+              <option value="bot-nickname">Бот для Дискорда</option>
             </select>
           </div>
 
@@ -153,7 +154,7 @@ const stats = ref({
   memory: '',
 })
 
-const services = ['bot', 'dashboard']
+const services = ['bot', 'dashboard', 'bot-nickname']
 
 // Статусы
 const statusClass = computed(() =>
