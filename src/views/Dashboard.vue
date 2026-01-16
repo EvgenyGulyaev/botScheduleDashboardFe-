@@ -21,7 +21,6 @@
               <option value="dashboard">Панель</option>
               <option value="bot-nickname">Бот для Дискорда</option>
               <option value="shotener">Сервис для ссылок</option>
-              <option value="shotener-cron">Удаление ссылок</option>
             </select>
           </div>
 
@@ -156,7 +155,7 @@ const stats = ref({
   memory: '',
 })
 
-const services = ['bot', 'dashboard', 'bot-nickname', 'shotener', 'shotener-cron']
+const services = ['bot', 'dashboard', 'bot-nickname', 'shotener']
 
 // Статусы
 const statusClass = computed(() =>
