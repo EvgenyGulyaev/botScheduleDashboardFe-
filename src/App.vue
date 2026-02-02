@@ -24,10 +24,10 @@
               💬 Сообщения
             </router-link>
             <router-link
-              to="/history"
+              to="/tasks"
               class="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
             >
-              📋 История
+              📋 Задачи
             </router-link>
             <button
               @click="logout"
@@ -72,10 +72,7 @@
         </div>
 
         <!-- Мобильное меню (падает сверху) -->
-        <div
-          v-if="isMobileMenuOpen"
-          class="md:hidden bg-white border-t border-gray-200 shadow-lg"
-        >
+        <div v-if="isMobileMenuOpen" class="md:hidden bg-white border-t border-gray-200 shadow-lg">
           <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <router-link
               to="/dashboard"
@@ -92,11 +89,11 @@
               💬 Сообщения
             </router-link>
             <router-link
-              to="/history"
+              to="/tasks"
               @click="closeMobileMenu"
               class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
-              📋 История
+              📋 Задачи
             </router-link>
             <button
               @click="logout"
