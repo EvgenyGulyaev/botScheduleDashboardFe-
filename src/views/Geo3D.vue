@@ -146,19 +146,39 @@
                 <span class="text-sm font-medium text-gray-800">Разбить модель на квадратные печатные платы 🧩</span>
               </label>
 
-              <div v-if="form.split_board" class="animate-fade-in-up">
-                <label class="block text-sm font-medium text-gray-800 mb-2">Размер одной платы (мм)</label>
-                <p class="text-xs text-gray-500 mb-2">Например, 160мм для стандартного стола 3D принтера.</p>
-                <input 
-                  v-model.number="form.board_size_mm" 
-                  type="number" 
-                  step="1"
-                  min="10"
-                  class="w-full sm:w-1/2 px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
+                <div v-if="form.split_board" class="animate-fade-in-up space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-800 mb-2">Размер одной платы (мм)</label>
+                    <input 
+                      v-model.number="form.board_size_mm" 
+                      type="number" 
+                      step="1"
+                      min="10"
+                      class="w-full sm:w-1/2 px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                  </div>
+
+                  <div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-8">
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                      <input type="checkbox" v-model="form.merge_tiles" class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500">
+                      <span class="text-sm font-medium text-gray-800">Объединить в один файл (Single STL) 📦</span>
+                    </label>
+
+                    <div v-if="form.merge_tiles" class="flex items-center space-x-3">
+                      <label class="text-sm text-gray-600">Зазор (мм):</label>
+                      <input 
+                        v-model.number="form.merge_gap_mm" 
+                        type="number" 
+                        step="1"
+                        min="0"
+                        class="w-20 px-3 py-1 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                    </div>
+                  </div>
+                  <p class="text-xs text-gray-500 italic">При объединении все плитки будут разложены в один большой проект для печати.</p>
+                </div>
               </div>
             </div>
-          </div>
 
           <!-- Почта для асинхронной отправки -->
           <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
@@ -214,6 +234,8 @@ const form = ref({
   base_thickness: 3.0,
   split_board: false,
   board_size_mm: 160.0,
+  merge_tiles: false,
+  merge_gap_mm: 10.0,
   email: 'wardercompany@gmail.com'
 })
 
@@ -250,6 +272,8 @@ const generateModel = async () => {
       if (form.value.split_board) {
         payload.split_board = form.value.split_board
         payload.board_size_mm = form.value.board_size_mm
+        payload.merge_tiles = form.value.merge_tiles
+        payload.merge_gap_mm = form.value.merge_gap_mm
       }
     }
 
@@ -270,7 +294,7 @@ const generateModel = async () => {
     
     // Получаем имя файла из заголовков ответа, если сервер его отправляет
     let ext = form.value.format
-    if (form.value.print_ready && form.value.split_board) {
+    if (form.value.print_ready && form.value.split_board && !form.value.merge_tiles) {
       ext = 'zip'
     }
     
