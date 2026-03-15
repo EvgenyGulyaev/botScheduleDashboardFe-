@@ -114,26 +114,48 @@
           </div>
 
           <!-- Настройки для 3D Печати -->
-          <div v-if="form.print_ready" class="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-            <div>
-              <label class="block text-sm font-medium text-gray-800 mb-2">Масштаб (Scale)</label>
-              <p class="text-xs text-gray-500 mb-2">Пример: 0.002 = 1:500 (2мм на 1м)</p>
-              <input 
-                v-model.number="form.scale" 
-                type="number" 
-                step="0.001"
-                class="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
+          <div v-if="form.print_ready" class="space-y-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-800 mb-2">Масштаб (Scale)</label>
+                <p class="text-xs text-gray-500 mb-2">Пример: 0.002 = 1:500 (2мм на 1м)</p>
+                <input 
+                  v-model.number="form.scale" 
+                  type="number" 
+                  step="0.001"
+                  class="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-800 mb-2">Толщина платформы (мм)</label>
+                <p class="text-xs text-gray-500 mb-2">Учитывается при генерации основания</p>
+                <input 
+                  v-model.number="form.base_thickness" 
+                  type="number" 
+                  step="0.1"
+                  class="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-800 mb-2">Толщина платформы (мм)</label>
-              <p class="text-xs text-gray-500 mb-2">Учитывается при генерации основания</p>
-              <input 
-                v-model.number="form.base_thickness" 
-                type="number" 
-                step="0.1"
-                class="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
+
+            <!-- Разбиение на платы -->
+            <div class="pt-4 border-t border-blue-200">
+              <label class="flex items-center space-x-3 cursor-pointer mb-4">
+                <input type="checkbox" v-model="form.split_board" class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500">
+                <span class="text-sm font-medium text-gray-800">Разбить модель на квадратные печатные платы 🧩</span>
+              </label>
+
+              <div v-if="form.split_board" class="animate-fade-in-up">
+                <label class="block text-sm font-medium text-gray-800 mb-2">Размер одной платы (мм)</label>
+                <p class="text-xs text-gray-500 mb-2">Например, 160мм для стандартного стола 3D принтера.</p>
+                <input 
+                  v-model.number="form.board_size_mm" 
+                  type="number" 
+                  step="1"
+                  min="10"
+                  class="w-full sm:w-1/2 px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+              </div>
             </div>
           </div>
 
@@ -176,7 +198,9 @@ const form = ref({
   include_terrain: false,
   print_ready: false,
   scale: 1.0,
-  base_thickness: 3.0
+  base_thickness: 3.0,
+  split_board: false,
+  board_size_mm: 160.0
 })
 
 // Если выбрали print_ready, формат принудительно ставим как STL (обычно так удобнее для слайсеров)
@@ -208,6 +232,11 @@ const generateModel = async () => {
       payload.print_ready = form.value.print_ready
       payload.scale = form.value.scale
       payload.base_thickness = form.value.base_thickness
+      
+      if (form.value.split_board) {
+        payload.split_board = form.value.split_board
+        payload.board_size_mm = form.value.board_size_mm
+      }
     }
 
     const response = await axios.post('/geo/api/v1/generate', payload, {
@@ -216,7 +245,12 @@ const generateModel = async () => {
     })
     
     // Получаем имя файла из заголовков ответа, если сервер его отправляет
-    let filename = `model_${form.value.mode === 'city' ? form.value.city : 'coords'}.${form.value.format}`
+    let ext = form.value.format
+    if (form.value.print_ready && form.value.split_board) {
+      ext = 'zip'
+    }
+    
+    let filename = `model_${form.value.mode === 'city' ? form.value.city : 'coords'}.${ext}`
     const disposition = response.headers['content-disposition']
     if (disposition && disposition.indexOf('attachment') !== -1) {
       const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
