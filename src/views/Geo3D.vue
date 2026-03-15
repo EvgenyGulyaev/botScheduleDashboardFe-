@@ -117,12 +117,13 @@
           <div v-if="form.print_ready" class="space-y-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label class="block text-sm font-medium text-gray-800 mb-2">Масштаб (Scale)</label>
-                <p class="text-xs text-gray-500 mb-2">Пример: 0.002 = 1:500 (2мм на 1м)</p>
+                <label class="block text-sm font-medium text-gray-800 mb-2">Масштаб (мм на 1 метр)</label>
+                <p class="text-xs text-gray-500 mb-2">Пример: 2.0 = 1:500 (2мм на 1м), 1.0 = 1:1000 (1мм на 1м)</p>
                 <input 
                   v-model.number="form.scale" 
                   type="number" 
-                  step="0.001"
+                  step="0.1"
+                  placeholder="1.0"
                   class="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
               </div>
