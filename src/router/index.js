@@ -21,6 +21,12 @@ const routes = [
     component: () => import('../views/Tasks.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/geo3d',
+    name: 'Geo3D',
+    component: () => import('../views/Geo3D.vue'),
+    meta: { requiresAuth: true },
+  },
   { path: '/', redirect: '/login' },
 ]
 

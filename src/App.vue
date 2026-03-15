@@ -17,18 +17,39 @@
             >
               📊 Dashboard
             </router-link>
-            <router-link
-              to="/messages"
-              class="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
-            >
-              💬 Сообщения
-            </router-link>
-            <router-link
-              to="/tasks"
-              class="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
-            >
-              📋 Задачи
-            </router-link>
+            <!-- Dropdown Приложения -->
+            <div class="relative group">
+              <button
+                class="flex items-center px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900 focus:outline-none"
+              >
+                📦 Приложения
+                <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <!-- Dropdown menu -->
+              <div
+                class="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+              >
+                <div class="py-1" role="menu" aria-orientation="vertical">
+                  <router-link
+                    to="/messages"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                    role="menuitem"
+                  >
+                    💬 Бот Расписание
+                  </router-link>
+                  <router-link
+                    to="/geo3d"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                    role="menuitem"
+                  >
+                    🏔️ 3D Модели
+                  </router-link>
+                </div>
+              </div>
+            </div>
             <button
               @click="logout"
               class="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 transition-colors"
@@ -81,20 +102,26 @@
             >
               📊 Dashboard
             </router-link>
-            <router-link
-              to="/messages"
-              @click="closeMobileMenu"
-              class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              💬 Сообщения
-            </router-link>
-            <router-link
-              to="/tasks"
-              @click="closeMobileMenu"
-              class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              📋 Задачи
-            </router-link>
+            <!-- Категория Приложения (Мобильное меню) -->
+            <div class="border-t border-gray-100 pt-2 pb-1 mt-2">
+              <div class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                Приложения
+              </div>
+              <router-link
+                to="/messages"
+                @click="closeMobileMenu"
+                class="block px-3 py-2 pl-6 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              >
+                💬 Бот Расписание
+              </router-link>
+              <router-link
+                to="/geo3d"
+                @click="closeMobileMenu"
+                class="block px-3 py-2 pl-6 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              >
+                🏔️ 3D Модели
+              </router-link>
+            </div>
             <button
               @click="logout"
               class="w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-700 hover:text-red-900 hover:bg-gray-50"

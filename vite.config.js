@@ -12,4 +12,15 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    proxy: {
+      '/geo/': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/geo/, ''),
+      },
+      // Assuming backend API is on another port, let's keep it simple
+      // or if they had other proxies they would be here, but none exist yet.
+    },
+  },
 })
