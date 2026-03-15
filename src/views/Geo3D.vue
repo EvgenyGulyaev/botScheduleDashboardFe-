@@ -159,6 +159,18 @@
             </div>
           </div>
 
+          <!-- Почта для асинхронной отправки -->
+          <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Отправить результат на Email (опционально)</label>
+            <p class="text-xs text-gray-500 mb-2">Если указано, модель будет сгенерирована в фоновом режиме и отправлена вам на почту. Полезно для больших областей.</p>
+            <input 
+              v-model="form.email" 
+              type="email" 
+              placeholder="example@mail.com"
+              class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+          </div>
+
           <!-- Кнопка генерации -->
           <div class="pt-4 border-t flex justify-end">
             <button 
@@ -200,7 +212,8 @@ const form = ref({
   scale: 1.0,
   base_thickness: 3.0,
   split_board: false,
-  board_size_mm: 160.0
+  board_size_mm: 160.0,
+  email: ''
 })
 
 // Если выбрали print_ready, формат принудительно ставим как STL (обычно так удобнее для слайсеров)
@@ -239,10 +252,20 @@ const generateModel = async () => {
       }
     }
 
+    if (form.value.email) {
+      payload.email = form.value.email
+    }
+
     const response = await axios.post('/geo/api/v1/generate', payload, {
       responseType: 'blob', // Важно для получения бинарного файла
       timeout: 120000 // 2 минуты, генерация может быть долгой
     })
+    
+    // Если сервер принял задачу в фон (HTTP 202)
+    if (response.status === 202) {
+      alert('Запрос принят! Модель будет сгенерирована в фоновом режиме и отправлена на указанный Email.')
+      return
+    }
     
     // Получаем имя файла из заголовков ответа, если сервер его отправляет
     let ext = form.value.format
