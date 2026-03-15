@@ -115,21 +115,31 @@
 
           <!-- Настройки для 3D Печати -->
           <div v-if="form.print_ready" class="space-y-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div>
-                <label class="block text-sm font-medium text-gray-800 mb-2">Масштаб (мм на 1 метр)</label>
-                <p class="text-xs text-gray-500 mb-2">Пример: 2.0 = 1:500 (2мм на 1м), 1.0 = 1:1000 (1мм на 1м)</p>
+                <label class="block text-sm font-medium text-gray-800 mb-2">Масштаб (мм на 1м)</label>
+                <p class="text-[10px] text-gray-500 mb-2">Пример: 2.0 = 1:500 (2мм на 1м)</p>
                 <input 
                   v-model.number="form.scale" 
                   type="number" 
                   step="0.1"
-                  placeholder="1.0"
                   class="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-800 mb-2">Толщина платформы (мм)</label>
-                <p class="text-xs text-gray-500 mb-2">Учитывается при генерации основания</p>
+                <label class="block text-sm font-medium text-gray-800 mb-2">Коэфф. высоты 🏢</label>
+                <p class="text-[10px] text-gray-500 mb-2">Высота зданий. 1.0 - норм, 2.0 - выше.</p>
+                <input 
+                  v-model.number="form.height_multiplier" 
+                  type="number" 
+                  step="0.1"
+                  min="0.1"
+                  class="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-800 mb-2">Основание (мм)</label>
+                <p class="text-[10px] text-gray-500 mb-2">Толщина платформы</p>
                 <input 
                   v-model.number="form.base_thickness" 
                   type="number" 
@@ -212,6 +222,7 @@ const form = ref({
   include_terrain: false,
   print_ready: false,
   scale: 1.0,
+  height_multiplier: 1.5,
   base_thickness: 3.0,
   split_board: false,
   board_size_mm: 160.0,
@@ -248,6 +259,7 @@ const generateModel = async () => {
     if (form.value.print_ready) {
       payload.print_ready = form.value.print_ready
       payload.scale = form.value.scale
+      payload.height_multiplier = form.value.height_multiplier
       payload.base_thickness = form.value.base_thickness
       
       if (form.value.split_board) {
