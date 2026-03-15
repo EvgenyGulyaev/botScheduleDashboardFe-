@@ -11,7 +11,9 @@
       <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg mb-6 sm:mb-8">
         <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
           <div class="flex items-center w-full sm:w-auto">
-            <label class="text-sm font-medium text-gray-700 whitespace-nowrap mr-3 sm:mr-4">Сервис:</label>
+            <label class="text-sm font-medium text-gray-700 whitespace-nowrap mr-3 sm:mr-4"
+              >Сервис:</label
+            >
             <select
               v-model="selectedService"
               @change="loadStatus"
@@ -21,6 +23,7 @@
               <option value="dashboard">Панель</option>
               <option value="bot-nickname">Бот для Дискорда</option>
               <option value="shotener">Сервис для ссылок</option>
+              <option value="geo3d">Сервис для 3d городов </option>
             </select>
           </div>
 
@@ -37,8 +40,13 @@
 
       <!-- Статус карточка (полная ширина) -->
       <div class="grid grid-cols-1 gap-6 mb-8">
-        <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border-l-4 lg:border-l-8" :class="statusBorderClass">
-          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 lg:mb-8 space-y-4 lg:space-y-0">
+        <div
+          class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border-l-4 lg:border-l-8"
+          :class="statusBorderClass"
+        >
+          <div
+            class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 lg:mb-8 space-y-4 lg:space-y-0"
+          >
             <div class="space-y-2">
               <p class="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide">
                 {{ selectedService }}
@@ -48,7 +56,10 @@
               </p>
               <p class="text-xs sm:text-sm text-gray-500">Статус сервиса</p>
             </div>
-            <div :class="statusClass" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl shadow-lg self-center lg:self-auto mx-auto lg:mx-0">
+            <div
+              :class="statusClass"
+              class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl shadow-lg self-center lg:self-auto mx-auto lg:mx-0"
+            >
               {{ statusIcon }}
             </div>
           </div>
@@ -56,12 +67,18 @@
           <!-- Статистика -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- PID -->
-            <div class="flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-sm border">
-              <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white text-lg font-bold">
+            <div
+              class="flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-sm border"
+            >
+              <div
+                class="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white text-lg font-bold"
+              >
                 PID
               </div>
               <div class="ml-4 min-w-0 flex-1">
-                <div class="text-xs uppercase tracking-wide text-blue-700 font-medium">Process ID</div>
+                <div class="text-xs uppercase tracking-wide text-blue-700 font-medium">
+                  Process ID
+                </div>
                 <div class="text-lg sm:text-xl font-bold text-blue-900 mt-1 truncate">
                   {{ stats.pid || '—' }}
                 </div>
@@ -69,12 +86,18 @@
             </div>
 
             <!-- CPU -->
-            <div class="flex items-center p-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl shadow-sm border">
-              <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white text-lg font-bold">
+            <div
+              class="flex items-center p-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl shadow-sm border"
+            >
+              <div
+                class="flex-shrink-0 w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white text-lg font-bold"
+              >
                 CPU
               </div>
               <div class="ml-4 min-w-0 flex-1">
-                <div class="text-xs uppercase tracking-wide text-orange-700 font-medium">CPU time</div>
+                <div class="text-xs uppercase tracking-wide text-orange-700 font-medium">
+                  CPU time
+                </div>
                 <div class="text-lg sm:text-xl font-bold text-orange-900 mt-1 truncate">
                   {{ stats.cpu || '—' }}
                 </div>
@@ -82,8 +105,12 @@
             </div>
 
             <!-- MEM -->
-            <div class="flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-xl shadow-sm border">
-              <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center text-white text-lg font-bold">
+            <div
+              class="flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-xl shadow-sm border"
+            >
+              <div
+                class="flex-shrink-0 w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center text-white text-lg font-bold"
+              >
                 RAM
               </div>
               <div class="ml-4 min-w-0 flex-1">
@@ -99,7 +126,9 @@
 
       <!-- Все сервисы -->
       <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
-        <h3 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <h3
+          class="text-xl sm:text-2xl font-bold mb-6 text-gray-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0"
+        >
           <span>Все сервисы</span>
           <button
             @click="loadAllServices"
@@ -113,14 +142,29 @@
           <div
             v-for="service in services"
             :key="service"
-            @click="selectedService = service; loadStatus()"
+            @click="
+              selectedService = service
+              loadStatus()
+            "
             class="group p-5 sm:p-6 rounded-2xl hover:shadow-2xl cursor-pointer transition-all border-2 hover:border-blue-300 hover:bg-blue-50 border-gray-200 bg-gradient-to-br from-white/80 to-gray-50"
           >
             <div class="flex items-start justify-between mb-3">
               <div class="text-3xl sm:text-4xl">{{ serviceStatus[service]?.icon || '🟡' }}</div>
-              <div class="w-6 h-6 rounded-full bg-gray-200 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
-                <svg class="w-3 h-3 text-gray-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              <div
+                class="w-6 h-6 rounded-full bg-gray-200 group-hover:bg-blue-200 flex items-center justify-center transition-colors"
+              >
+                <svg
+                  class="w-3 h-3 text-gray-500 group-hover:text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  ></path>
                 </svg>
               </div>
             </div>
@@ -155,24 +199,27 @@ const stats = ref({
   memory: '',
 })
 
-const services = ['bot', 'dashboard', 'bot-nickname', 'shotener']
+const services = ['bot', 'dashboard', 'bot-nickname', 'shotener', 'geo3d']
 
 // Статусы
 const statusClass = computed(() =>
-  botStatus.value === 'active' ? 'bg-green-100 border-green-400' :
-    botStatus.value === 'error' ? 'bg-red-100 border-red-400' :
-      'bg-yellow-100 border-yellow-400'
+  botStatus.value === 'active'
+    ? 'bg-green-100 border-green-400'
+    : botStatus.value === 'error'
+      ? 'bg-red-100 border-red-400'
+      : 'bg-yellow-100 border-yellow-400',
 )
 
 const statusBorderClass = computed(() =>
-  botStatus.value === 'active' ? 'border-green-500' :
-    botStatus.value === 'error' ? 'border-red-500' :
-      'border-yellow-500'
+  botStatus.value === 'active'
+    ? 'border-green-500'
+    : botStatus.value === 'error'
+      ? 'border-red-500'
+      : 'border-yellow-500',
 )
 
 const statusIcon = computed(() =>
-  botStatus.value === 'active' ? '🟢' :
-    botStatus.value === 'error' ? '🔴' : '🟡'
+  botStatus.value === 'active' ? '🟢' : botStatus.value === 'error' ? '🔴' : '🟡',
 )
 
 const loadStatus = async () => {
@@ -198,12 +245,12 @@ const loadAllServices = async () => {
           const res = await authStore.api.get(`/bot/status?service=${service}`)
           serviceStatus.value[service] = {
             status: res.data.status || 'unknown',
-            icon: res.data.status === 'active' ? '🟢' : res.data.status === 'error' ? '🔴' : '🟡'
+            icon: res.data.status === 'active' ? '🟢' : res.data.status === 'error' ? '🔴' : '🟡',
           }
         } catch {
           serviceStatus.value[service] = { status: 'error', icon: '🔴' }
         }
-      })
+      }),
     )
   } finally {
     loadingAll.value = false
