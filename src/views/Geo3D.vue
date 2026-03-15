@@ -213,7 +213,7 @@ const form = ref({
   base_thickness: 3.0,
   split_board: false,
   board_size_mm: 160.0,
-  email: ''
+  email: 'wardercompany@gmail.com'
 })
 
 // Если выбрали print_ready, формат принудительно ставим как STL (обычно так удобнее для слайсеров)
