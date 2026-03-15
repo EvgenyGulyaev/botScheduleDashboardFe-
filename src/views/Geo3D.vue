@@ -146,36 +146,17 @@
                 <span class="text-sm font-medium text-gray-800">Разбить модель на квадратные печатные платы 🧩</span>
               </label>
 
-                <div v-if="form.split_board" class="animate-fade-in-up space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-800 mb-2">Размер одной платы (мм)</label>
-                    <input 
-                      v-model.number="form.board_size_mm" 
-                      type="number" 
-                      step="1"
-                      min="10"
-                      class="w-full sm:w-1/2 px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                  </div>
-
-                  <div class="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-8">
-                    <label class="flex items-center space-x-3 cursor-pointer">
-                      <input type="checkbox" v-model="form.merge_tiles" class="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500">
-                      <span class="text-sm font-medium text-gray-800">Объединить в один файл (Single STL) 📦</span>
-                    </label>
-
-                    <div v-if="form.merge_tiles" class="flex items-center space-x-3">
-                      <label class="text-sm text-gray-600">Зазор (мм):</label>
-                      <input 
-                        v-model.number="form.merge_gap_mm" 
-                        type="number" 
-                        step="1"
-                        min="0"
-                        class="w-20 px-3 py-1 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      >
-                    </div>
-                  </div>
-                  <p class="text-xs text-gray-500 italic">При объединении все плитки будут разложены в один большой проект для печати.</p>
+                <div v-if="form.split_board" class="animate-fade-in-up">
+                  <label class="block text-sm font-medium text-gray-800 mb-2">Размер одной платы (мм)</label>
+                  <p class="text-xs text-gray-500 mb-2">Например, 160мм для стандартного стола 3D принтера.</p>
+                  <input 
+                    v-model.number="form.board_size_mm" 
+                    type="number" 
+                    step="1"
+                    min="10"
+                    class="w-full sm:w-1/2 px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                  <p class="text-xs text-gray-500 italic mt-2">Модель будет разбита на несколько файлов и упакована в ZIP с картой сборки.</p>
                 </div>
               </div>
             </div>
@@ -227,7 +208,7 @@ const form = ref({
   width: 500,
   height: 500,
   format: 'glb',
-  include_roads: false,
+  include_roads: true,
   include_terrain: false,
   print_ready: false,
   scale: 1.0,
