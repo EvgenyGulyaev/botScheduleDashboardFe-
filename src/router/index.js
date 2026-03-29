@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import { resolveAuthRedirect } from './guards.js'
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },
@@ -36,23 +37,12 @@ const router = createRouter({
 })
 
 // 🛡️ Navigation Guard
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to) => {
   const authStore = useAuthStore()
-
-  // Если НЕ залогинен → только логин разрешен
-  if (!authStore.isAuthenticated) {
-    if (to.meta.requiresAuth) {
-      return next('/login') // Редирект на логин
-    }
-    return next() // Логин страница OK
-  }
-
-  // Залогинен → логин не показываем
-  if (to.path === '/login') {
-    return next('/dashboard') // Редирект на дашборд
-  }
-
-  next() // Всё OK
+  return resolveAuthRedirect({
+    isAuthenticated: authStore.isAuthenticated,
+    to,
+  })
 })
 
 export default router

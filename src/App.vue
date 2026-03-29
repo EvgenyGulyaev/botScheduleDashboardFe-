@@ -1,5 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
+    <AppNotifications />
+
     <!-- Навигация (только после логина) -->
     <nav v-if="$route.meta.requiresAuth" class="bg-white shadow-sm border-b">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -144,11 +146,13 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth.js'
+import AppNotifications from './components/AppNotifications.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const isMobileMenuOpen = ref(false)
+let removeAfterEachHook = null
 
 // Toggle мобильного меню
 const toggleMobileMenu = () => {
@@ -173,12 +177,19 @@ const handleRouteChange = () => {
   closeMobileMenu()
 }
 
+const logout = async () => {
+  authStore.logout()
+  closeMobileMenu()
+  await router.push('/login')
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  router.afterEach(handleRouteChange)
+  removeAfterEachHook = router.afterEach(handleRouteChange)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  removeAfterEachHook?.()
 })
 </script>

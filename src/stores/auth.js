@@ -1,6 +1,13 @@
 // src/stores/auth.js
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import {
+  clearStoredAuth,
+  normalizeAuthPayload,
+  readStoredAuth,
+  writeStoredAuth,
+} from '../lib/auth-storage.js'
+import { isUnauthorizedError, redirectToLogin } from '../lib/auth-session.js'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -17,19 +24,12 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     init() {
-      // Восстановление из localStorage
-      const savedToken = localStorage.getItem('token')
-      const savedUser = localStorage.getItem('user')
+      const { token, user } = readStoredAuth(localStorage)
+      this.token = token
+      this.user = user
 
-      if (savedToken) {
-        this.token = savedToken
-      }
-      if (savedUser) {
-        try {
-          this.user = JSON.parse(savedUser)
-        } catch {
-          this.user = null
-        }
+      if (this.api) {
+        return
       }
 
       // Создаём axios инстанс
@@ -49,8 +49,9 @@ export const useAuthStore = defineStore('auth', {
       this.api.interceptors.response.use(
         (response) => response,
         (error) => {
-          if (error.response && error.response.status === 401) {
+          if (isUnauthorizedError(error)) {
             this.logout()
+            redirectToLogin()
           }
           return Promise.reject(error)
         },
@@ -62,16 +63,11 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
       try {
         const res = await axios.post('/api/login', { email, password })
+        const session = normalizeAuthPayload(res.data)
 
-        // Ожидаем от бэка:
-        // { token: '...', user: { ... } }
-        this.token = res.data.Token
-        this.user = res.data || null
-
-        localStorage.setItem('token', this.token)
-        if (this.user) {
-          localStorage.setItem('user', JSON.stringify(this.user))
-        }
+        this.token = session.token
+        this.user = session.user
+        writeStoredAuth(localStorage, session)
 
         if (!this.api) {
           this.init()
@@ -89,8 +85,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = null
       this.error = null
 
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      clearStoredAuth(localStorage)
     },
   },
 })
