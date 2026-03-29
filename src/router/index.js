@@ -28,6 +28,12 @@ const routes = [
     component: () => import('../views/Geo3D.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/short-links',
+    name: 'ShortLinks',
+    component: () => import('../views/ShortLinks.vue'),
+    meta: { requiresAuth: true },
+  },
   { path: '/', redirect: '/login' },
 ]
 
