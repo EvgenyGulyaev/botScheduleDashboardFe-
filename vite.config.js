@@ -14,13 +14,16 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/short/': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/short/, ''),
+      },
       '/geo/': {
         target: 'http://localhost:8082',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/geo/, ''),
       },
-      // Assuming backend API is on another port, let's keep it simple
-      // or if they had other proxies they would be here, but none exist yet.
     },
   },
 })
