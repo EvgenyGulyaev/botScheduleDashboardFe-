@@ -1,9 +1,22 @@
 <template>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-    <div>
-      <h2 class="text-3xl font-bold text-gray-900">Отправка сообщений</h2>
-      <p class="mt-2 text-lg text-gray-600">Быстрая отправка</p>
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h2 class="text-3xl font-bold text-gray-900">Отправка сообщений</h2>
+        <p class="mt-2 text-lg text-gray-600">Быстрая отправка</p>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+        <div class="font-semibold text-slate-900">{{ lastSyncedLabel }}</div>
+        <div class="mt-1">Чаты обновляются автоматически раз в минуту.</div>
+      </div>
     </div>
+
+    <InlineNotice
+      v-if="loadError"
+      tone="error"
+      title="Чаты пока не загрузились"
+      :message="loadError"
+    />
 
     <div class="grid gap-6 lg:grid-cols-2">
       <!-- Левая колонка: выбор чата + сообщения -->
@@ -12,12 +25,18 @@
         <div class="bg-white p-5 rounded-2xl shadow">
           <label class="block text-sm font-semibold text-gray-700 mb-3">Чат</label>
 
-          <div v-if="loadingChats" class="text-sm text-gray-500">
+          <div
+            v-if="loadingChats && chats.length === 0"
+            class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500"
+          >
             Загружаем доступные чаты...
           </div>
 
-          <div v-else-if="chats.length === 0" class="text-sm text-red-500">
-            Нет доступных чатов
+          <div
+            v-else-if="chats.length === 0"
+            class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-5 text-sm text-amber-800"
+          >
+            Пока нет доступных чатов. Когда появятся новые диалоги, они отобразятся здесь.
           </div>
 
           <select
@@ -53,17 +72,17 @@
           <div class="flex-1 overflow-y-auto space-y-3 pr-1">
             <div
               v-if="!selectedChat"
-              class="text-sm text-gray-400 h-full flex items-center justify-center"
+              class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500 h-full flex items-center justify-center text-center"
             >
-              Выберите чат, чтобы увидеть сообщения
+              Выбери чат слева, и здесь появится история сообщений.
             </div>
 
             <template v-else>
               <div
                 v-if="combinedMessages.length === 0"
-                class="text-sm text-gray-400 h-full flex items-center justify-center"
+                class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500 h-full flex items-center justify-center text-center"
               >
-                Пока нет сообщений
+                Пока нет сообщений. Можно отправить первое сообщение из формы справа.
               </div>
 
               <div
@@ -101,6 +120,11 @@
           @submit.prevent="sendMessage"
           class="bg-white p-8 rounded-2xl shadow-xl space-y-6"
         >
+          <InlineNotice
+            v-if="!selectedChat"
+            title="Сначала выбери чат"
+            message="Форма отправки станет активной, когда слева будет выбран получатель."
+          />
           <div style="margin-bottom: 5px">
             <label class="block text-sm font-semibold text-gray-700 mb-3">
               Сообщение
@@ -122,6 +146,9 @@
           >
             📤 {{ loading ? 'Отправляем...' : 'Отправить сообщение' }}
           </button>
+          <p class="text-sm text-slate-500">
+            {{ selectedChat ? 'Сообщение уйдёт сразу в выбранный чат.' : 'Чтобы отправить сообщение, сначала выбери чат.' }}
+          </p>
         </form>
 
         <!-- кнопка блокировки -->
@@ -154,15 +181,22 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import InlineNotice from '../components/InlineNotice.vue'
 import { useAuthStore } from '../stores/auth.js'
+import { useNotificationsStore } from '../stores/notifications.js'
+import { isUnauthorizedError } from '../lib/auth-session.js'
+import { formatLastUpdatedLabel } from '../lib/view-feedback.js'
 
 const authStore = useAuthStore()
+const notifications = useNotificationsStore()
 
 // [{ id, messages: { [msgId]: text }, network, username }]
 const chats = ref([])
 const loadingChats = ref(false)
 const loading = ref(false)
-const blocking = ref(false)  // состояние блокировки
+const blocking = ref(false)
+const loadError = ref('')
+const lastSyncedAt = ref(null)
 
 const selectedChatId = ref('')
 const message = ref('')
@@ -208,12 +242,15 @@ const combinedMessages = computed(() => [
   ...serverMessages.value,
   ...outgoingMessages.value,
 ])
+const lastSyncedLabel = computed(() => formatLastUpdatedLabel(lastSyncedAt.value))
 
 const loadChats = async () => {
   loadingChats.value = true
   try {
     const { data } = await authStore.api.get('/social/user')
     chats.value = Array.isArray(data) ? data : []
+    loadError.value = ''
+    lastSyncedAt.value = new Date()
 
     // если ничего не выбрано — выбрать первый чат
     if (!selectedChatId.value && chats.value.length > 0) {
@@ -221,6 +258,10 @@ const loadChats = async () => {
     }
   } catch (e) {
     console.error('Ошибка загрузки чатов:', e)
+    if (isUnauthorizedError(e)) {
+      return
+    }
+    loadError.value = e.response?.data?.message || 'Не удалось загрузить список чатов. Попробуй обновить чуть позже.'
   } finally {
     loadingChats.value = false
   }
@@ -266,8 +307,13 @@ const sendMessage = async () => {
     })
 
     message.value = ''
+    lastSyncedAt.value = new Date()
   } catch (error) {
-    alert('❌ ' + (error.response?.data?.message || 'Ошибка отправки'))
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    localMessages.value = localMessages.value.filter((item) => item.localId !== localId)
+    notifications.errorFrom(error, 'Ошибка отправки', { duration: 5000 })
   } finally {
     loading.value = false
   }
@@ -285,16 +331,18 @@ const blockUser = async () => {
       net: chat.network,
     })
 
-    alert(`✅ Пользователь ${chat.username} (${chat.network}) заблокирован!`)
+    notifications.success(`Пользователь ${chat.username} (${chat.network}) заблокирован`)
   } catch (error) {
-    alert('❌ ' + (error.response?.data?.message || 'Ошибка блокировки'))
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    notifications.errorFrom(error, 'Ошибка блокировки', { duration: 5000 })
   } finally {
     blocking.value = false
   }
 }
 
 onMounted(() => {
-  loadChats()
   startAutoRefresh()
 })
 

@@ -2,9 +2,39 @@
   <div class="min-h-screen bg-gray-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <!-- Заголовок -->
-      <div class="mb-8 text-center sm:text-left">
-        <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
-        <p class="text-base sm:text-lg text-gray-600">Статус ботов по сервисам</p>
+      <div
+        class="mb-8 flex flex-col gap-4 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left"
+      >
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
+          <p class="text-base sm:text-lg text-gray-600">Статус ботов по сервисам</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+          <div class="font-semibold text-slate-900">{{ dashboardTimestampLabel }}</div>
+          <div class="mt-1">
+            {{ loadingAll ? 'Обновляем список сервисов…' : 'Данные подтягиваются без перезагрузки страницы.' }}
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-6 space-y-3">
+        <InlineNotice
+          v-if="loading && !hasLoadedStatus"
+          title="Загружаем статус сервиса"
+          message="Сейчас подтянем актуальные показатели и состояние процесса."
+        />
+        <InlineNotice
+          v-else-if="statusError"
+          tone="error"
+          title="Не удалось обновить статус"
+          :message="statusError"
+        />
+        <InlineNotice
+          v-if="allServicesError"
+          tone="error"
+          title="Список сервисов обновился не полностью"
+          :message="allServicesError"
+        />
       </div>
 
       <!-- Выбор сервиса + быстрые действия -->
@@ -44,7 +74,16 @@
           class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border-l-4 lg:border-l-8"
           :class="statusBorderClass"
         >
+          <div v-if="loading && !hasLoadedStatus" class="animate-pulse space-y-4">
+            <div class="h-4 w-28 rounded-full bg-slate-200"></div>
+            <div class="h-12 w-48 rounded-2xl bg-slate-200"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div v-for="item in 3" :key="item" class="h-24 rounded-xl bg-slate-100"></div>
+            </div>
+          </div>
+
           <div
+            v-else
             class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 lg:mb-8 space-y-4 lg:space-y-0"
           >
             <div class="space-y-2">
@@ -65,7 +104,7 @@
           </div>
 
           <!-- Статистика -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-if="hasLoadedStatus" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- PID -->
             <div
               class="flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-sm border"
@@ -138,7 +177,20 @@
             🔄 Обновить
           </button>
         </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div
+          v-if="loadingAll && !hasLoadedServices"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
+        >
+          <div
+            v-for="item in 4"
+            :key="item"
+            class="h-32 animate-pulse rounded-2xl border-2 border-slate-100 bg-slate-50"
+          ></div>
+        </div>
+        <div
+          v-else
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
+        >
           <div
             v-for="service in services"
             :key="service"
@@ -180,14 +232,24 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import InlineNotice from '../components/InlineNotice.vue'
+import { formatLastUpdatedLabel } from '../lib/view-feedback.js'
 import { useAuthStore } from '../stores/auth.js'
+import { useNotificationsStore } from '../stores/notifications.js'
+import { isUnauthorizedError } from '../lib/auth-session.js'
 
 const authStore = useAuthStore()
+const notifications = useNotificationsStore()
 const selectedService = ref('bot')
 const botStatus = ref('unknown')
 const loading = ref(false)
 const loadingAll = ref(false)
 const serviceStatus = ref({})
+const statusError = ref('')
+const allServicesError = ref('')
+const lastUpdatedAt = ref(null)
+const hasLoadedStatus = ref(false)
+const hasLoadedServices = ref(false)
 
 // Статистика
 const stats = ref({
@@ -197,6 +259,7 @@ const stats = ref({
 })
 
 const services = ['bot', 'dashboard', 'bot-nickname', 'shotener', 'geo3d']
+const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdatedAt.value))
 
 // Статусы
 const statusClass = computed(() =>
@@ -225,9 +288,16 @@ const loadStatus = async () => {
     const res = await authStore.api.get(`/bot/status?service=${selectedService.value}`)
     botStatus.value = res.data.status || 'unknown'
     stats.value = res.data.Stats || stats.value
+    statusError.value = ''
+    lastUpdatedAt.value = new Date()
+    hasLoadedStatus.value = true
   } catch (error) {
     console.error('Status error:', error)
+    if (isUnauthorizedError(error)) {
+      return
+    }
     botStatus.value = 'error'
+    statusError.value = error.response?.data?.message || 'Не получилось получить данные по выбранному сервису.'
   } finally {
     loading.value = false
   }
@@ -236,6 +306,7 @@ const loadStatus = async () => {
 const loadAllServices = async () => {
   loadingAll.value = true
   try {
+    allServicesError.value = ''
     await Promise.all(
       services.map(async (service) => {
         try {
@@ -244,11 +315,16 @@ const loadAllServices = async () => {
             status: res.data.status || 'unknown',
             icon: res.data.status === 'active' ? '🟢' : res.data.status === 'error' ? '🔴' : '🟡',
           }
-        } catch {
+        } catch (error) {
+          if (isUnauthorizedError(error)) {
+            return
+          }
           serviceStatus.value[service] = { status: 'error', icon: '🔴' }
+          allServicesError.value = 'Часть сервисов не ответила. Можно повторить обновление через кнопку выше.'
         }
       }),
     )
+    hasLoadedServices.value = true
   } finally {
     loadingAll.value = false
   }
@@ -258,10 +334,13 @@ const restartBot = async () => {
   loading.value = true
   try {
     await authStore.api.post(`/bot/restart`, { service: selectedService.value })
-    alert(`✅ Сервис ${selectedService.value} перезапущен!`)
+    notifications.success(`Сервис ${selectedService.value} перезапущен`)
     await loadStatus()
   } catch (error) {
-    alert('❌ Ошибка рестарта: ' + (error.response?.data?.message || error.message))
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    notifications.errorFrom(error, 'Ошибка рестарта', { duration: 5000 })
   } finally {
     loading.value = false
   }

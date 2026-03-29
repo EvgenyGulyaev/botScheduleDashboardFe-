@@ -9,6 +9,10 @@
 
       <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
         <form @submit.prevent="generateModel" class="space-y-8">
+          <InlineNotice
+            title="Как это работает"
+            message="Можно сгенерировать модель по названию места или по координатам. Для больших областей удобно указать email и получить результат асинхронно."
+          />
           
           <!-- Режим ввода -->
           <div>
@@ -35,7 +39,11 @@
                 required 
                 placeholder="Например: Moscow, Kremlin"
                 class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                :class="{ 'border-rose-300 ring-rose-100': shouldShowGeoErrors && geoErrors.city }"
               >
+              <p v-if="shouldShowGeoErrors && geoErrors.city" class="mt-2 text-sm text-rose-600">
+                {{ geoErrors.city }}
+              </p>
             </div>
           </div>
           
@@ -49,6 +57,7 @@
                 required
                 placeholder="55.7558"
                 class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                :class="{ 'border-rose-300 ring-rose-100': shouldShowGeoErrors && geoErrors.coords }"
               >
             </div>
             <div>
@@ -60,8 +69,12 @@
                 required
                 placeholder="37.6173"
                 class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                :class="{ 'border-rose-300 ring-rose-100': shouldShowGeoErrors && geoErrors.coords }"
               >
             </div>
+            <p v-if="shouldShowGeoErrors && geoErrors.coords" class="sm:col-span-2 text-sm text-rose-600">
+              {{ geoErrors.coords }}
+            </p>
           </div>
 
           <!-- Размеры и Формат -->
@@ -73,7 +86,11 @@
                 type="number" 
                 min="100" max="2000"
                 class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                :class="{ 'border-rose-300 ring-rose-100': shouldShowGeoErrors && geoErrors.width }"
               >
+              <p v-if="shouldShowGeoErrors && geoErrors.width" class="mt-2 text-sm text-rose-600">
+                {{ geoErrors.width }}
+              </p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Высота (м)</label>
@@ -82,7 +99,11 @@
                 type="number" 
                 min="100" max="2000"
                 class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                :class="{ 'border-rose-300 ring-rose-100': shouldShowGeoErrors && geoErrors.height }"
               >
+              <p v-if="shouldShowGeoErrors && geoErrors.height" class="mt-2 text-sm text-rose-600">
+                {{ geoErrors.height }}
+              </p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Формат</label>
@@ -180,7 +201,11 @@
               type="email" 
               placeholder="example@mail.com"
               class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :class="{ 'border-rose-300 ring-rose-100': shouldShowGeoErrors && geoErrors.email }"
             >
+            <p v-if="shouldShowGeoErrors && geoErrors.email" class="mt-2 text-sm text-rose-600">
+              {{ geoErrors.email }}
+            </p>
           </div>
 
           <!-- Кнопка генерации -->
@@ -197,6 +222,18 @@
               <span>{{ loading ? 'Генерация...' : '🚀 Сгенерировать и Скачать' }}</span>
             </button>
           </div>
+
+          <InlineNotice
+            v-if="shouldShowGeoErrors && firstGeoError"
+            tone="error"
+            title="Форма пока не готова"
+            :message="firstGeoError"
+          />
+          <InlineNotice
+            v-else-if="loading"
+            title="Готовим модель"
+            message="Запрос уже ушёл на сервер. Генерация больших областей может занять до пары минут."
+          />
         </form>
       </div>
 
@@ -205,10 +242,22 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import axios from 'axios'
+import InlineNotice from '../components/InlineNotice.vue'
+import { useAuthStore } from '../stores/auth.js'
+import { useNotificationsStore } from '../stores/notifications.js'
+import {
+  buildGeoPayload,
+  buildGeoRequestConfig,
+  resolveGeoDownloadFilename,
+} from '../lib/geo3d-request.js'
+import { validateGeoForm } from '../lib/view-feedback.js'
 
 const loading = ref(false)
+const authStore = useAuthStore()
+const notifications = useNotificationsStore()
+const submitAttempted = ref(false)
 
 const form = ref({
   mode: 'city',
@@ -228,8 +277,11 @@ const form = ref({
   board_size_mm: 160.0,
   merge_tiles: false,
   merge_gap_mm: 10.0,
-  email: 'wardercompany@gmail.com'
+  email: '',
 })
+const geoErrors = computed(() => validateGeoForm(form.value))
+const shouldShowGeoErrors = computed(() => submitAttempted.value && Object.keys(geoErrors.value).length > 0)
+const firstGeoError = computed(() => Object.values(geoErrors.value)[0] || '')
 
 // Если выбрали print_ready, формат принудительно ставим как STL (обычно так удобнее для слайсеров)
 watch(() => form.value.print_ready, (val) => {
@@ -239,67 +291,34 @@ watch(() => form.value.print_ready, (val) => {
 })
 
 const generateModel = async () => {
+  submitAttempted.value = true
+
+  if (Object.keys(geoErrors.value).length > 0) {
+    return
+  }
+
   loading.value = true
   try {
-    const payload = {
-      width: form.value.width,
-      height: form.value.height,
-      format: form.value.format,
-      include_roads: form.value.include_roads,
-      include_terrain: form.value.include_terrain,
-    }
-
-    if (form.value.mode === 'city') {
-      payload.city = form.value.city
-    } else {
-      payload.lat = form.value.lat
-      payload.lon = form.value.lon
-    }
-
-    if (form.value.print_ready) {
-      payload.print_ready = form.value.print_ready
-      payload.scale = form.value.scale
-      payload.height_multiplier = form.value.height_multiplier
-      payload.base_thickness = form.value.base_thickness
-      
-      if (form.value.split_board) {
-        payload.split_board = form.value.split_board
-        payload.board_size_mm = form.value.board_size_mm
-        payload.merge_tiles = form.value.merge_tiles
-        payload.merge_gap_mm = form.value.merge_gap_mm
-      }
-    }
-
-    if (form.value.email) {
-      payload.email = form.value.email
-    }
-
-    const response = await axios.post('/geo/api/v1/generate', payload, {
-      responseType: 'blob', // Важно для получения бинарного файла
-      timeout: 120000 // 2 минуты, генерация может быть долгой
-    })
+    const payload = buildGeoPayload(form.value)
+    const response = await axios.post(
+      '/geo/api/v1/generate',
+      payload,
+      buildGeoRequestConfig(authStore.token),
+    )
     
     // Если сервер принял задачу в фон (HTTP 202)
     if (response.status === 202) {
-      alert('Запрос принят! Модель будет сгенерирована в фоновом режиме и отправлена на указанный Email.')
+      notifications.info(
+        'Запрос принят. Модель будет сгенерирована в фоне и отправлена на указанный email.',
+        { duration: 6000 },
+      )
       return
     }
     
-    // Получаем имя файла из заголовков ответа, если сервер его отправляет
-    let ext = form.value.format
-    if (form.value.print_ready && form.value.split_board && !form.value.merge_tiles) {
-      ext = 'zip'
-    }
-    
-    let filename = `model_${form.value.mode === 'city' ? form.value.city : 'coords'}.${ext}`
-    const disposition = response.headers['content-disposition']
-    if (disposition && disposition.indexOf('attachment') !== -1) {
-      const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/
-      const matches = filenameRegex.exec(disposition)
-      if (matches != null && matches[1]) { 
-        filename = matches[1].replace(/['"]/g, '')
-      }
-    }
+    const filename = resolveGeoDownloadFilename({
+      headers: response.headers,
+      form: form.value,
+    })
 
     // Создаем ссылку для скачивания
     const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -308,6 +327,7 @@ const generateModel = async () => {
     link.setAttribute('download', filename)
     document.body.appendChild(link)
     link.click()
+    notifications.success('Модель готова, скачивание началось.')
     
     // Очистка
     window.URL.revokeObjectURL(url)
@@ -320,12 +340,12 @@ const generateModel = async () => {
       const text = await error.response.data.text()
       try {
         const json = JSON.parse(text)
-        alert('Ошибка генерации: ' + (json.error || json.message || 'Неизвестная ошибка'))
+        notifications.error(json.error || json.message || 'Ошибка генерации', { duration: 6000 })
       } catch {
-        alert('Ошибка генерации: Сервер вернул ошибку.')
+        notifications.error('Ошибка генерации: сервер вернул ошибку.', { duration: 6000 })
       }
     } else {
-      alert('Ошибка генерации: ' + error.message)
+      notifications.errorFrom(error, 'Ошибка генерации', { duration: 6000 })
     }
   } finally {
     loading.value = false
