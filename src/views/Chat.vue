@@ -147,20 +147,21 @@
 
                   <div
                     v-if="activeConversation?.type === 'group'"
-                    class="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500"
+                    class="mt-2 text-sm text-slate-500"
                   >
-                    <span>{{ activeConversation.members.length }} участников:</span>
-                    <button
-                      v-for="member in groupDirectMembers"
-                      :key="member.email"
-                      type="button"
-                      class="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-800 transition hover:bg-indigo-100 hover:text-indigo-800"
-                      @click="openDirectConversation(member)"
-                    >
-                      {{ member.login || member.email }}
-                    </button>
+                    {{ activeGroupMembersSummary }}
                   </div>
                 </div>
+
+                <button
+                  v-if="activeConversation?.type === 'group'"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-200 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="deletingGroup"
+                  @click="deleteActiveGroup"
+                >
+                  {{ deletingGroup ? 'Удаляем…' : 'Удалить группу' }}
+                </button>
               </div>
             </div>
 
@@ -316,6 +317,7 @@ import {
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
   getChatMessageStatusTitle,
+  getConversationMembersSummary,
   getRecentChatItems,
 } from '../lib/chat-ui.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -329,6 +331,7 @@ const notifications = useNotificationsStore()
 const chatSearch = ref('')
 const composerText = ref('')
 const creatingGroup = ref(false)
+const deletingGroup = ref(false)
 const sendingMessage = ref(false)
 const groupModalOpen = ref(false)
 const groupForm = ref({
@@ -379,12 +382,12 @@ const searchedUsers = computed(() =>
 )
 const recentChats = computed(() => getRecentChatItems(chatStore.conversations, 5))
 const activeConversationTitle = computed(() => activeConversation.value?.title || 'Выбери чат')
-const groupDirectMembers = computed(() => {
+const activeGroupMembersSummary = computed(() => {
   if (!activeConversation.value || activeConversation.value.type !== 'group') {
-    return []
+    return ''
   }
 
-  return activeConversation.value.members.filter((member) => member.email && member.email !== currentUserEmail.value)
+  return getConversationMembersSummary(activeConversation.value, currentUserEmail.value)
 })
 
 const toggleSoundNotifications = () => {
@@ -409,12 +412,12 @@ const formatMessageTime = (value) => {
 }
 
 const conversationPreview = (conversation) => {
-  if (conversation.lastMessageText) {
-    return conversation.lastMessageText
+  if (conversation.type === 'group') {
+    return getConversationMembersSummary(conversation, currentUserEmail.value)
   }
 
-  if (conversation.type === 'group') {
-    return `${conversation.members.length} участников`
+  if (conversation.lastMessageText) {
+    return conversation.lastMessageText
   }
 
   return 'Direct-диалог'
@@ -481,6 +484,27 @@ const createGroup = async () => {
     // notifications already handled in the store
   } finally {
     creatingGroup.value = false
+  }
+}
+
+const deleteActiveGroup = async () => {
+  if (!activeConversation.value || activeConversation.value.type !== 'group') {
+    return
+  }
+
+  const confirmed = typeof window === 'undefined' || window.confirm(`Удалить группу «${activeConversation.value.title}»?`)
+  if (!confirmed) {
+    return
+  }
+
+  deletingGroup.value = true
+  try {
+    await chatStore.deleteGroupConversation(activeConversation.value.id)
+    notifications.success('Группа удалена')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось удалить группу')
+  } finally {
+    deletingGroup.value = false
   }
 }
 

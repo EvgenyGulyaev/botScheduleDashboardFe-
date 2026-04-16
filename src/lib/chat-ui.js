@@ -21,6 +21,25 @@ export const filterChatUsersForSearch = (users = [], query = '', currentUserEmai
 export const getRecentChatItems = (conversations = [], limit = 5) =>
   conversations.slice(0, limit)
 
+export const getConversationMembersSummary = (conversation = {}, currentUserEmail = '') => {
+  const ownEmail = String(currentUserEmail || '').trim().toLowerCase()
+  const members = conversation.members || []
+  const labels = members
+    .map((member) => {
+      const email = String(member?.email || '').trim()
+      const isOwn = email.toLowerCase() === ownEmail
+
+      return {
+        isOwn,
+        label: isOwn ? 'Вы' : member?.login || email || 'Участник',
+      }
+    })
+    .sort((left, right) => Number(left.isOwn) - Number(right.isOwn))
+    .map((member) => member.label)
+
+  return `${members.length} - ${labels.join(', ')}`
+}
+
 export const getChatMessageSenderLabel = (message = {}, currentUser = {}) => {
   if (message.senderEmail && message.senderEmail === currentUser.email) {
     return currentUser.login || currentUser.email || 'Вы'
