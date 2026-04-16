@@ -20,3 +20,20 @@ export const filterChatUsersForSearch = (users = [], query = '', currentUserEmai
 
 export const getRecentChatItems = (conversations = [], limit = 5) =>
   conversations.slice(0, limit)
+
+export const getChatMessageSenderLabel = (message = {}, currentUser = {}) => {
+  if (message.senderEmail && message.senderEmail === currentUser.email) {
+    return currentUser.login || currentUser.email || 'Вы'
+  }
+
+  return message.senderLogin || message.senderEmail || 'Пользователь'
+}
+
+export const isChatMessageReadByPeer = (message = {}, currentUserEmail = '') =>
+  (message.readBy || []).some((receipt) => receipt.email && receipt.email !== currentUserEmail)
+
+export const getChatMessageStatusIcon = (message = {}, currentUserEmail = '') =>
+  isChatMessageReadByPeer(message, currentUserEmail) ? '✓✓' : '✓'
+
+export const getChatMessageStatusTitle = (message = {}, currentUserEmail = '') =>
+  isChatMessageReadByPeer(message, currentUserEmail) ? 'Прочитано собеседником' : 'Отправлено'
