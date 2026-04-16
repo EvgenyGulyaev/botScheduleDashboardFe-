@@ -205,7 +205,7 @@
                       :class="message.senderEmail === currentUserEmail ? 'border-emerald-100 bg-emerald-50/80' : 'border-slate-200 bg-slate-50'"
                     >
                       <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-sm font-semibold text-slate-950">{{ message.senderLogin || message.senderEmail }}</span>
+                        <span class="text-sm font-semibold text-slate-950">{{ messageSenderLabel(message) }}</span>
                         <span
                           v-if="message.senderEmail === currentUserEmail"
                           class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800"
@@ -216,10 +216,15 @@
                       <p class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
                         {{ message.text }}
                       </p>
-                      <div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                      <div class="mt-3 flex items-center gap-3 text-xs text-slate-500">
                         <span>{{ formatMessageTime(message.createdAt) }}</span>
-                        <span v-if="message.deliveredTo?.length">{{ message.deliveredTo.length }} доставлено</span>
-                        <span v-if="message.readBy?.length">{{ message.readBy.length }} прочитали</span>
+                        <span
+                          v-if="message.senderEmail === currentUserEmail"
+                          class="ml-auto text-sm font-semibold tracking-tight text-slate-500"
+                          :title="messageStatusTitle(message)"
+                        >
+                          {{ messageStatusIcon(message) }}
+                        </span>
                       </div>
                     </div>
                   </article>
@@ -320,7 +325,13 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
 import { getChatReconnectDelayMs } from '../lib/chat.js'
-import { filterChatUsersForSearch, getRecentChatItems } from '../lib/chat-ui.js'
+import {
+  filterChatUsersForSearch,
+  getChatMessageSenderLabel,
+  getChatMessageStatusIcon,
+  getChatMessageStatusTitle,
+  getRecentChatItems,
+} from '../lib/chat-ui.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useChatStore } from '../stores/chat.js'
 import { useNotificationsStore } from '../stores/notifications.js'
@@ -340,6 +351,7 @@ const groupForm = ref({
 })
 
 const currentUserEmail = computed(() => authStore.user?.email || '')
+const currentUserLogin = computed(() => authStore.user?.login || authStore.user?.email || '')
 const chatErrorMessage = computed(() => chatStore.error?.response?.data?.message || chatStore.error?.message || 'Не удалось загрузить или синхронизировать чат.')
 const socketLabel = computed(() => {
   if (chatStore.socketStatus === 'connected') {
@@ -417,8 +429,8 @@ const formatMessageTime = (value) => {
   }
 
   return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(date)
 }
 
@@ -433,6 +445,18 @@ const conversationPreview = (conversation) => {
 
   return 'Direct-диалог'
 }
+
+const messageSenderLabel = (message) =>
+  getChatMessageSenderLabel(message, {
+    email: currentUserEmail.value,
+    login: currentUserLogin.value,
+  })
+
+const messageStatusIcon = (message) =>
+  getChatMessageStatusIcon(message, currentUserEmail.value)
+
+const messageStatusTitle = (message) =>
+  getChatMessageStatusTitle(message, currentUserEmail.value)
 
 const selectConversation = async (conversationId) => {
   try {
