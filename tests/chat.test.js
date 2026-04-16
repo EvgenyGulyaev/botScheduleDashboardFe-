@@ -603,3 +603,35 @@ test('chat store uses backend group-member payload contract', async () => {
 
   delete globalThis.localStorage
 })
+
+test('chat store deletes group conversation and clears local state', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const fakeApi = createFakeApi()
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+
+  const chatStore = useChatStore()
+  chatStore.conversations = [{ id: 'group-1', title: 'Team', type: 'group' }]
+  chatStore.messagesByConversation = { 'group-1': [{ id: 'msg-1' }] }
+  chatStore.activeConversationId = 'group-1'
+
+  await chatStore.deleteGroupConversation('group-1')
+
+  assert.deepEqual(fakeApi.calls[0], [
+    'delete',
+    '/chat/conversations/group/group-1',
+    undefined,
+  ])
+  assert.equal(chatStore.conversations.length, 0)
+  assert.equal(chatStore.messagesByConversation['group-1'], undefined)
+  assert.equal(chatStore.activeConversationId, null)
+
+  delete globalThis.localStorage
+})

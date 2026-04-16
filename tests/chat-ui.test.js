@@ -5,6 +5,7 @@ import {
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
   getChatMessageStatusTitle,
+  getConversationMembersSummary,
   getRecentChatItems,
   isChatMessageReadByPeer,
 } from '../src/lib/chat-ui.js'
@@ -41,6 +42,18 @@ test('returns five most recent chat items in existing conversation order', () =>
     'chat-4',
     'chat-5',
   ])
+})
+
+test('formats conversation members summary with current user as you', () => {
+  assert.equal(
+    getConversationMembersSummary({
+      members: [
+        { login: 'warder', email: 'warder@example.com' },
+        { login: 'nika', email: 'nika@example.com' },
+      ],
+    }, 'warder@example.com'),
+    '2 - nika, Вы',
+  )
 })
 
 test('uses current auth login for own message sender label', () => {

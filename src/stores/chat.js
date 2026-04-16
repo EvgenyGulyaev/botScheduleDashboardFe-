@@ -297,6 +297,24 @@ export const useChatStore = defineStore('chat', {
       return conversation
     },
 
+    async deleteGroupConversation(conversationId) {
+      if (!conversationId) {
+        return false
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      await api.delete(`/chat/conversations/group/${conversationId}`)
+
+      this.conversations = this.conversations.filter((conversation) => conversation.id !== conversationId)
+      delete this.messagesByConversation[conversationId]
+      if (this.activeConversationId === conversationId) {
+        this.activeConversationId = null
+      }
+
+      return true
+    },
+
     async setActiveConversation(conversationOrId) {
       const conversationId =
         typeof conversationOrId === 'object' && conversationOrId
