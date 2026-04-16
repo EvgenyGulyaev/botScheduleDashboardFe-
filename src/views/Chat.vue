@@ -9,7 +9,7 @@
           </p>
         </div>
 
-        <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[24rem]">
+        <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[36rem] lg:grid-cols-3">
           <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Сокет</div>
             <div class="mt-1 flex items-center gap-2">
@@ -31,6 +31,21 @@
             </div>
             <div class="mt-1 text-xs text-slate-500">
               {{ currentUserLabel }}
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Уведомления</div>
+            <button
+              type="button"
+              class="mt-1 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold transition"
+              :class="chatStore.soundEnabled ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+              @click="toggleSoundNotifications"
+            >
+              {{ chatStore.soundEnabled ? 'Звук включён' : 'Включить звук' }}
+            </button>
+            <div class="mt-1 text-xs text-slate-500">
+              Toast работает всегда, звук — после включения.
             </div>
           </div>
         </div>
@@ -592,6 +607,11 @@ const composerHint = computed(() => {
 
   return 'В группе сообщение увидят все участники онлайн.'
 })
+
+const toggleSoundNotifications = () => {
+  const enabled = chatStore.setSoundEnabled(!chatStore.soundEnabled)
+  notifications.info(enabled ? 'Звуковые уведомления включены' : 'Звуковые уведомления выключены')
+}
 
 const formatMessageTime = (value) => {
   if (!value) {
