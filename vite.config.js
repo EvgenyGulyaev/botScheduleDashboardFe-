@@ -24,6 +24,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/geo/, ''),
       },
+      '/chat/ws': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 })
