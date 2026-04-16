@@ -48,6 +48,13 @@
                     💬 Бот Расписание
                   </router-link>
                   <router-link
+                    to="/chat"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                    role="menuitem"
+                  >
+                    💬 Чат
+                  </router-link>
+                  <router-link
                     to="/geo3d"
                     class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                     role="menuitem"
@@ -127,6 +134,13 @@
                 class="block px-3 py-2 pl-6 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
               >
                 💬 Бот Расписание
+              </router-link>
+              <router-link
+                to="/chat"
+                @click="closeMobileMenu"
+                class="block px-3 py-2 pl-6 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              >
+                💬 Чат
               </router-link>
               <router-link
                 to="/geo3d"

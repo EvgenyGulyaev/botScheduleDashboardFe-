@@ -17,6 +17,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('../views/Chat.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/tasks',
     name: 'Tasks',
     component: () => import('../views/Tasks.vue'),
