@@ -9,6 +9,13 @@ import {
   normalizeChatMessages,
   normalizeChatUsers,
 } from '../lib/chat.js'
+import {
+  buildIncomingChatNotice,
+  isChatSoundEnabled,
+  playChatNotificationSound,
+  setChatSoundEnabled,
+  shouldNotifyIncomingChatMessage,
+} from '../lib/chat-notifications.js'
 import { useAuthStore } from './auth.js'
 import { useNotificationsStore } from './notifications.js'
 
@@ -100,6 +107,7 @@ export const useChatStore = defineStore('chat', {
     reconnectTimer: null,
     socket: null,
     manualDisconnect: false,
+    soundEnabled: isChatSoundEnabled(),
   }),
 
   getters: {
@@ -401,6 +409,14 @@ export const useChatStore = defineStore('chat', {
       this.socketStatus = 'disconnected'
     },
 
+    setSoundEnabled(enabled) {
+      this.soundEnabled = setChatSoundEnabled(Boolean(enabled))
+      if (this.soundEnabled) {
+        playChatNotificationSound({ volume: 0.04, durationMs: 80 })
+      }
+      return this.soundEnabled
+    },
+
     sendMessage({ conversationId, recipientEmail, text }) {
       const authStore = useAuthStore()
       const currentUser = getCurrentUser(authStore)
@@ -466,7 +482,21 @@ export const useChatStore = defineStore('chat', {
         return
       }
 
+      const shouldNotify = shouldNotifyIncomingChatMessage(envelope, {
+        currentUserEmail,
+        activeConversationId: this.activeConversationId,
+      })
+
       applyChatSocketEvent(this, envelope, currentUserEmail)
+
+      if (shouldNotify) {
+        const notice = buildIncomingChatNotice(envelope)
+        useNotificationsStore().info(`${notice.title}. ${notice.message}`, { duration: 7000 })
+
+        if (this.soundEnabled) {
+          playChatNotificationSound()
+        }
+      }
     },
 
     handleSocketEnvelope(envelope) {

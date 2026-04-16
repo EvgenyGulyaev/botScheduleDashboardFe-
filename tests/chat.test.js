@@ -375,6 +375,94 @@ test('chat store sends websocket commands with auth user context', async () => {
   delete globalThis.WebSocket
 })
 
+test('chat store shows toast for incoming inactive conversation message', () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const authStore = useAuthStore()
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  const infoCalls = []
+  notifications.info = (message, options) => {
+    infoCalls.push({ message, options })
+  }
+
+  const chatStore = useChatStore()
+  chatStore.activeConversationId = 'direct-1'
+  chatStore.handleSocketEvent({
+    event: 'message_persisted',
+    data: {
+      conversation: {
+        id: 'group-1',
+        title: 'Team',
+        type: 'group',
+        members: [
+          { email: 'alice@example.com', login: 'alice' },
+          { email: 'bob@example.com', login: 'bob' },
+        ],
+      },
+      message: {
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        sender_email: 'bob@example.com',
+        sender_login: 'bob',
+        text: 'Привет',
+        created_at: '2026-04-16T11:00:00Z',
+        delivered_to: [],
+        read_by: [],
+      },
+    },
+  })
+
+  assert.equal(infoCalls.length, 1)
+  assert.match(infoCalls[0].message, /Новое сообщение от bob/)
+  assert.equal(chatStore.messagesByConversation['group-1'][0].text, 'Привет')
+
+  delete globalThis.localStorage
+})
+
+test('chat store does not show toast for active conversation message', () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const authStore = useAuthStore()
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  const infoCalls = []
+  notifications.info = (message) => {
+    infoCalls.push(message)
+  }
+
+  const chatStore = useChatStore()
+  chatStore.activeConversationId = 'group-1'
+  chatStore.handleSocketEvent({
+    event: 'message_persisted',
+    data: {
+      conversation: {
+        id: 'group-1',
+        title: 'Team',
+        type: 'group',
+      },
+      message: {
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        sender_email: 'bob@example.com',
+        sender_login: 'bob',
+        text: 'Привет',
+        created_at: '2026-04-16T11:00:00Z',
+        delivered_to: [],
+        read_by: [],
+      },
+    },
+  })
+
+  assert.equal(infoCalls.length, 0)
+
+  delete globalThis.localStorage
+})
+
 test('chat store bootstrap and active conversation actions work with api data', async () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()
