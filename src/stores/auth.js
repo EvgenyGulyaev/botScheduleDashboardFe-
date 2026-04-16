@@ -9,6 +9,21 @@ import {
 } from '../lib/auth-storage.js'
 import { isUnauthorizedError, redirectToLogin } from '../lib/auth-session.js'
 
+const REFRESHED_TOKEN_HEADER = 'x-auth-token'
+
+const getRefreshedToken = (response) => {
+  const headers = response?.headers
+  if (!headers) {
+    return ''
+  }
+
+  if (typeof headers.get === 'function') {
+    return headers.get(REFRESHED_TOKEN_HEADER) || headers.get('X-Auth-Token') || ''
+  }
+
+  return headers[REFRESHED_TOKEN_HEADER] || headers['X-Auth-Token'] || ''
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
@@ -47,7 +62,14 @@ export const useAuthStore = defineStore('auth', {
 
       // (опционально) Response interceptor на 401
       this.api.interceptors.response.use(
-        (response) => response,
+        (response) => {
+          const refreshedToken = getRefreshedToken(response)
+          if (refreshedToken) {
+            this.updateSessionToken(refreshedToken)
+          }
+
+          return response
+        },
         (error) => {
           if (isUnauthorizedError(error)) {
             this.logout()
@@ -78,6 +100,18 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.loading = false
       }
+    },
+
+    updateSessionToken(token) {
+      if (!token || token === this.token) {
+        return
+      }
+
+      this.token = token
+      writeStoredAuth(localStorage, {
+        token,
+        user: this.user,
+      })
     },
 
     logout() {

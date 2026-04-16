@@ -57,3 +57,28 @@ test('logs out and redirects to login when api responds with 401', async () => {
   delete global.localStorage
   delete global.window
 })
+
+test('updates stored session token from auth refresh response header', () => {
+  setActivePinia(createPinia())
+
+  global.localStorage = createStorageMock()
+  localStorage.setItem('token', 'old-token')
+  localStorage.setItem('user', JSON.stringify({ id: 42, email: 'alice@example.com' }))
+
+  const authStore = useAuthStore()
+  authStore.init()
+
+  const fulfilled = authStore.api.interceptors.response.handlers[0].fulfilled
+  const response = {
+    headers: {
+      'x-auth-token': 'fresh-token',
+    },
+  }
+
+  assert.equal(fulfilled(response), response)
+  assert.equal(authStore.token, 'fresh-token')
+  assert.equal(localStorage.getItem('token'), 'fresh-token')
+  assert.equal(localStorage.getItem('user'), JSON.stringify({ id: 42, email: 'alice@example.com' }))
+
+  delete global.localStorage
+})
