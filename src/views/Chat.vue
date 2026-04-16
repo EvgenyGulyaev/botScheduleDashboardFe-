@@ -1,37 +1,24 @@
 <template>
   <div class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100">
     <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 class="text-3xl font-bold tracking-tight text-slate-950">Чат</h2>
-          <p class="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
-            Быстрые direct-диалоги и командные обсуждения без перезагрузки страницы.
-          </p>
-        </div>
+      <div class="mb-4 flex justify-end gap-2">
+        <span
+          class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm"
+          :title="socketLabel"
+          :aria-label="socketLabel"
+        >
+          <span class="inline-flex h-3 w-3 rounded-full" :class="socketDotClass"></span>
+        </span>
 
-        <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[30rem]">
-          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Сокет</div>
-            <div class="mt-1 flex items-center gap-2">
-              <span class="inline-flex h-2.5 w-2.5 rounded-full" :class="socketDotClass"></span>
-              <span class="text-sm font-medium text-slate-900">{{ socketLabel }}</span>
-            </div>
-            <div class="mt-1 text-xs text-slate-500">{{ reconnectLabel }}</div>
-          </div>
-
-          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Уведомления</div>
-            <button
-              type="button"
-              class="mt-1 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold transition"
-              :class="chatStore.soundEnabled ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-              @click="toggleSoundNotifications"
-            >
-              {{ chatStore.soundEnabled ? 'Звук включён' : 'Включить звук' }}
-            </button>
-            <div class="mt-1 text-xs text-slate-500">Toast работает всегда, звук — после включения.</div>
-          </div>
-        </div>
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg shadow-sm transition hover:bg-slate-50"
+          :title="soundLabel"
+          :aria-label="soundLabel"
+          @click="toggleSoundNotifications"
+        >
+          {{ chatStore.soundEnabled ? '🔔' : '🔕' }}
+        </button>
       </div>
 
       <div class="mb-5 space-y-3">
@@ -324,7 +311,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
-import { getChatReconnectDelayMs } from '../lib/chat.js'
 import {
   filterChatUsersForSearch,
   getChatMessageSenderLabel,
@@ -355,45 +341,33 @@ const currentUserLogin = computed(() => authStore.user?.login || authStore.user?
 const chatErrorMessage = computed(() => chatStore.error?.response?.data?.message || chatStore.error?.message || 'Не удалось загрузить или синхронизировать чат.')
 const socketLabel = computed(() => {
   if (chatStore.socketStatus === 'connected') {
-    return 'Подключено'
+    return 'Сокет подключён'
   }
 
   if (chatStore.socketStatus === 'connecting') {
-    return 'Подключаемся'
+    return 'Сокет подключается'
   }
 
   if (chatStore.socketStatus === 'reconnecting') {
-    return 'Переподключаемся'
+    return 'Сокет переподключается'
   }
 
   if (chatStore.socketStatus === 'error') {
-    return 'Ошибка'
+    return 'Ошибка сокета'
   }
 
-  return 'Отключено'
+  return 'Сокет отключён'
 })
 const socketDotClass = computed(() => {
   if (chatStore.socketStatus === 'connected') {
     return 'bg-emerald-500'
   }
 
-  if (chatStore.socketStatus === 'connecting' || chatStore.socketStatus === 'reconnecting') {
-    return 'bg-amber-500 animate-pulse'
-  }
-
-  if (chatStore.socketStatus === 'error') {
-    return 'bg-rose-500'
-  }
-
-  return 'bg-slate-400'
+  return 'bg-rose-500'
 })
-const reconnectLabel = computed(() => {
-  if (chatStore.socketStatus !== 'reconnecting') {
-    return 'Realtime-канал готов.'
-  }
-
-  return `Следующая попытка через ${Math.round(getChatReconnectDelayMs(chatStore.reconnectAttempts) / 1000)}с`
-})
+const soundLabel = computed(() =>
+  chatStore.soundEnabled ? 'Звуковые уведомления включены' : 'Звуковые уведомления выключены',
+)
 const activeConversation = computed(() => chatStore.activeConversation)
 const activeMessages = computed(() => chatStore.activeConversationMessages)
 const otherUsers = computed(() =>
