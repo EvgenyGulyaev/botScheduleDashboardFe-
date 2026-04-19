@@ -41,6 +41,20 @@ const normalizeReceipt = (receipt = {}) => ({
   at: normalizeIso(receipt.at),
 })
 
+const normalizeChatAudio = (audio = null) => {
+  if (!audio) {
+    return null
+  }
+
+  return {
+    id: normalizeString(audio.id),
+    mimeType: normalizeString(audio.mime_type ?? audio.mimeType),
+    sizeBytes: Number(audio.size_bytes ?? audio.sizeBytes ?? 0),
+    durationSeconds: Number(audio.duration_seconds ?? audio.durationSeconds ?? 0),
+    consumed: Boolean(audio.consumed),
+  }
+}
+
 const dedupeReceipts = (receipts = [], extra = []) => {
   const merged = []
   const seen = new Set()
@@ -67,9 +81,7 @@ export const normalizeChatUser = (user = {}) => ({
 export const normalizeChatMember = (member = {}) => ({
   email: normalizeString(member.email),
   login: normalizeString(member.login),
-  lastReadMessageId: normalizeString(
-    member.last_read_message_id ?? member.lastReadMessageId,
-  ),
+  lastReadMessageId: normalizeString(member.last_read_message_id ?? member.lastReadMessageId),
   joinedAt: normalizeIso(member.joined_at ?? member.joinedAt),
 })
 
@@ -101,7 +113,9 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
     createdAt: normalizeIso(conversation.created_at ?? conversation.createdAt),
     updatedAt: normalizeIso(conversation.updated_at ?? conversation.updatedAt),
     lastMessageId: normalizeString(conversation.last_message_id ?? conversation.lastMessageID),
-    lastMessageText: normalizeString(conversation.last_message_text ?? conversation.lastMessageText),
+    lastMessageText: normalizeString(
+      conversation.last_message_text ?? conversation.lastMessageText,
+    ),
     lastMessageAt: normalizeIso(conversation.last_message_at ?? conversation.lastMessageAt),
     unreadCount: Number(conversation.unread_count ?? conversation.unreadCount ?? 0),
     members,
@@ -111,12 +125,14 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
 export const normalizeChatMessage = (message = {}) => ({
   id: normalizeString(message.id),
   conversationId: normalizeString(message.conversation_id ?? message.conversationId),
+  type: normalizeString(message.type || (message.audio ? 'audio' : 'text')),
   senderEmail: normalizeString(message.sender_email ?? message.senderEmail),
   senderLogin: normalizeString(message.sender_login ?? message.senderLogin),
   text: normalizeString(message.text),
   createdAt: normalizeIso(message.created_at ?? message.createdAt),
   deliveredTo: toArray(message.delivered_to ?? message.deliveredTo).map(normalizeReceipt),
   readBy: toArray(message.read_by ?? message.readBy).map(normalizeReceipt),
+  audio: normalizeChatAudio(message.audio),
 })
 
 export const normalizeChatUsers = (users = []) => toArray(users).map(normalizeChatUser)
@@ -127,7 +143,9 @@ export const normalizeChatConversations = (conversations = [], currentUserEmail 
   )
 
 export const normalizeChatMessages = (messages = []) =>
-  toArray(messages).map((message) => normalizeChatMessage(message)).sort(sortMessages)
+  toArray(messages)
+    .map((message) => normalizeChatMessage(message))
+    .sort(sortMessages)
 
 export const buildChatWebSocketUrl = (origin, token) => {
   const url = new URL('/chat/ws', origin)
@@ -188,7 +206,9 @@ const upsertMessage = (state, message) => {
   const index = currentMessages.findIndex((item) => item.id === normalized.id)
 
   if (index === -1) {
-    state.messagesByConversation[conversationId] = [...currentMessages, normalized].sort(sortMessages)
+    state.messagesByConversation[conversationId] = [...currentMessages, normalized].sort(
+      sortMessages,
+    )
   } else {
     const nextMessages = [...currentMessages]
     nextMessages[index] = {
@@ -270,7 +290,10 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
     }
 
     const conversationId = normalizeString(
-      data.conversation_id ?? data.conversationId ?? data.message?.conversation_id ?? data.message?.conversationId,
+      data.conversation_id ??
+        data.conversationId ??
+        data.message?.conversation_id ??
+        data.message?.conversationId,
     )
     const messages = state.messagesByConversation[conversationId] || []
     const receipts = toArray(data.message?.read_by ?? data.message?.readBy).map(normalizeReceipt)
@@ -292,7 +315,10 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
         if (message.id === targetMessageId && data.message) {
           return {
             ...normalizeChatMessage(data.message),
-            readBy: mergeReceipts(data.message.read_by ?? data.message.readBy, receipt ? [receipt] : []),
+            readBy: mergeReceipts(
+              data.message.read_by ?? data.message.readBy,
+              receipt ? [receipt] : [],
+            ),
           }
         }
 
@@ -313,7 +339,9 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
       )
     }
 
-    const conversationId = normalizeString(conversation?.id ?? data.conversation_id ?? data.conversationId)
+    const conversationId = normalizeString(
+      conversation?.id ?? data.conversation_id ?? data.conversationId,
+    )
     const removedIds = toArray(data.removed_message_ids ?? data.removedMessageIds)
       .map((value) => normalizeString(value))
       .filter(Boolean)

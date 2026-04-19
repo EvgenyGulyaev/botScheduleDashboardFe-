@@ -144,15 +144,25 @@ test('normalizes conversation and message payloads', () => {
   const message = normalizeChatMessage({
     id: 'msg-1',
     conversation_id: 'group-1',
+    type: 'audio',
     sender_email: 'alice@example.com',
     sender_login: 'alice',
-    text: 'hello',
+    text: 'Голосовое сообщение',
     created_at: '2026-04-16T11:00:00Z',
     delivered_to: [{ email: 'bob@example.com', login: 'bob', at: '2026-04-16T11:00:00Z' }],
     read_by: [],
+    audio: {
+      id: 'audio-1',
+      mime_type: 'audio/webm',
+      size_bytes: 123,
+      duration_seconds: 7,
+      consumed: false,
+    },
   })
 
   assert.equal(message.conversationId, 'group-1')
+  assert.equal(message.type, 'audio')
+  assert.equal(message.audio.durationSeconds, 7)
   assert.equal(message.deliveredTo[0].login, 'bob')
 })
 
@@ -422,6 +432,77 @@ test('chat store marks previous peer message as read before sending a reply', as
   delete globalThis.WebSocket
 })
 
+test('chat store uploads and consumes one-time audio messages', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const calls = []
+  const fakeApi = {
+    get(url, config) {
+      calls.push(['get', url, config])
+      return Promise.resolve({ data: new Blob(['voice'], { type: 'audio/webm' }) })
+    },
+    post(url, body) {
+      calls.push(['post', url, body])
+      return Promise.resolve({
+        data: {
+          id: 'msg-audio',
+          conversation_id: 'group-1',
+          type: 'audio',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'Голосовое сообщение',
+          audio: {
+            id: 'audio-1',
+            mime_type: 'audio/webm',
+            size_bytes: 5,
+            duration_seconds: 4,
+            consumed: false,
+          },
+        },
+      })
+    },
+  }
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+  notifications.error = () => {}
+
+  const chatStore = useChatStore()
+  const message = await chatStore.sendAudioMessage({
+    conversationId: 'group-1',
+    audioBlob: new Blob(['voice'], { type: 'audio/webm' }),
+    durationSeconds: 4,
+  })
+
+  assert.equal(calls[0][0], 'post')
+  assert.equal(calls[0][1], '/chat/conversations/group-1/audio')
+  assert.ok(calls[0][2] instanceof FormData)
+  assert.equal(message.type, 'audio')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].audio.durationSeconds, 4)
+
+  const blob = await chatStore.consumeAudioMessage({
+    conversationId: 'group-1',
+    messageId: 'msg-audio',
+  })
+
+  assert.equal(calls[1][0], 'get')
+  assert.equal(calls[1][2].responseType, 'blob')
+  assert.equal(blob.type, 'audio/webm')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumed, true)
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
 test('chat store shows toast for incoming inactive conversation message', () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()
@@ -672,11 +753,7 @@ test('chat store deletes group conversation and clears local state', async () =>
 
   await chatStore.deleteGroupConversation('group-1')
 
-  assert.deepEqual(fakeApi.calls[0], [
-    'delete',
-    '/chat/conversations/group/group-1',
-    undefined,
-  ])
+  assert.deepEqual(fakeApi.calls[0], ['delete', '/chat/conversations/group/group-1', undefined])
   assert.equal(chatStore.conversations.length, 0)
   assert.equal(chatStore.messagesByConversation['group-1'], undefined)
   assert.equal(chatStore.activeConversationId, null)

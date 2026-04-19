@@ -105,6 +105,41 @@ const latestPeerMessage = (messages = [], currentUserEmail = '') => {
   return null
 }
 
+const markLatestPeerMessageRead = (state, socket, conversationId, currentUserEmail = '') => {
+  const messageToRead = latestPeerMessage(
+    state.messagesByConversation[conversationId] || [],
+    currentUserEmail,
+  )
+  if (!messageToRead) {
+    return false
+  }
+
+  return sendSocketEnvelope(socket, 'mark_read', {
+    conversation_id: conversationId || '',
+    message_id: messageToRead.id,
+  })
+}
+
+const updateAudioMessage = (state, conversationId, messageId, patch = {}) => {
+  const messages = ensureMessagesCollection(state, conversationId)
+  const index = messages.findIndex((message) => message.id === messageId)
+  if (index === -1) {
+    return null
+  }
+
+  const nextMessage = {
+    ...messages[index],
+    audio: {
+      ...(messages[index].audio || {}),
+      ...patch,
+    },
+  }
+  const nextMessages = [...messages]
+  nextMessages[index] = nextMessage
+  state.messagesByConversation[conversationId] = nextMessages
+  return nextMessage
+}
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     users: [],
@@ -123,7 +158,11 @@ export const useChatStore = defineStore('chat', {
 
   getters: {
     activeConversation(state) {
-      return state.conversations.find((conversation) => conversation.id === state.activeConversationId) || null
+      return (
+        state.conversations.find(
+          (conversation) => conversation.id === state.activeConversationId,
+        ) || null
+      )
     },
 
     activeConversationMessages(state) {
@@ -135,7 +174,10 @@ export const useChatStore = defineStore('chat', {
     },
 
     activeConversationMembers(state) {
-      return state.conversations.find((conversation) => conversation.id === state.activeConversationId)?.members || []
+      return (
+        state.conversations.find((conversation) => conversation.id === state.activeConversationId)
+          ?.members || []
+      )
     },
   },
 
@@ -317,7 +359,9 @@ export const useChatStore = defineStore('chat', {
       const api = getApi(authStore)
       await api.delete(`/chat/conversations/group/${conversationId}`)
 
-      this.conversations = this.conversations.filter((conversation) => conversation.id !== conversationId)
+      this.conversations = this.conversations.filter(
+        (conversation) => conversation.id !== conversationId,
+      )
       delete this.messagesByConversation[conversationId]
       if (this.activeConversationId === conversationId) {
         this.activeConversationId = null
@@ -455,16 +499,7 @@ export const useChatStore = defineStore('chat', {
         return false
       }
 
-      const messageToRead = latestPeerMessage(
-        this.messagesByConversation[conversationId] || [],
-        currentUser.email || '',
-      )
-      if (messageToRead) {
-        sendSocketEnvelope(socket, 'mark_read', {
-          conversation_id: conversationId || '',
-          message_id: messageToRead.id,
-        })
-      }
+      markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
 
       return sendSocketEnvelope(socket, 'send_message', {
         conversation_id: conversationId || '',
@@ -473,6 +508,62 @@ export const useChatStore = defineStore('chat', {
         sender_login: currentUser.login || '',
         text: text || '',
       })
+    },
+
+    async sendAudioMessage({ conversationId, audioBlob, durationSeconds }) {
+      if (!conversationId || !audioBlob) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const currentUser = getCurrentUser(authStore)
+      const socket = this.socket || this.connect()
+      if (socket) {
+        markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
+      }
+
+      const form = new FormData()
+      form.append('duration_seconds', String(Math.max(1, Math.round(Number(durationSeconds) || 1))))
+      const file =
+        typeof File !== 'undefined'
+          ? new File([audioBlob], 'voice.webm', {
+              type: audioBlob.type || 'audio/webm',
+            })
+          : audioBlob
+      form.append('audio', file, 'voice.webm')
+
+      const response = await api.post(`/chat/conversations/${conversationId}/audio`, form)
+      const message = normalizeChatMessage(response.data)
+      const messages = ensureMessagesCollection(this, conversationId)
+      if (!messages.some((item) => item.id === message.id)) {
+        this.messagesByConversation[conversationId] = [...messages, message]
+      }
+      return message
+    },
+
+    async consumeAudioMessage({ conversationId, messageId }) {
+      if (!conversationId || !messageId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      try {
+        const response = await api.get(
+          `/chat/conversations/${conversationId}/messages/${messageId}/audio`,
+          {
+            responseType: 'blob',
+          },
+        )
+        updateAudioMessage(this, conversationId, messageId, { consumed: true })
+        return response.data
+      } catch (error) {
+        if (error?.response?.status === 410) {
+          updateAudioMessage(this, conversationId, messageId, { consumed: true })
+        }
+        throw error
+      }
     },
 
     markRead({ conversationId, messageId }) {
@@ -551,10 +642,7 @@ export const useChatStore = defineStore('chat', {
     patchConversationFromEvent(conversation, members = []) {
       const authStore = useAuthStore()
       const currentUserEmail = authStore.user?.email || ''
-      const normalized = normalizeChatConversation(
-        { ...conversation, members },
-        currentUserEmail,
-      )
+      const normalized = normalizeChatConversation({ ...conversation, members }, currentUserEmail)
       upsertConversation(this, normalized, currentUserEmail)
       return normalized
     },

@@ -1,6 +1,10 @@
 <template>
-  <div class="min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:overflow-hidden">
-    <div class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 xl:h-full xl:min-h-0">
+  <div
+    class="min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:overflow-hidden"
+  >
+    <div
+      class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 xl:h-full xl:min-h-0"
+    >
       <div class="mb-4 flex justify-end gap-2">
         <span
           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm"
@@ -42,7 +46,9 @@
 
       <div class="grid gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[340px_minmax(0,1fr)]">
         <aside class="xl:min-h-0">
-          <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:h-full xl:overflow-y-auto">
+          <section
+            class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:h-full xl:overflow-y-auto"
+          >
             <div class="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 class="text-base font-semibold text-slate-950">Чаты</h3>
@@ -65,7 +71,10 @@
               placeholder="Найти человека"
             />
 
-            <div v-if="chatStore.loading.users || chatStore.loading.conversations" class="space-y-2">
+            <div
+              v-if="chatStore.loading.users || chatStore.loading.conversations"
+              class="space-y-2"
+            >
               <div
                 v-for="item in 5"
                 :key="item"
@@ -81,7 +90,9 @@
                 class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
                 @click="openDirectConversation(user)"
               >
-                <div class="truncate text-sm font-semibold text-slate-950">{{ user.login || user.email }}</div>
+                <div class="truncate text-sm font-semibold text-slate-950">
+                  {{ user.login || user.email }}
+                </div>
                 <div class="mt-1 text-xs text-slate-500">Открыть direct-диалог</div>
               </button>
 
@@ -99,20 +110,32 @@
                 :key="conversation.id"
                 type="button"
                 class="w-full rounded-2xl border px-3 py-3 text-left transition"
-                :class="conversation.id === chatStore.activeConversationId ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'"
+                :class="
+                  conversation.id === chatStore.activeConversationId
+                    ? 'border-slate-950 bg-slate-950 text-white'
+                    : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
+                "
                 @click="selectConversation(conversation.id)"
               >
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
                     <div
                       class="truncate text-sm font-semibold"
-                      :class="conversation.id === chatStore.activeConversationId ? 'text-white' : 'text-slate-950'"
+                      :class="
+                        conversation.id === chatStore.activeConversationId
+                          ? 'text-white'
+                          : 'text-slate-950'
+                      "
                     >
                       {{ conversation.title }}
                     </div>
                     <div
                       class="mt-1 truncate text-xs"
-                      :class="conversation.id === chatStore.activeConversationId ? 'text-slate-300' : 'text-slate-500'"
+                      :class="
+                        conversation.id === chatStore.activeConversationId
+                          ? 'text-slate-300'
+                          : 'text-slate-500'
+                      "
                     >
                       {{ conversationPreview(conversation) }}
                     </div>
@@ -137,7 +160,9 @@
         </aside>
 
         <main class="min-h-[34rem] xl:min-h-0">
-          <section class="flex h-[calc(100vh-12rem)] min-h-[34rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0">
+          <section
+            class="flex h-[calc(100vh-12rem)] min-h-[34rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0"
+          >
             <div class="border-b border-slate-200 px-6 py-5">
               <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0">
@@ -168,7 +193,9 @@
             <div class="flex min-h-0 flex-1 flex-col">
               <div ref="messagesScroller" class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
                 <div
-                  v-if="activeConversation && activeMessages.length === 0 && !chatStore.loading.messages"
+                  v-if="
+                    activeConversation && activeMessages.length === 0 && !chatStore.loading.messages
+                  "
                   class="flex h-full min-h-[24rem] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500"
                 >
                   Пока сообщений нет. Напиши первое сообщение внизу.
@@ -186,14 +213,22 @@
                     v-for="message in activeMessages"
                     :key="message.id"
                     class="flex"
-                    :class="message.senderEmail === currentUserEmail ? 'justify-end' : 'justify-start'"
+                    :class="
+                      message.senderEmail === currentUserEmail ? 'justify-end' : 'justify-start'
+                    "
                   >
                     <div
                       class="max-w-[82%] rounded-3xl border px-4 py-3"
-                      :class="message.senderEmail === currentUserEmail ? 'border-emerald-100 bg-emerald-50/80' : 'border-slate-200 bg-slate-50'"
+                      :class="
+                        message.senderEmail === currentUserEmail
+                          ? 'border-emerald-100 bg-emerald-50/80'
+                          : 'border-slate-200 bg-slate-50'
+                      "
                     >
                       <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-sm font-semibold text-slate-950">{{ messageSenderLabel(message) }}</span>
+                        <span class="text-sm font-semibold text-slate-950">{{
+                          messageSenderLabel(message)
+                        }}</span>
                         <span
                           v-if="message.senderEmail === currentUserEmail"
                           class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800"
@@ -201,7 +236,28 @@
                           вы
                         </span>
                       </div>
-                      <p class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                      <div
+                        v-if="message.type === 'audio'"
+                        class="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
+                      >
+                        <button
+                          type="button"
+                          class="rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          :disabled="
+                            message.audio?.consumed || playingAudioMessageId === message.id
+                          "
+                          @click="playAudioMessage(message)"
+                        >
+                          {{ audioMessageButtonLabel(message) }}
+                        </button>
+                        <span class="text-xs text-slate-500">
+                          {{ formatAudioDuration(message.audio?.durationSeconds) }}
+                        </span>
+                      </div>
+                      <p
+                        v-else
+                        class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700"
+                      >
                         {{ message.text }}
                       </p>
                       <div class="mt-3 flex items-center gap-3 text-xs text-slate-500">
@@ -228,6 +284,70 @@
                     placeholder="Напиши сообщение"
                     @keydown="handleComposerKeydown"
                   ></textarea>
+                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div class="text-sm text-slate-600">
+                        <span v-if="isRecordingAudio" class="font-semibold text-rose-700">
+                          Запись {{ formatAudioDuration(recordingSeconds) }} /
+                          {{ formatAudioDuration(chatAudioMaxSeconds) }}
+                        </span>
+                        <span v-else-if="recordedAudioUrl" class="font-semibold text-slate-900">
+                          Аудио готово к отправке, {{ formatAudioDuration(recordedAudioDuration) }}
+                        </span>
+                        <span v-else>
+                          Можно записать голосовое до
+                          {{ formatAudioDuration(chatAudioMaxSeconds) }}.
+                        </span>
+                      </div>
+
+                      <div class="flex flex-wrap gap-2">
+                        <button
+                          v-if="!isRecordingAudio"
+                          type="button"
+                          class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          :disabled="!activeConversation || sendingAudio"
+                          @click="startAudioRecording"
+                        >
+                          Записать
+                        </button>
+                        <button
+                          v-else
+                          type="button"
+                          class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                          @click="stopAudioRecording"
+                        >
+                          Остановить
+                        </button>
+                        <button
+                          v-if="recordedAudioUrl"
+                          type="button"
+                          class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 transition hover:bg-slate-100"
+                          @click="discardRecordedAudio"
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      v-if="recordedAudioUrl"
+                      class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"
+                    >
+                      <audio :src="recordedAudioUrl" controls class="h-10 w-full sm:flex-1"></audio>
+                      <button
+                        type="button"
+                        class="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        :disabled="sendingAudio || !activeConversation"
+                        @click="sendCurrentAudio"
+                      >
+                        {{ sendingAudio ? 'Отправляем…' : 'Отправить аудио' }}
+                      </button>
+                    </div>
+
+                    <p v-if="recordingError" class="mt-2 text-xs text-rose-600">
+                      {{ recordingError }}
+                    </p>
+                  </div>
                   <button
                     type="submit"
                     class="flex w-full items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -286,7 +406,9 @@
               class="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-2 hover:bg-white"
             >
               <div class="min-w-0">
-                <div class="truncate text-sm font-medium text-slate-950">{{ user.login || user.email }}</div>
+                <div class="truncate text-sm font-medium text-slate-950">
+                  {{ user.login || user.email }}
+                </div>
               </div>
               <input
                 v-model="groupForm.memberEmails"
@@ -335,16 +457,34 @@ const composerText = ref('')
 const creatingGroup = ref(false)
 const deletingGroup = ref(false)
 const sendingMessage = ref(false)
+const sendingAudio = ref(false)
 const groupModalOpen = ref(false)
 const messagesScroller = ref(null)
+const isRecordingAudio = ref(false)
+const recordingSeconds = ref(0)
+const recordedAudioDuration = ref(0)
+const recordedAudioBlob = ref(null)
+const recordedAudioUrl = ref('')
+const recordingError = ref('')
+const playingAudioMessageId = ref('')
+const mediaRecorder = ref(null)
+const recordingStream = ref(null)
+const recordingTimer = ref(null)
 const groupForm = ref({
   title: '',
   memberEmails: [],
 })
 
+const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
+
 const currentUserEmail = computed(() => authStore.user?.email || '')
 const currentUserLogin = computed(() => authStore.user?.login || authStore.user?.email || '')
-const chatErrorMessage = computed(() => chatStore.error?.response?.data?.message || chatStore.error?.message || 'Не удалось загрузить или синхронизировать чат.')
+const chatErrorMessage = computed(
+  () =>
+    chatStore.error?.response?.data?.message ||
+    chatStore.error?.message ||
+    'Не удалось загрузить или синхронизировать чат.',
+)
 const socketLabel = computed(() => {
   if (chatStore.socketStatus === 'connected') {
     return 'Сокет подключён'
@@ -414,6 +554,13 @@ const formatMessageTime = (value) => {
   }).format(date)
 }
 
+const formatAudioDuration = (value) => {
+  const totalSeconds = Math.max(0, Math.round(Number(value) || 0))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 const conversationPreview = (conversation) => {
   if (conversation.type === 'group') {
     return getConversationMembersSummary(conversation, currentUserEmail.value)
@@ -432,11 +579,178 @@ const messageSenderLabel = (message) =>
     login: currentUserLogin.value,
   })
 
-const messageStatusIcon = (message) =>
-  getChatMessageStatusIcon(message, currentUserEmail.value)
+const messageStatusIcon = (message) => getChatMessageStatusIcon(message, currentUserEmail.value)
 
-const messageStatusTitle = (message) =>
-  getChatMessageStatusTitle(message, currentUserEmail.value)
+const messageStatusTitle = (message) => getChatMessageStatusTitle(message, currentUserEmail.value)
+
+const audioMessageButtonLabel = (message) => {
+  if (message.audio?.consumed) {
+    return 'Уже прослушано'
+  }
+
+  if (playingAudioMessageId.value === message.id) {
+    return 'Воспроизводим…'
+  }
+
+  return 'Прослушать 1 раз'
+}
+
+const clearRecordingTimer = () => {
+  if (recordingTimer.value) {
+    clearInterval(recordingTimer.value)
+    recordingTimer.value = null
+  }
+}
+
+const stopRecordingTracks = () => {
+  if (!recordingStream.value) {
+    return
+  }
+
+  for (const track of recordingStream.value.getTracks()) {
+    track.stop()
+  }
+  recordingStream.value = null
+}
+
+const discardRecordedAudio = () => {
+  if (recordedAudioUrl.value) {
+    URL.revokeObjectURL(recordedAudioUrl.value)
+  }
+  recordedAudioBlob.value = null
+  recordedAudioUrl.value = ''
+  recordedAudioDuration.value = 0
+  recordingError.value = ''
+}
+
+const stopAudioRecording = () => {
+  clearRecordingTimer()
+  isRecordingAudio.value = false
+
+  const recorder = mediaRecorder.value
+  if (recorder && recorder.state !== 'inactive') {
+    recorder.stop()
+  } else {
+    stopRecordingTracks()
+  }
+}
+
+const startAudioRecording = async () => {
+  recordingError.value = ''
+  discardRecordedAudio()
+
+  if (
+    typeof navigator === 'undefined' ||
+    !navigator.mediaDevices?.getUserMedia ||
+    typeof MediaRecorder === 'undefined'
+  ) {
+    recordingError.value = 'Браузер не дал доступ к записи аудио.'
+    return
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    const chunks = []
+    const options = MediaRecorder.isTypeSupported?.('audio/webm;codecs=opus')
+      ? { mimeType: 'audio/webm;codecs=opus' }
+      : undefined
+    const recorder = new MediaRecorder(stream, options)
+
+    recordingStream.value = stream
+    mediaRecorder.value = recorder
+    recordingSeconds.value = 0
+    isRecordingAudio.value = true
+
+    recorder.addEventListener('dataavailable', (event) => {
+      if (event.data?.size) {
+        chunks.push(event.data)
+      }
+    })
+
+    recorder.addEventListener('stop', () => {
+      clearRecordingTimer()
+      stopRecordingTracks()
+      isRecordingAudio.value = false
+      recordedAudioDuration.value = Math.max(1, recordingSeconds.value)
+
+      if (!chunks.length) {
+        recordingError.value = 'Не получилось записать аудио.'
+        return
+      }
+
+      const type = recorder.mimeType || 'audio/webm'
+      recordedAudioBlob.value = new Blob(chunks, { type })
+      recordedAudioUrl.value = URL.createObjectURL(recordedAudioBlob.value)
+    })
+
+    recorder.start()
+    recordingTimer.value = setInterval(() => {
+      recordingSeconds.value += 1
+      if (recordingSeconds.value >= chatAudioMaxSeconds) {
+        stopAudioRecording()
+      }
+    }, 1000)
+  } catch {
+    isRecordingAudio.value = false
+    stopRecordingTracks()
+    clearRecordingTimer()
+    recordingError.value = 'Не получилось включить микрофон.'
+  }
+}
+
+const sendCurrentAudio = async () => {
+  if (!activeConversation.value || !recordedAudioBlob.value) {
+    return
+  }
+
+  sendingAudio.value = true
+  try {
+    await chatStore.sendAudioMessage({
+      conversationId: activeConversation.value.id,
+      audioBlob: recordedAudioBlob.value,
+      durationSeconds: recordedAudioDuration.value,
+    })
+    discardRecordedAudio()
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось отправить аудио')
+  } finally {
+    sendingAudio.value = false
+  }
+}
+
+const playAudioMessage = async (message) => {
+  if (!activeConversation.value || !message?.id || message.audio?.consumed) {
+    return
+  }
+
+  playingAudioMessageId.value = message.id
+  let objectUrl = ''
+  try {
+    const blob = await chatStore.consumeAudioMessage({
+      conversationId: activeConversation.value.id,
+      messageId: message.id,
+    })
+    objectUrl = URL.createObjectURL(blob)
+    const audio = new Audio(objectUrl)
+    audio.addEventListener(
+      'ended',
+      () => {
+        URL.revokeObjectURL(objectUrl)
+        if (playingAudioMessageId.value === message.id) {
+          playingAudioMessageId.value = ''
+        }
+      },
+      { once: true },
+    )
+    await audio.play()
+  } catch (error) {
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl)
+    }
+    playingAudioMessageId.value = ''
+    notifications.errorFrom(error, 'Не удалось воспроизвести аудио')
+  }
+}
 
 const scrollMessagesToBottom = async () => {
   await nextTick()
@@ -505,7 +819,9 @@ const deleteActiveGroup = async () => {
     return
   }
 
-  const confirmed = typeof window === 'undefined' || window.confirm(`Удалить группу «${activeConversation.value.title}»?`)
+  const confirmed =
+    typeof window === 'undefined' ||
+    window.confirm(`Удалить группу «${activeConversation.value.title}»?`)
   if (!confirmed) {
     return
   }
@@ -535,7 +851,9 @@ const sendCurrentMessage = async () => {
     }
 
     if (activeConversation.value.type === 'direct') {
-      const peer = activeConversation.value.members.find((member) => member.email !== currentUserEmail.value)
+      const peer = activeConversation.value.members.find(
+        (member) => member.email !== currentUserEmail.value,
+      )
       payload.recipientEmail = peer?.email || ''
     }
 
@@ -578,14 +896,11 @@ onMounted(async () => {
   }
 })
 
-watch(
-  groupModalOpen,
-  (isOpen) => {
-    if (!isOpen) {
-      groupForm.value = { title: '', memberEmails: [] }
-    }
-  },
-)
+watch(groupModalOpen, (isOpen) => {
+  if (!isOpen) {
+    groupForm.value = { title: '', memberEmails: [] }
+  }
+})
 
 watch(
   () => [chatStore.activeConversationId, activeMessages.value.length],
@@ -596,6 +911,9 @@ watch(
 )
 
 onUnmounted(() => {
+  clearRecordingTimer()
+  stopRecordingTracks()
+  discardRecordedAudio()
   chatStore.disconnect()
 })
 </script>
