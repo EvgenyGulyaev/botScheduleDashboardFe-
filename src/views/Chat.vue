@@ -277,55 +277,77 @@
 
               <div class="border-t border-slate-200 px-6 py-5">
                 <form class="space-y-3" @submit.prevent="sendCurrentMessage">
-                  <textarea
-                    v-model="composerText"
-                    rows="3"
-                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-                    placeholder="Напиши сообщение"
-                    @keydown="handleComposerKeydown"
-                  ></textarea>
+                  <div ref="emojiPickerRoot" class="relative">
+                    <textarea
+                      ref="composerTextarea"
+                      v-model="composerText"
+                      rows="3"
+                      class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-24 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+                      placeholder="Напиши сообщение"
+                      @keydown="handleComposerKeydown"
+                    ></textarea>
+                    <button
+                      type="button"
+                      class="absolute right-14 top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      aria-label="Выбрать смайлик"
+                      :aria-expanded="emojiPickerOpen"
+                      @click="toggleEmojiPicker"
+                    >
+                      ☺
+                    </button>
+                    <button
+                      type="button"
+                      class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border text-lg shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                      :class="
+                        isRecordingAudio
+                          ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                      "
+                      :aria-label="audioRecorderLabel"
+                      :title="audioRecorderLabel"
+                      :disabled="!activeConversation || sendingAudio"
+                      @click="toggleAudioRecording"
+                    >
+                      {{ isRecordingAudio ? '■' : '🎙' }}
+                    </button>
+
+                    <div
+                      v-if="emojiPickerOpen"
+                      class="absolute bottom-full right-0 z-20 mb-2 w-72 rounded-3xl border border-slate-200 bg-white p-3 shadow-xl"
+                    >
+                      <div
+                        class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                      >
+                        Смайлики
+                      </div>
+                      <div class="grid grid-cols-8 gap-1">
+                        <button
+                          v-for="emoji in composerEmojis"
+                          :key="emoji"
+                          type="button"
+                          class="inline-flex h-8 w-8 items-center justify-center rounded-xl text-lg transition hover:bg-slate-100"
+                          @click="insertEmoji(emoji)"
+                        >
+                          {{ emoji }}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex flex-col gap-2">
                       <div class="text-sm text-slate-600">
                         <span v-if="isRecordingAudio" class="font-semibold text-rose-700">
                           Запись {{ formatAudioDuration(recordingSeconds) }} /
-                          {{ formatAudioDuration(chatAudioMaxSeconds) }}
+                          {{ formatAudioDuration(chatAudioMaxSeconds) }}. Нажми микрофон ещё раз,
+                          чтобы остановить.
                         </span>
                         <span v-else-if="recordedAudioUrl" class="font-semibold text-slate-900">
                           Аудио готово к отправке, {{ formatAudioDuration(recordedAudioDuration) }}
                         </span>
                         <span v-else>
-                          Можно записать голосовое до
+                          Нажми микрофон в поле сообщения, чтобы записать голосовое до
                           {{ formatAudioDuration(chatAudioMaxSeconds) }}.
                         </span>
-                      </div>
-
-                      <div class="flex flex-wrap gap-2">
-                        <button
-                          v-if="!isRecordingAudio"
-                          type="button"
-                          class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          :disabled="!activeConversation || sendingAudio"
-                          @click="startAudioRecording"
-                        >
-                          Записать
-                        </button>
-                        <button
-                          v-else
-                          type="button"
-                          class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
-                          @click="stopAudioRecording"
-                        >
-                          Остановить
-                        </button>
-                        <button
-                          v-if="recordedAudioUrl"
-                          type="button"
-                          class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 transition hover:bg-slate-100"
-                          @click="discardRecordedAudio"
-                        >
-                          Удалить
-                        </button>
                       </div>
                     </div>
 
@@ -342,11 +364,39 @@
                       >
                         {{ sendingAudio ? 'Отправляем…' : 'Отправить аудио' }}
                       </button>
+                      <button
+                        type="button"
+                        class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-100"
+                        @click="discardRecordedAudio"
+                      >
+                        Удалить
+                      </button>
                     </div>
 
-                    <p v-if="recordingError" class="mt-2 text-xs text-rose-600">
-                      {{ recordingError }}
-                    </p>
+                    <div
+                      v-if="recordingError"
+                      class="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-3"
+                    >
+                      <p class="text-xs text-rose-700">
+                        {{ recordingError }}
+                      </p>
+                      <div class="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          class="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-700"
+                          @click="startAudioRecording"
+                        >
+                          Запросить доступ снова
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                          @click="microphoneHelpOpen = true"
+                        >
+                          Как дать доступ
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <button
                     type="submit"
@@ -429,6 +479,50 @@
         </form>
       </section>
     </div>
+
+    <div
+      v-if="microphoneHelpOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm"
+      @click.self="microphoneHelpOpen = false"
+    >
+      <section class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+        <div class="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-slate-950">Доступ к микрофону</h3>
+            <p class="mt-1 text-sm text-slate-500">
+              Окно разрешения показывает сам браузер после нажатия “Записать”.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            @click="microphoneHelpOpen = false"
+          >
+            Закрыть
+          </button>
+        </div>
+
+        <div class="space-y-3 text-sm leading-6 text-slate-700">
+          <p>
+            Если popup не появился, нажми на значок замка слева от адреса сайта и выбери “Микрофон”
+            → “Разрешить”.
+          </p>
+          <p>
+            Если сайт открыт по HTTP, браузер может полностью блокировать микрофон. Для прода нужен
+            HTTPS, иначе окно доступа может не появляться.
+          </p>
+          <p>После изменения разрешения обнови страницу и нажми “Записать” ещё раз.</p>
+        </div>
+
+        <button
+          type="button"
+          class="mt-5 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          @click="requestMicrophoneFromHelp"
+        >
+          Запросить доступ
+        </button>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -436,12 +530,15 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
 import {
+  getChatAudioRecorderLabel,
   filterChatUsersForSearch,
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
   getChatMessageStatusTitle,
+  getChatMicrophoneErrorMessage,
   getConversationMembersSummary,
   getRecentChatItems,
+  insertEmojiIntoText,
   isChatSendShortcut,
 } from '../lib/chat-ui.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -454,6 +551,9 @@ const notifications = useNotificationsStore()
 
 const chatSearch = ref('')
 const composerText = ref('')
+const composerTextarea = ref(null)
+const emojiPickerRoot = ref(null)
+const emojiPickerOpen = ref(false)
 const creatingGroup = ref(false)
 const deletingGroup = ref(false)
 const sendingMessage = ref(false)
@@ -466,6 +566,7 @@ const recordedAudioDuration = ref(0)
 const recordedAudioBlob = ref(null)
 const recordedAudioUrl = ref('')
 const recordingError = ref('')
+const microphoneHelpOpen = ref(false)
 const playingAudioMessageId = ref('')
 const mediaRecorder = ref(null)
 const recordingStream = ref(null)
@@ -476,6 +577,32 @@ const groupForm = ref({
 })
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
+const composerEmojis = [
+  '😊',
+  '😂',
+  '😍',
+  '🔥',
+  '❤️',
+  '👍',
+  '🙏',
+  '🎉',
+  '😎',
+  '🤔',
+  '😅',
+  '🥲',
+  '😌',
+  '😡',
+  '💪',
+  '👏',
+  '✅',
+  '❌',
+  '👀',
+  '💬',
+  '🚀',
+  '⭐',
+  '⚡',
+  '🍀',
+]
 
 const currentUserEmail = computed(() => authStore.user?.email || '')
 const currentUserLogin = computed(() => authStore.user?.login || authStore.user?.email || '')
@@ -525,6 +652,7 @@ const searchedUsers = computed(() =>
 )
 const recentChats = computed(() => getRecentChatItems(chatStore.conversations, 5))
 const activeConversationTitle = computed(() => activeConversation.value?.title || 'Выбери чат')
+const audioRecorderLabel = computed(() => getChatAudioRecorderLabel(isRecordingAudio.value))
 const activeGroupMembersSummary = computed(() => {
   if (!activeConversation.value || activeConversation.value.type !== 'group') {
     return ''
@@ -583,6 +711,51 @@ const messageStatusIcon = (message) => getChatMessageStatusIcon(message, current
 
 const messageStatusTitle = (message) => getChatMessageStatusTitle(message, currentUserEmail.value)
 
+const focusComposer = async (cursor = null) => {
+  await nextTick()
+  const textarea = composerTextarea.value
+  if (!textarea) {
+    return
+  }
+
+  textarea.focus()
+  if (cursor != null) {
+    textarea.setSelectionRange(cursor, cursor)
+  }
+}
+
+const toggleEmojiPicker = () => {
+  emojiPickerOpen.value = !emojiPickerOpen.value
+}
+
+const closeEmojiPicker = () => {
+  emojiPickerOpen.value = false
+}
+
+const insertEmoji = (emoji) => {
+  const textarea = composerTextarea.value
+  const selectionStart = textarea?.selectionStart ?? composerText.value.length
+  const selectionEnd = textarea?.selectionEnd ?? selectionStart
+  const next = insertEmojiIntoText(composerText.value, emoji, selectionStart, selectionEnd)
+
+  composerText.value = next.text
+  closeEmojiPicker()
+  focusComposer(next.cursor)
+}
+
+const handleDocumentPointerDown = (event) => {
+  if (!emojiPickerOpen.value || emojiPickerRoot.value?.contains(event.target)) {
+    return
+  }
+
+  closeEmojiPicker()
+}
+
+const requestMicrophoneFromHelp = () => {
+  microphoneHelpOpen.value = false
+  startAudioRecording()
+}
+
 const audioMessageButtonLabel = (message) => {
   if (message.audio?.consumed) {
     return 'Уже прослушано'
@@ -635,16 +808,29 @@ const stopAudioRecording = () => {
   }
 }
 
+const toggleAudioRecording = () => {
+  if (isRecordingAudio.value) {
+    stopAudioRecording()
+    return
+  }
+
+  startAudioRecording()
+}
+
 const startAudioRecording = async () => {
   recordingError.value = ''
   discardRecordedAudio()
 
-  if (
-    typeof navigator === 'undefined' ||
-    !navigator.mediaDevices?.getUserMedia ||
-    typeof MediaRecorder === 'undefined'
-  ) {
-    recordingError.value = 'Браузер не дал доступ к записи аудио.'
+  const hasMediaDevices =
+    typeof navigator !== 'undefined' &&
+    Boolean(navigator.mediaDevices?.getUserMedia) &&
+    typeof MediaRecorder !== 'undefined'
+  const isSecureContext = typeof window === 'undefined' || window.isSecureContext !== false
+  if (!hasMediaDevices || !isSecureContext) {
+    recordingError.value = getChatMicrophoneErrorMessage(null, {
+      isSecureContext,
+      hasMediaDevices,
+    })
     return
   }
 
@@ -690,11 +876,14 @@ const startAudioRecording = async () => {
         stopAudioRecording()
       }
     }, 1000)
-  } catch {
+  } catch (error) {
     isRecordingAudio.value = false
     stopRecordingTracks()
     clearRecordingTimer()
-    recordingError.value = 'Не получилось включить микрофон.'
+    recordingError.value = getChatMicrophoneErrorMessage(error, {
+      isSecureContext,
+      hasMediaDevices,
+    })
   }
 }
 
@@ -884,6 +1073,7 @@ const handleComposerKeydown = (event) => {
 }
 
 onMounted(async () => {
+  document.addEventListener('pointerdown', handleDocumentPointerDown)
   try {
     await chatStore.loadInitialState()
     if (!chatStore.activeConversationId && chatStore.conversations[0]) {
@@ -911,6 +1101,7 @@ watch(
 )
 
 onUnmounted(() => {
+  document.removeEventListener('pointerdown', handleDocumentPointerDown)
   clearRecordingTimer()
   stopRecordingTracks()
   discardRecordedAudio()
