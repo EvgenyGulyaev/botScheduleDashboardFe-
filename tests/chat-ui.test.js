@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   filterChatUsersForSearch,
   getAudioMessageButtonLabel,
+  getDroppedImageFile,
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
   getChatMessageStatusTitle,
@@ -153,6 +154,37 @@ test('detects cmd enter and ctrl enter as chat send shortcut', () => {
   assert.equal(isChatSendShortcut({ key: 'Enter', metaKey: false, ctrlKey: true }), true)
   assert.equal(isChatSendShortcut({ key: 'Enter', metaKey: false, ctrlKey: false }), false)
   assert.equal(isChatSendShortcut({ key: 'a', metaKey: true, ctrlKey: false }), false)
+})
+
+test('extracts the first image file from dropped data transfer items', () => {
+  const image = { name: 'preview.png', type: 'image/png' }
+
+  assert.equal(
+    getDroppedImageFile({
+      items: [
+        { kind: 'file', getAsFile: () => ({ name: 'doc.txt', type: 'text/plain' }) },
+        { kind: 'file', getAsFile: () => image },
+      ],
+    }),
+    image,
+  )
+})
+
+test('falls back to dropped files and ignores non-image payloads', () => {
+  const image = { name: 'photo.webp', type: 'image/webp' }
+
+  assert.equal(
+    getDroppedImageFile({
+      files: [{ name: 'report.pdf', type: 'application/pdf' }, image],
+    }),
+    image,
+  )
+  assert.equal(
+    getDroppedImageFile({
+      files: [{ name: 'report.pdf', type: 'application/pdf' }],
+    }),
+    null,
+  )
 })
 
 test('inserts emoji at cursor position and returns next cursor index', () => {

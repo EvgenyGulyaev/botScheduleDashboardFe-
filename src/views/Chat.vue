@@ -290,7 +290,19 @@
 
               <div class="border-t border-slate-200 px-6 py-5 xl:px-5 xl:py-4">
                 <form class="space-y-3" @submit.prevent="sendCurrentMessage">
-                  <div ref="emojiPickerRoot" class="relative">
+                  <div
+                    ref="emojiPickerRoot"
+                    class="relative rounded-2xl transition"
+                    :class="
+                      composerDropActive
+                        ? 'bg-sky-50/70 ring-2 ring-sky-300 ring-offset-2 ring-offset-white'
+                        : ''
+                    "
+                    @dragenter="handleComposerDragEnter"
+                    @dragover="handleComposerDragOver"
+                    @dragleave="handleComposerDragLeave"
+                    @drop="handleComposerDrop"
+                  >
                     <input
                       ref="imageInput"
                       type="file"
@@ -306,6 +318,12 @@
                       placeholder="Напиши сообщение"
                       @keydown="handleComposerKeydown"
                     ></textarea>
+                    <div
+                      v-if="composerDropActive"
+                      class="pointer-events-none absolute inset-3 z-10 flex items-center justify-center rounded-2xl border border-dashed border-sky-300 bg-sky-50/90 px-4 text-center text-sm font-semibold text-sky-700"
+                    >
+                      Отпусти, чтобы прикрепить изображение
+                    </div>
                     <button
                       type="button"
                       class="absolute right-[6.25rem] top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
@@ -622,6 +640,7 @@ import {
   getChatMessageStatusTitle,
   getChatMicrophoneErrorMessage,
   getConversationMembersSummary,
+  getDroppedImageFile,
   getRecentChatItems,
   insertEmojiIntoText,
   isChatSendShortcut,
@@ -655,6 +674,8 @@ const recordedAudioUrl = ref('')
 const selectedImageBlob = ref(null)
 const selectedImageUrl = ref('')
 const selectedImageName = ref('')
+const composerDropActive = ref(false)
+const composerDragDepth = ref(0)
 const recordingError = ref('')
 const microphoneHelpOpen = ref(false)
 const playingAudioMessageId = ref('')
@@ -928,16 +949,85 @@ const triggerImagePicker = () => {
   imageInput.value?.click()
 }
 
-const handleImageSelected = (event) => {
-  const file = event?.target?.files?.[0]
+const applySelectedImageFile = (file) => {
   if (!file) {
-    return
+    return false
+  }
+
+  if (!String(file.type || '').startsWith('image/')) {
+    notifications.error('Можно прикреплять только изображения')
+    return false
   }
 
   discardSelectedImage()
   selectedImageBlob.value = file
   selectedImageName.value = file.name || 'image.png'
   selectedImageUrl.value = URL.createObjectURL(file)
+  return true
+}
+
+const resetComposerDropState = () => {
+  composerDragDepth.value = 0
+  composerDropActive.value = false
+}
+
+const handleImageSelected = (event) => {
+  const file = event?.target?.files?.[0]
+  applySelectedImageFile(file)
+}
+
+const handleComposerDragEnter = (event) => {
+  if (!activeConversation.value || !getDroppedImageFile(event?.dataTransfer)) {
+    return
+  }
+
+  event.preventDefault()
+  composerDragDepth.value += 1
+  composerDropActive.value = true
+}
+
+const handleComposerDragOver = (event) => {
+  if (!activeConversation.value || !getDroppedImageFile(event?.dataTransfer)) {
+    return
+  }
+
+  event.preventDefault()
+  composerDropActive.value = true
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+const handleComposerDragLeave = (event) => {
+  if (!composerDropActive.value) {
+    return
+  }
+
+  event.preventDefault()
+  composerDragDepth.value = Math.max(0, composerDragDepth.value - 1)
+  if (!composerDragDepth.value) {
+    composerDropActive.value = false
+  }
+}
+
+const handleComposerDrop = (event) => {
+  const imageFile = getDroppedImageFile(event?.dataTransfer)
+  const droppedFilesCount = Array.from(event?.dataTransfer?.files || []).length
+  event.preventDefault()
+  resetComposerDropState()
+
+  if (!activeConversation.value) {
+    return
+  }
+
+  if (!imageFile) {
+    if (droppedFilesCount) {
+      notifications.error('Можно прикреплять только изображения')
+    }
+    return
+  }
+
+  applySelectedImageFile(imageFile)
 }
 
 const startAudioRecording = async () => {
@@ -1284,6 +1374,7 @@ watch(
 
 onUnmounted(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
+  resetComposerDropState()
   clearRecordingTimer()
   stopRecordingTracks()
   discardRecordedAudio()

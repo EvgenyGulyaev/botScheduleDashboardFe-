@@ -135,6 +135,23 @@ export const getChatAudioRecorderLabel = (isRecording = false) =>
 export const isChatSendShortcut = (event = {}) =>
   event.key === 'Enter' && (event.metaKey || event.ctrlKey)
 
+export const getDroppedImageFile = (dataTransfer = null) => {
+  const itemFile = Array.from(dataTransfer?.items || [])
+    .filter((item) => item?.kind === 'file')
+    .map((item) => (typeof item?.getAsFile === 'function' ? item.getAsFile() : null))
+    .find((file) => String(file?.type || '').startsWith('image/'))
+
+  if (itemFile) {
+    return itemFile
+  }
+
+  return (
+    Array.from(dataTransfer?.files || []).find((file) =>
+      String(file?.type || '').startsWith('image/'),
+    ) || null
+  )
+}
+
 export const insertEmojiIntoText = (
   text = '',
   emoji = '',
