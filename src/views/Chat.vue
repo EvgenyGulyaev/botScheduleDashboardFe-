@@ -164,29 +164,144 @@
             class="flex h-[calc(100vh-12rem)] min-h-[34rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0"
           >
             <div class="border-b border-slate-200 px-6 py-5 xl:px-5 xl:py-4">
-              <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div class="min-w-0">
-                  <h3 class="truncate text-2xl font-bold text-slate-950">
-                    {{ activeConversationTitle }}
-                  </h3>
+              <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div class="min-w-0">
+                    <h3 class="truncate text-2xl font-bold text-slate-950">
+                      {{ activeConversationTitle }}
+                    </h3>
 
-                  <div
-                    v-if="activeConversation?.type === 'group'"
-                    class="mt-2 text-sm text-slate-500"
-                  >
-                    {{ activeGroupMembersSummary }}
+                    <div
+                      v-if="activeConversation?.type === 'group'"
+                      class="mt-2 text-sm text-slate-500"
+                    >
+                      {{ activeGroupMembersSummary }}
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="!activePinnedMessage"
+                      :title="activePinnedMessage ? 'Перейти к закрепу' : 'Закрепов пока нет'"
+                      aria-label="Закреплённое сообщение"
+                      @click="jumpToPinnedMessage"
+                    >
+                      📌
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      :title="searchOpen ? 'Закрыть поиск' : 'Поиск по всем чатам'"
+                      aria-label="Поиск по чатам"
+                      @click="toggleSearch"
+                    >
+                      🔎
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="!activeConversation"
+                      title="Позвонить"
+                      aria-label="Позвонить"
+                      @click="showCallPlaceholder"
+                    >
+                      📞
+                    </button>
+                    <button
+                      v-if="activeConversation?.type === 'group'"
+                      type="button"
+                      class="inline-flex items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-200 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="deletingGroup"
+                      @click="deleteActiveGroup"
+                    >
+                      {{ deletingGroup ? 'Удаляем…' : 'Удалить группу' }}
+                    </button>
                   </div>
                 </div>
 
-                <button
-                  v-if="activeConversation?.type === 'group'"
-                  type="button"
-                  class="inline-flex items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-200 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="deletingGroup"
-                  @click="deleteActiveGroup"
+                <div
+                  v-if="activePinnedMessage"
+                  class="flex items-start justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
                 >
-                  {{ deletingGroup ? 'Удаляем…' : 'Удалить группу' }}
-                </button>
+                  <div class="min-w-0">
+                    <div class="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                      Закреплено
+                    </div>
+                    <button
+                      type="button"
+                      class="mt-1 block truncate text-left text-sm font-medium text-slate-900 transition hover:text-slate-700"
+                      @click="jumpToPinnedMessage"
+                    >
+                      {{ replyPreviewSender(activePinnedMessage) }}:
+                      {{ replyPreviewText(activePinnedMessage) || 'Сообщение' }}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    class="rounded-xl border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+                    @click="clearActivePin"
+                  >
+                    Убрать
+                  </button>
+                </div>
+
+                <div
+                  v-if="searchOpen"
+                  class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                >
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <input
+                      ref="searchInput"
+                      v-model="searchQuery"
+                      type="search"
+                      class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-300"
+                      placeholder="Поиск по всем чатам"
+                    />
+                    <button
+                      type="button"
+                      class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                      @click="closeSearch"
+                    >
+                      Закрыть
+                    </button>
+                  </div>
+
+                  <div class="mt-3 max-h-72 space-y-2 overflow-y-auto">
+                    <div
+                      v-if="chatStore.loading.search"
+                      class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500"
+                    >
+                      Ищем по сообщениям…
+                    </div>
+                    <div
+                      v-else-if="searchQuery.trim() && !activeSearchResults.length"
+                      class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500"
+                    >
+                      Совпадений пока нет.
+                    </div>
+                    <button
+                      v-for="result in activeSearchResults"
+                      :key="`${result.conversationId}-${result.messageId}`"
+                      type="button"
+                      class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
+                      @click="openSearchResult(result)"
+                    >
+                      <div class="flex items-center justify-between gap-3">
+                        <div class="truncate text-sm font-semibold text-slate-950">
+                          {{ result.conversationTitle || 'Чат' }}
+                        </div>
+                        <div class="truncate text-xs text-slate-500">
+                          {{ result.senderLogin || result.senderEmail }}
+                        </div>
+                      </div>
+                      <div class="mt-1 text-sm text-slate-600">
+                        {{ searchResultExcerpt(result) }}
+                      </div>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -218,11 +333,17 @@
                     "
                   >
                     <div
-                      class="min-w-0 max-w-[82%] rounded-3xl border px-4 py-3"
+                      :ref="setMessageElement(message.id)"
+                      class="min-w-0 max-w-[82%] rounded-3xl border px-4 py-3 transition"
                       :class="
-                        message.senderEmail === currentUserEmail
-                          ? 'border-emerald-100 bg-emerald-50/80'
-                          : 'border-slate-200 bg-slate-50'
+                        [
+                          message.senderEmail === currentUserEmail
+                            ? 'border-emerald-100 bg-emerald-50/80'
+                            : 'border-slate-200 bg-slate-50',
+                          chatStore.highlightedMessageId === message.id
+                            ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-white'
+                            : '',
+                        ]
                       "
                     >
                       <div class="flex flex-wrap items-center gap-2">
@@ -235,9 +356,52 @@
                         >
                           вы
                         </span>
+                        <span
+                          v-if="isPinnedMessage(message)"
+                          class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                        >
+                          📌
+                        </span>
                       </div>
                       <div
-                        v-if="message.type === 'audio'"
+                        v-if="resolveReplyPreview(message)"
+                        class="mt-3 rounded-2xl border border-slate-200/80 bg-white/70 px-3 py-2"
+                      >
+                        <div class="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          Ответ на {{ replyPreviewSender(resolveReplyPreview(message)) }}
+                        </div>
+                        <div class="mt-1 truncate text-sm text-slate-700">
+                          {{ replyPreviewText(resolveReplyPreview(message)) || 'Сообщение' }}
+                        </div>
+                      </div>
+                      <div
+                        v-if="editingMessageId === message.id"
+                        class="mt-3 space-y-3"
+                      >
+                        <textarea
+                          v-model="editingMessageText"
+                          rows="3"
+                          class="w-full resize-none rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
+                        ></textarea>
+                        <div class="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            class="rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+                            @click="saveEditing(message)"
+                          >
+                            Сохранить
+                          </button>
+                          <button
+                            type="button"
+                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                            @click="cancelEditing"
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        v-else-if="message.type === 'audio'"
                         class="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
                       >
                         <button
@@ -273,8 +437,85 @@
                         class="mt-2 whitespace-pre-wrap break-all text-sm leading-6 text-slate-700 [overflow-wrap:anywhere] [&_a]:font-medium [&_a]:text-sky-700 [&_a]:underline [&_a]:decoration-sky-300 [&_a]:underline-offset-2 [&_a]:transition hover:[&_a]:text-sky-800 [&_em]:italic [&_strong]:font-semibold"
                         v-html="renderMessageText(message.text)"
                       ></p>
+                      <div
+                        v-if="messageReactionGroups(message).length"
+                        class="mt-3 flex flex-wrap gap-2"
+                      >
+                        <button
+                          v-for="reaction in messageReactionGroups(message)"
+                          :key="`${message.id}-${reaction.emoji}`"
+                          type="button"
+                          class="rounded-full border px-2.5 py-1 text-xs font-semibold transition"
+                          :class="
+                            currentUserReactionEmoji(message) === reaction.emoji
+                              ? 'border-indigo-300 bg-indigo-100 text-indigo-700'
+                              : 'border-slate-200 bg-white/80 text-slate-700 hover:bg-slate-100'
+                          "
+                          @click="selectReaction(message, reaction.emoji)"
+                        >
+                          {{ reaction.emoji }} {{ reaction.count }}
+                        </button>
+                      </div>
+                      <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+                        <button
+                          type="button"
+                          class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 transition hover:bg-slate-100"
+                          @click="startReply(message)"
+                        >
+                          Ответить
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 transition hover:bg-slate-100"
+                          @click="toggleReactionPicker(message)"
+                        >
+                          Реакция
+                        </button>
+                        <button
+                          v-if="canEditMessage(message)"
+                          type="button"
+                          class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 transition hover:bg-slate-100"
+                          @click="startEditing(message)"
+                        >
+                          Изменить
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 transition hover:bg-slate-100"
+                          @click="toggleMessagePin(message)"
+                        >
+                          {{ isPinnedMessage(message) ? 'Открепить' : 'Закрепить' }}
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-700 transition hover:bg-rose-100"
+                          @click="removeMessage(message)"
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                      <div
+                        v-if="reactionPickerMessageId === message.id"
+                        class="mt-3 rounded-2xl border border-slate-200 bg-white/90 px-3 py-3"
+                      >
+                        <div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                          Реакция
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                          <button
+                            v-for="emoji in composerEmojis"
+                            :key="`${message.id}-reaction-${emoji}`"
+                            type="button"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg transition hover:bg-slate-100"
+                            @click="selectReaction(message, emoji)"
+                          >
+                            {{ emoji }}
+                          </button>
+                        </div>
+                      </div>
                       <div class="mt-3 flex items-center gap-3 text-xs text-slate-500">
                         <span>{{ formatMessageTime(message.createdAt) }}</span>
+                        <span v-if="message.editedAt">изменено</span>
                         <span
                           v-if="message.senderEmail === currentUserEmail"
                           class="ml-auto text-sm font-semibold tracking-tight text-slate-500"
@@ -290,6 +531,26 @@
 
               <div class="border-t border-slate-200 px-6 py-5 xl:px-5 xl:py-4">
                 <form class="space-y-3" @submit.prevent="sendCurrentMessage">
+                  <div
+                    v-if="replyingToMessage"
+                    class="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                  >
+                    <div class="min-w-0">
+                      <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        Ответ на {{ replyPreviewSender(replyingToMessage) }}
+                      </div>
+                      <div class="mt-1 truncate text-sm text-slate-700">
+                        {{ replyPreviewText(replyingToMessage) || 'Сообщение' }}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                      @click="clearReplyState"
+                    >
+                      Отмена
+                    </button>
+                  </div>
                   <div
                     ref="emojiPickerRoot"
                     class="relative rounded-2xl transition"
@@ -631,6 +892,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
 import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
+  buildChatSearchExcerpt,
   getChatAudioRecorderLabel,
   getAudioMessageButtonLabel,
   getImageMessageButtonLabel,
@@ -639,10 +901,14 @@ import {
   getChatMessageStatusIcon,
   getChatMessageStatusTitle,
   getChatMicrophoneErrorMessage,
+  getChatReplyPreviewText,
   getConversationMembersSummary,
   getDroppedImageFile,
+  getCurrentUserReactionEmoji,
   getRecentChatItems,
+  groupChatReactions,
   insertEmojiIntoText,
+  isChatMessageEditable,
   isChatSendShortcut,
 } from '../lib/chat-ui.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -656,6 +922,7 @@ const notifications = useNotificationsStore()
 const chatSearch = ref('')
 const composerText = ref('')
 const composerTextarea = ref(null)
+const searchInput = ref(null)
 const imageInput = ref(null)
 const emojiPickerRoot = ref(null)
 const emojiPickerOpen = ref(false)
@@ -685,10 +952,19 @@ const imageViewerUrl = ref('')
 const mediaRecorder = ref(null)
 const recordingStream = ref(null)
 const recordingTimer = ref(null)
+const searchOpen = ref(false)
+const searchQuery = ref('')
+const searchTimer = ref(null)
+const replyingToMessageId = ref('')
+const editingMessageId = ref('')
+const editingMessageText = ref('')
+const reactionPickerMessageId = ref('')
 const groupForm = ref({
   title: '',
   memberEmails: [],
 })
+const messageElements = new Map()
+let highlightTimerId = null
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -766,7 +1042,16 @@ const searchedUsers = computed(() =>
 )
 const recentChats = computed(() => getRecentChatItems(chatStore.conversations, 5))
 const activeConversationTitle = computed(() => activeConversation.value?.title || 'Выбери чат')
+const activePinnedMessage = computed(() => activeConversation.value?.pinnedMessage || null)
 const audioRecorderLabel = computed(() => getChatAudioRecorderLabel(isRecordingAudio.value))
+const activeSearchResults = computed(() => chatStore.searchResults)
+const replyingToMessage = computed(() => {
+  if (!replyingToMessageId.value) {
+    return null
+  }
+
+  return activeMessages.value.find((message) => message.id === replyingToMessageId.value) || null
+})
 const activeGroupMembersSummary = computed(() => {
   if (!activeConversation.value || activeConversation.value.type !== 'group') {
     return ''
@@ -827,6 +1112,87 @@ const messageStatusTitle = (message) => getChatMessageStatusTitle(message, curre
 
 const renderMessageText = (text) => renderChatMarkdown(text)
 
+const searchResultExcerpt = (result) => buildChatSearchExcerpt(result?.text, searchQuery.value, 88)
+
+const messageReactionGroups = (message) => groupChatReactions(message?.reactions || [])
+
+const currentUserReactionEmoji = (message) =>
+  getCurrentUserReactionEmoji(message?.reactions || [], currentUserEmail.value)
+
+const canEditMessage = (message) => isChatMessageEditable(message, currentUserEmail.value)
+
+const resolveReplyPreview = (message) => {
+  if (message?.replyPreview?.id) {
+    return message.replyPreview
+  }
+
+  if (!message?.replyToMessageId) {
+    return null
+  }
+
+  const source = activeMessages.value.find((item) => item.id === message.replyToMessageId)
+  if (!source) {
+    return null
+  }
+
+  return {
+    id: source.id,
+    type: source.type,
+    text: source.text,
+    senderEmail: source.senderEmail,
+    senderLogin: source.senderLogin,
+  }
+}
+
+const replyPreviewSender = (preview) =>
+  getChatMessageSenderLabel(preview, {
+    email: currentUserEmail.value,
+    login: currentUserLogin.value,
+  })
+
+const replyPreviewText = (preview) => getChatReplyPreviewText(preview)
+
+const isPinnedMessage = (message) =>
+  Boolean(message?.id) && activeConversation.value?.pinnedMessageId === message.id
+
+const clearHighlightLater = () => {
+  if (highlightTimerId) {
+    clearTimeout(highlightTimerId)
+  }
+  highlightTimerId = setTimeout(() => {
+    chatStore.setHighlightedMessage('')
+    highlightTimerId = null
+  }, 2600)
+}
+
+const setMessageElement = (messageId) => (element) => {
+  if (element) {
+    messageElements.set(messageId, element)
+    return
+  }
+
+  messageElements.delete(messageId)
+}
+
+const scrollToMessage = async (messageId) => {
+  if (!messageId) {
+    return
+  }
+
+  await nextTick()
+  const element = messageElements.get(messageId)
+  if (!element) {
+    return
+  }
+
+  element.scrollIntoView({
+    block: 'center',
+    behavior: 'smooth',
+  })
+  chatStore.setHighlightedMessage(messageId)
+  clearHighlightLater()
+}
+
 const focusComposer = async (cursor = null) => {
   await nextTick()
   const textarea = composerTextarea.value
@@ -846,6 +1212,201 @@ const toggleEmojiPicker = () => {
 
 const closeEmojiPicker = () => {
   emojiPickerOpen.value = false
+}
+
+const openSearch = async () => {
+  searchOpen.value = true
+  await nextTick()
+  searchInput.value?.focus()
+  if (searchQuery.value.trim()) {
+    try {
+      await chatStore.searchMessages(searchQuery.value)
+    } catch {
+      // notifications already handled in store
+    }
+  }
+}
+
+const closeSearch = () => {
+  searchOpen.value = false
+  reactionPickerMessageId.value = ''
+}
+
+const toggleSearch = () => {
+  if (searchOpen.value) {
+    closeSearch()
+    return
+  }
+
+  openSearch()
+}
+
+const clearReplyState = () => {
+  replyingToMessageId.value = ''
+}
+
+const startReply = async (message) => {
+  if (!message?.id) {
+    return
+  }
+
+  editingMessageId.value = ''
+  reactionPickerMessageId.value = ''
+  replyingToMessageId.value = message.id
+  await focusComposer()
+}
+
+const startEditing = async (message) => {
+  if (!canEditMessage(message)) {
+    return
+  }
+
+  clearReplyState()
+  reactionPickerMessageId.value = ''
+  editingMessageId.value = message.id
+  editingMessageText.value = String(message.text || '')
+  await nextTick()
+}
+
+const cancelEditing = () => {
+  editingMessageId.value = ''
+  editingMessageText.value = ''
+}
+
+const saveEditing = async (message) => {
+  const text = editingMessageText.value.trim()
+  if (!activeConversation.value || !message?.id || !text) {
+    return
+  }
+
+  try {
+    await chatStore.editMessage({
+      conversationId: activeConversation.value.id,
+      messageId: message.id,
+      text,
+    })
+    cancelEditing()
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось изменить сообщение')
+  }
+}
+
+const removeMessage = async (message) => {
+  if (!activeConversation.value || !message?.id) {
+    return
+  }
+
+  const confirmed =
+    typeof window === 'undefined' ||
+    window.confirm('Удалить это сообщение для всех участников?')
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await chatStore.deleteMessage({
+      conversationId: activeConversation.value.id,
+      messageId: message.id,
+    })
+    if (replyingToMessageId.value === message.id) {
+      clearReplyState()
+    }
+    if (editingMessageId.value === message.id) {
+      cancelEditing()
+    }
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось удалить сообщение')
+  }
+}
+
+const toggleReactionPicker = (message) => {
+  if (!message?.id) {
+    return
+  }
+
+  reactionPickerMessageId.value =
+    reactionPickerMessageId.value === message.id ? '' : message.id
+}
+
+const selectReaction = async (message, emoji) => {
+  if (!activeConversation.value || !message?.id || !emoji) {
+    return
+  }
+
+  try {
+    if (currentUserReactionEmoji(message) === emoji) {
+      await chatStore.removeReaction({
+        conversationId: activeConversation.value.id,
+        messageId: message.id,
+      })
+    } else {
+      await chatStore.setReaction({
+        conversationId: activeConversation.value.id,
+        messageId: message.id,
+        emoji,
+      })
+    }
+    reactionPickerMessageId.value = ''
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось обновить реакцию')
+  }
+}
+
+const toggleMessagePin = async (message) => {
+  if (!activeConversation.value || !message?.id) {
+    return
+  }
+
+  try {
+    if (isPinnedMessage(message)) {
+      await chatStore.clearPin(activeConversation.value.id)
+    } else {
+      await chatStore.pinMessage({
+        conversationId: activeConversation.value.id,
+        messageId: message.id,
+      })
+    }
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось обновить закреп')
+  }
+}
+
+const jumpToPinnedMessage = async () => {
+  if (!activePinnedMessage.value?.id) {
+    return
+  }
+
+  await scrollToMessage(activePinnedMessage.value.id)
+}
+
+const clearActivePin = async () => {
+  if (!activeConversation.value) {
+    return
+  }
+
+  try {
+    await chatStore.clearPin(activeConversation.value.id)
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось снять закреп')
+  }
+}
+
+const openSearchResult = async (result) => {
+  if (!result?.conversationId || !result?.messageId) {
+    return
+  }
+
+  try {
+    await chatStore.setActiveConversation(result.conversationId)
+    closeSearch()
+    await scrollToMessage(result.messageId)
+  } catch {
+    // notifications already handled in store
+  }
+}
+
+const showCallPlaceholder = () => {
+  notifications.info('Звонилку добавим следующим этапом после завершения фазы сообщений')
 }
 
 const insertEmoji = (emoji) => {
@@ -1309,6 +1870,7 @@ const sendCurrentMessage = async () => {
     const payload = {
       conversationId: activeConversation.value.id,
       text,
+      replyToMessageId: replyingToMessageId.value,
     }
 
     if (activeConversation.value.type === 'direct') {
@@ -1324,6 +1886,7 @@ const sendCurrentMessage = async () => {
     }
 
     composerText.value = ''
+    clearReplyState()
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить сообщение')
   } finally {
@@ -1364,6 +1927,57 @@ watch(groupModalOpen, (isOpen) => {
   }
 })
 
+watch(searchQuery, (value) => {
+  if (searchTimer.value) {
+    clearTimeout(searchTimer.value)
+    searchTimer.value = null
+  }
+
+  if (!searchOpen.value) {
+    return
+  }
+
+  const query = String(value || '').trim()
+  if (!query) {
+    chatStore.searchMessages('')
+    return
+  }
+
+  searchTimer.value = setTimeout(() => {
+    chatStore.searchMessages(query).catch(() => {
+      // notifications already handled in store
+    })
+  }, 180)
+})
+
+watch(
+  () => chatStore.activeConversationId,
+  () => {
+    cancelEditing()
+    clearReplyState()
+    reactionPickerMessageId.value = ''
+  },
+)
+
+watch(
+  () => activeMessages.value.map((message) => message.id).join('|'),
+  () => {
+    if (
+      replyingToMessageId.value &&
+      !activeMessages.value.some((message) => message.id === replyingToMessageId.value)
+    ) {
+      clearReplyState()
+    }
+
+    if (
+      editingMessageId.value &&
+      !activeMessages.value.some((message) => message.id === editingMessageId.value)
+    ) {
+      cancelEditing()
+    }
+  },
+)
+
 watch(
   () => [chatStore.activeConversationId, activeMessages.value.length],
   () => {
@@ -1376,6 +1990,14 @@ onUnmounted(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
   resetComposerDropState()
   clearRecordingTimer()
+  if (searchTimer.value) {
+    clearTimeout(searchTimer.value)
+    searchTimer.value = null
+  }
+  if (highlightTimerId) {
+    clearTimeout(highlightTimerId)
+    highlightTimerId = null
+  }
   stopRecordingTracks()
   discardRecordedAudio()
   discardSelectedImage()

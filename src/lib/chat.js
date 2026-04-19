@@ -80,6 +80,28 @@ const normalizeChatImage = (image = null) => {
   }
 }
 
+const normalizeReplyPreview = (reply = null) => {
+  if (!reply) {
+    return null
+  }
+
+  return {
+    id: normalizeString(reply.id),
+    type: normalizeString(reply.type || 'text'),
+    text: normalizeString(reply.text),
+    senderEmail: normalizeString(reply.sender_email ?? reply.senderEmail),
+    senderLogin: normalizeString(reply.sender_login ?? reply.senderLogin),
+  }
+}
+
+const normalizeReaction = (reaction = {}) => ({
+  emoji: normalizeString(reaction.emoji),
+  userEmail: normalizeString(reaction.user_email ?? reaction.userEmail),
+  userLogin: normalizeString(reaction.user_login ?? reaction.userLogin),
+  createdAt: normalizeIso(reaction.created_at ?? reaction.createdAt),
+  updatedAt: normalizeIso(reaction.updated_at ?? reaction.updatedAt),
+})
+
 const dedupeReceipts = (receipts = [], extra = []) => {
   const merged = []
   const seen = new Set()
@@ -142,6 +164,12 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
       conversation.last_message_text ?? conversation.lastMessageText,
     ),
     lastMessageAt: normalizeIso(conversation.last_message_at ?? conversation.lastMessageAt),
+    pinnedMessageId: normalizeString(
+      conversation.pinned_message_id ?? conversation.pinnedMessageId,
+    ),
+    pinnedMessage: normalizeReplyPreview(
+      conversation.pinned_message ?? conversation.pinnedMessage,
+    ),
     unreadCount: Number(conversation.unread_count ?? conversation.unreadCount ?? 0),
     members,
   }
@@ -155,8 +183,13 @@ export const normalizeChatMessage = (message = {}) => ({
   senderLogin: normalizeString(message.sender_login ?? message.senderLogin),
   text: normalizeString(message.text),
   createdAt: normalizeIso(message.created_at ?? message.createdAt),
+  updatedAt: normalizeIso(message.updated_at ?? message.updatedAt),
+  editedAt: normalizeIso(message.edited_at ?? message.editedAt),
+  replyToMessageId: normalizeString(message.reply_to_message_id ?? message.replyToMessageId),
+  replyPreview: normalizeReplyPreview(message.reply_preview ?? message.replyPreview),
   deliveredTo: toArray(message.delivered_to ?? message.deliveredTo).map(normalizeReceipt),
   readBy: toArray(message.read_by ?? message.readBy).map(normalizeReceipt),
+  reactions: toArray(message.reactions).map(normalizeReaction),
   audio: normalizeChatAudio(message.audio),
   image: normalizeChatImage(message.image),
 })
@@ -270,6 +303,17 @@ const removeMessagesByIds = (messages = [], removedIds = []) => {
   return messages.filter((message) => !removed.has(message.id))
 }
 
+const clearReplyPreviewIfNeeded = (message = {}, removedIds = []) => {
+  if (!removedIds.includes(message.replyToMessageId)) {
+    return message
+  }
+
+  return {
+    ...message,
+    replyPreview: null,
+  }
+}
+
 export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => {
   ensureConversationCollection(state)
 
@@ -350,6 +394,51 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
 
         return upsertReadReceipt(message, receipt)
       })
+    }
+
+    return state
+  }
+
+  if (event === 'message_updated') {
+    if (data.conversation) {
+      upsertConversation(
+        state,
+        { ...data.conversation, members: data.members ?? data.conversation.members },
+        currentUserEmail,
+      )
+    }
+
+    if (data.message) {
+      upsertMessage(state, data.message)
+    }
+
+    return state
+  }
+
+  if (event === 'message_deleted') {
+    const conversation = data.conversation
+    if (conversation) {
+      upsertConversation(
+        state,
+        { ...conversation, members: data.members ?? conversation.members },
+        currentUserEmail,
+      )
+    }
+
+    const conversationId = normalizeString(
+      conversation?.id ?? data.conversation_id ?? data.conversationId,
+    )
+    const removedIds = [normalizeString(data.message_id ?? data.messageId)].filter(Boolean)
+    if (conversationId && removedIds.length) {
+      const existing = state.messagesByConversation[conversationId] || []
+      state.messagesByConversation[conversationId] = removeMessagesByIds(existing, removedIds).map(
+        (message) => clearReplyPreviewIfNeeded(message, removedIds),
+      )
+    }
+
+    const affectedMessages = toArray(data.affected_messages ?? data.affectedMessages)
+    for (const message of affectedMessages) {
+      upsertMessage(state, message)
     }
 
     return state

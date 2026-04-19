@@ -135,6 +135,69 @@ export const getChatAudioRecorderLabel = (isRecording = false) =>
 export const isChatSendShortcut = (event = {}) =>
   event.key === 'Enter' && (event.metaKey || event.ctrlKey)
 
+export const groupChatReactions = (reactions = []) =>
+  Array.from(
+    reactions.reduce((groups, reaction) => {
+      const emoji = String(reaction?.emoji || '')
+      if (!emoji) {
+        return groups
+      }
+
+      groups.set(emoji, (groups.get(emoji) || 0) + 1)
+      return groups
+    }, new Map()),
+  ).map(([emoji, count]) => ({ emoji, count }))
+
+export const getCurrentUserReactionEmoji = (reactions = [], currentUserEmail = '') =>
+  String(
+    reactions.find((reaction) => reaction?.userEmail === currentUserEmail)?.emoji || '',
+  )
+
+export const isChatMessageEditable = (message = {}, currentUserEmail = '') =>
+  message?.type === 'text' && message?.senderEmail === currentUserEmail
+
+export const getChatReplyPreviewText = (message = {}) => {
+  if (!message) {
+    return ''
+  }
+
+  if (message.type === 'audio') {
+    return 'Голосовое сообщение'
+  }
+
+  if (message.type === 'image') {
+    return 'Изображение'
+  }
+
+  return String(message.text || '').trim()
+}
+
+export const buildChatSearchExcerpt = (text = '', query = '', maxLength = 96) => {
+  const source = String(text || '').replace(/\s+/g, ' ').trim()
+  const needle = String(query || '').trim()
+  if (!source) {
+    return ''
+  }
+
+  if (!needle) {
+    return source.length > maxLength ? `${source.slice(0, maxLength - 1)}…` : source
+  }
+
+  const lowerSource = source.toLowerCase()
+  const lowerNeedle = needle.toLowerCase()
+  const matchIndex = lowerSource.indexOf(lowerNeedle)
+  if (matchIndex === -1 || source.length <= maxLength) {
+    return source.length > maxLength ? `${source.slice(0, maxLength - 1)}…` : source
+  }
+
+  const padding = Math.max(12, Math.floor((maxLength - needle.length) / 2))
+  const start = Math.max(0, matchIndex - padding)
+  const end = Math.min(source.length, matchIndex + needle.length + padding)
+  const prefix = start > 0 ? '…' : ''
+  const suffix = end < source.length ? '…' : ''
+  return `${prefix}${source.slice(start, end)}${suffix}`
+}
+
 export const getDroppedImageFile = (dataTransfer = null) => {
   const itemFile = Array.from(dataTransfer?.items || [])
     .filter((item) => item?.kind === 'file')

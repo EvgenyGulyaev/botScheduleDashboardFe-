@@ -23,6 +23,7 @@ const createLoadingState = () => ({
   users: false,
   conversations: false,
   messages: false,
+  search: false,
 })
 
 const getApi = (authStore) => {
@@ -42,6 +43,16 @@ const getCurrentOrigin = () => {
 
   return 'http://localhost:5173'
 }
+
+const normalizeSearchResults = (results = []) =>
+  (Array.isArray(results) ? results : []).map((item) => ({
+    conversationId: item?.conversation_id ?? item?.conversationId ?? '',
+    conversationTitle: item?.conversation_title ?? item?.conversationTitle ?? '',
+    messageId: item?.message_id ?? item?.messageId ?? '',
+    senderEmail: item?.sender_email ?? item?.senderEmail ?? '',
+    senderLogin: item?.sender_login ?? item?.senderLogin ?? '',
+    text: item?.text ?? '',
+  }))
 
 const sortConversations = (conversations) =>
   [...conversations].sort((left, right) => {
@@ -160,6 +171,72 @@ const updateImageMessage = (state, conversationId, messageId, patch = {}) => {
   return nextMessage
 }
 
+const replaceMessage = (state, conversationId, message) => {
+  const normalized = normalizeChatMessage(message)
+  const messages = ensureMessagesCollection(state, conversationId || normalized.conversationId)
+  const index = messages.findIndex((item) => item.id === normalized.id)
+  if (index === -1) {
+    state.messagesByConversation[normalized.conversationId] = [...messages, normalized]
+  } else {
+    const nextMessages = [...messages]
+    nextMessages[index] = {
+      ...nextMessages[index],
+      ...normalized,
+    }
+    state.messagesByConversation[normalized.conversationId] = nextMessages
+  }
+
+  const conversation = state.conversations.find((item) => item.id === normalized.conversationId)
+  if (conversation) {
+    if (conversation.lastMessageId === normalized.id) {
+      conversation.lastMessageText = normalized.text
+      conversation.lastMessageAt = normalized.createdAt
+    }
+    if (conversation.pinnedMessageId === normalized.id) {
+      conversation.pinnedMessage = {
+        id: normalized.id,
+        type: normalized.type,
+        text: normalized.text,
+        senderEmail: normalized.senderEmail,
+        senderLogin: normalized.senderLogin,
+      }
+    }
+  }
+
+  return normalized
+}
+
+const removeMessageLocally = (state, conversationId, messageId) => {
+  const messages = ensureMessagesCollection(state, conversationId)
+  const nextMessages = messages
+    .filter((message) => message.id !== messageId)
+    .map((message) =>
+      message.replyToMessageId === messageId
+        ? {
+            ...message,
+            replyPreview: null,
+          }
+        : message,
+    )
+  state.messagesByConversation[conversationId] = nextMessages
+
+  const conversation = state.conversations.find((item) => item.id === conversationId)
+  if (!conversation) {
+    return true
+  }
+
+  if (conversation.pinnedMessageId === messageId) {
+    conversation.pinnedMessageId = ''
+    conversation.pinnedMessage = null
+  }
+
+  const lastMessage = nextMessages[nextMessages.length - 1] || null
+  conversation.lastMessageId = lastMessage?.id || ''
+  conversation.lastMessageText = lastMessage?.text || ''
+  conversation.lastMessageAt = lastMessage?.createdAt || ''
+  return true
+}
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     users: [],
@@ -174,6 +251,9 @@ export const useChatStore = defineStore('chat', {
     socket: null,
     manualDisconnect: false,
     soundEnabled: isChatSoundEnabled(),
+    searchResults: [],
+    lastSearchQuery: '',
+    highlightedMessageId: '',
   }),
 
   getters: {
@@ -510,7 +590,7 @@ export const useChatStore = defineStore('chat', {
       return this.soundEnabled
     },
 
-    sendMessage({ conversationId, recipientEmail, text }) {
+    sendMessage({ conversationId, recipientEmail, text, replyToMessageId }) {
       const authStore = useAuthStore()
       const currentUser = getCurrentUser(authStore)
       const socket = this.socket || this.connect()
@@ -527,7 +607,114 @@ export const useChatStore = defineStore('chat', {
         sender_email: currentUser.email || '',
         sender_login: currentUser.login || '',
         text: text || '',
+        reply_to_message_id: replyToMessageId || '',
       })
+    },
+
+    async editMessage({ conversationId, messageId, text }) {
+      if (!conversationId || !messageId || !String(text || '').trim()) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.patch(`/chat/conversations/${conversationId}/messages/${messageId}`, {
+        text: String(text).trim(),
+      })
+      return replaceMessage(this, conversationId, response.data)
+    },
+
+    async deleteMessage({ conversationId, messageId }) {
+      if (!conversationId || !messageId) {
+        return false
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      await api.delete(`/chat/conversations/${conversationId}/messages/${messageId}`)
+      return removeMessageLocally(this, conversationId, messageId)
+    },
+
+    async setReaction({ conversationId, messageId, emoji }) {
+      if (!conversationId || !messageId || !emoji) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.put(
+        `/chat/conversations/${conversationId}/messages/${messageId}/reaction`,
+        { emoji },
+      )
+      return replaceMessage(this, conversationId, response.data)
+    },
+
+    async removeReaction({ conversationId, messageId }) {
+      if (!conversationId || !messageId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.delete(
+        `/chat/conversations/${conversationId}/messages/${messageId}/reaction`,
+      )
+      return replaceMessage(this, conversationId, response.data)
+    },
+
+    async pinMessage({ conversationId, messageId }) {
+      if (!conversationId || !messageId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const currentUserEmail = getCurrentUser(authStore).email || ''
+      const response = await api.put(`/chat/conversations/${conversationId}/pin`, {
+        message_id: messageId,
+      })
+      const conversation = normalizeChatConversation(response.data, currentUserEmail)
+      upsertConversation(this, conversation, currentUserEmail)
+      return conversation
+    },
+
+    async clearPin(conversationId) {
+      if (!conversationId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const currentUserEmail = getCurrentUser(authStore).email || ''
+      const response = await api.delete(`/chat/conversations/${conversationId}/pin`)
+      const conversation = normalizeChatConversation(response.data, currentUserEmail)
+      upsertConversation(this, conversation, currentUserEmail)
+      return conversation
+    },
+
+    async searchMessages(query) {
+      const normalizedQuery = String(query || '').trim()
+      this.lastSearchQuery = normalizedQuery
+      if (!normalizedQuery) {
+        this.searchResults = []
+        return this.searchResults
+      }
+
+      this.loading = { ...this.loading, search: true }
+      try {
+        const authStore = useAuthStore()
+        const api = getApi(authStore)
+        const response = await api.get(`/chat/search?q=${encodeURIComponent(normalizedQuery)}`)
+        this.searchResults = normalizeSearchResults(response.data)
+        return this.searchResults
+      } finally {
+        this.loading = { ...this.loading, search: false }
+      }
+    },
+
+    setHighlightedMessage(messageId = '') {
+      this.highlightedMessageId = messageId || ''
+      return this.highlightedMessageId
     },
 
     async sendAudioMessage({ conversationId, audioBlob, durationSeconds }) {

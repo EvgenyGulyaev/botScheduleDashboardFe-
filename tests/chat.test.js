@@ -49,6 +49,10 @@ const createFakeApi = () => {
       calls.push(['patch', url, body])
       return Promise.resolve({ data: {} })
     },
+    put(url, body) {
+      calls.push(['put', url, body])
+      return Promise.resolve({ data: {} })
+    },
     delete(url, config) {
       calls.push(['delete', url, config?.data])
       return Promise.resolve({ data: {} })
@@ -132,6 +136,13 @@ test('normalizes conversation and message payloads', () => {
       last_message_id: 'msg-2',
       last_message_text: 'hello',
       last_message_at: '2026-04-16T11:00:00Z',
+      pinned_message_id: 'msg-1',
+      pinned_message: {
+        id: 'msg-1',
+        type: 'text',
+        text: 'pinned',
+        sender_login: 'alice',
+      },
       members: [{ email: 'alice@example.com', login: 'alice' }],
     },
     'alice@example.com',
@@ -140,6 +151,8 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(conversation.title, 'Team')
   assert.equal(conversation.createdByLogin, 'alice')
   assert.equal(conversation.members[0].login, 'alice')
+  assert.equal(conversation.pinnedMessageId, 'msg-1')
+  assert.equal(conversation.pinnedMessage.text, 'pinned')
 
   const message = normalizeChatMessage({
     id: 'msg-1',
@@ -196,6 +209,44 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(imageMessage.type, 'image')
   assert.equal(imageMessage.image.mimeType, 'image/png')
   assert.equal(imageMessage.image.expiresAt, '2026-04-17T11:00:00Z')
+
+  const replyMessage = normalizeChatMessage({
+    id: 'msg-reply',
+    conversation_id: 'group-1',
+    type: 'text',
+    sender_email: 'bob@example.com',
+    sender_login: 'bob',
+    text: 'Ответ',
+    created_at: '2026-04-16T11:03:00Z',
+    updated_at: '2026-04-16T11:05:00Z',
+    edited_at: '2026-04-16T11:05:00Z',
+    reply_to_message_id: 'msg-source',
+    reply_preview: {
+      id: 'msg-source',
+      type: 'audio',
+      text: 'Голосовое сообщение',
+      sender_email: 'alice@example.com',
+      sender_login: 'alice',
+    },
+    delivered_to: [],
+    read_by: [],
+  })
+
+  assert.equal(replyMessage.updatedAt, '2026-04-16T11:05:00Z')
+  assert.equal(replyMessage.editedAt, '2026-04-16T11:05:00Z')
+  assert.equal(replyMessage.replyToMessageId, 'msg-source')
+  assert.equal(replyMessage.replyPreview.id, 'msg-source')
+  assert.equal(replyMessage.replyPreview.type, 'audio')
+  assert.equal(
+    normalizeChatMessage({
+      id: 'msg-react',
+      conversation_id: 'group-1',
+      type: 'text',
+      text: 'reacted',
+      reactions: [{ emoji: '🔥', user_email: 'alice@example.com', user_login: 'alice' }],
+    }).reactions[0].emoji,
+    '🔥',
+  )
 })
 
 test('applies message_persisted into conversations and messages', () => {
@@ -378,6 +429,131 @@ test('conversation_updated removes trimmed messages by ids', () => {
   assert.equal(state.messagesByConversation['group-1'][0].id, 'msg-2')
 })
 
+test('message_updated replaces message fields including reactions', () => {
+  const state = {
+    users: [],
+    conversations: [],
+    messagesByConversation: {
+      'group-1': [
+        normalizeChatMessage({
+          id: 'msg-1',
+          conversation_id: 'group-1',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'one',
+          created_at: '2026-04-16T11:00:00Z',
+        }),
+      ],
+    },
+    activeConversationId: null,
+    loading: {},
+    error: null,
+    socketStatus: 'disconnected',
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'message_updated',
+      data: {
+        conversation: {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          members: [{ email: 'alice@example.com', login: 'alice' }],
+        },
+        members: [{ conversation_id: 'group-1', email: 'alice@example.com', login: 'alice' }],
+        message: {
+          id: 'msg-1',
+          conversation_id: 'group-1',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'updated',
+          created_at: '2026-04-16T11:00:00Z',
+          edited_at: '2026-04-16T11:05:00Z',
+          reactions: [{ emoji: '🔥', user_email: 'bob@example.com', user_login: 'bob' }],
+        },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.messagesByConversation['group-1'][0].text, 'updated')
+  assert.equal(state.messagesByConversation['group-1'][0].editedAt, '2026-04-16T11:05:00Z')
+  assert.equal(state.messagesByConversation['group-1'][0].reactions[0].emoji, '🔥')
+})
+
+test('message_deleted removes target message and clears affected reply previews', () => {
+  const state = {
+    users: [],
+    conversations: [],
+    messagesByConversation: {
+      'group-1': [
+        normalizeChatMessage({
+          id: 'msg-source',
+          conversation_id: 'group-1',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'source',
+          created_at: '2026-04-16T11:00:00Z',
+        }),
+        normalizeChatMessage({
+          id: 'msg-reply',
+          conversation_id: 'group-1',
+          sender_email: 'bob@example.com',
+          sender_login: 'bob',
+          text: 'reply',
+          created_at: '2026-04-16T11:01:00Z',
+          reply_to_message_id: 'msg-source',
+          reply_preview: {
+            id: 'msg-source',
+            type: 'text',
+            text: 'source',
+            sender_login: 'alice',
+          },
+        }),
+      ],
+    },
+    activeConversationId: null,
+    loading: {},
+    error: null,
+    socketStatus: 'disconnected',
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'message_deleted',
+      data: {
+        conversation: {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          members: [{ email: 'alice@example.com', login: 'alice' }],
+        },
+        members: [{ conversation_id: 'group-1', email: 'alice@example.com', login: 'alice' }],
+        message_id: 'msg-source',
+        affected_messages: [
+          {
+            id: 'msg-reply',
+            conversation_id: 'group-1',
+            sender_email: 'bob@example.com',
+            sender_login: 'bob',
+            text: 'reply',
+            created_at: '2026-04-16T11:01:00Z',
+            reply_to_message_id: 'msg-source',
+          },
+        ],
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.messagesByConversation['group-1'].length, 1)
+  assert.equal(state.messagesByConversation['group-1'][0].id, 'msg-reply')
+  assert.equal(state.messagesByConversation['group-1'][0].replyPreview, null)
+})
+
 test('reconnect delay grows with attempts', () => {
   assert.equal(getChatReconnectDelayMs(0), 500)
   assert.equal(getChatReconnectDelayMs(1), 1000)
@@ -405,12 +581,17 @@ test('chat store sends websocket commands with auth user context', async () => {
   chatStore.connect()
   assert.equal(FakeWebSocket.instances[0].url, 'ws://localhost:5173/chat/ws?token=token-123')
 
-  chatStore.sendMessage({ conversationId: 'group-1', text: 'hello' })
+  chatStore.sendMessage({
+    conversationId: 'group-1',
+    text: 'hello',
+    replyToMessageId: 'msg-1',
+  })
   const sent = JSON.parse(FakeWebSocket.instances[0].sent[0])
   assert.equal(sent.event, 'send_message')
   assert.equal(sent.data.sender_email, 'alice@example.com')
   assert.equal(sent.data.sender_login, 'alice')
   assert.equal(sent.data.conversation_id, 'group-1')
+  assert.equal(sent.data.reply_to_message_id, 'msg-1')
 
   delete globalThis.localStorage
   delete globalThis.window
@@ -873,4 +1054,145 @@ test('chat store deletes group conversation and clears local state', async () =>
   assert.equal(chatStore.activeConversationId, null)
 
   delete globalThis.localStorage
+})
+
+test('chat store edits messages, reacts, pins and searches through backend endpoints', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+
+  const fakeApi = createFakeApi()
+  fakeApi.patch = (url, body) => {
+    fakeApi.calls.push(['patch', url, body])
+    return Promise.resolve({
+      data: {
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        type: 'text',
+        sender_email: 'alice@example.com',
+        sender_login: 'alice',
+        text: body.text,
+        created_at: '2026-04-16T11:00:00Z',
+        edited_at: '2026-04-16T11:05:00Z',
+      },
+    })
+  }
+  fakeApi.put = (url, body) => {
+    fakeApi.calls.push(['put', url, body])
+    if (url.endsWith('/reaction')) {
+      return Promise.resolve({
+        data: {
+          id: 'msg-1',
+          conversation_id: 'group-1',
+          type: 'text',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'updated',
+          created_at: '2026-04-16T11:00:00Z',
+          reactions: [{ emoji: body.emoji, user_email: 'alice@example.com', user_login: 'alice' }],
+        },
+      })
+    }
+
+    return Promise.resolve({
+      data: {
+        id: 'group-1',
+        type: 'group',
+        title: 'Team',
+        members: [{ email: 'alice@example.com', login: 'alice' }],
+        pinned_message_id: 'msg-1',
+        pinned_message: {
+          id: 'msg-1',
+          type: 'text',
+          text: 'updated',
+          sender_login: 'alice',
+        },
+      },
+    })
+  }
+  fakeApi.delete = (url) => {
+    fakeApi.calls.push(['delete', url])
+    return Promise.resolve({ data: { message_id: 'msg-1' } })
+  }
+  fakeApi.get = (url) => {
+    fakeApi.calls.push(['get', url])
+    return Promise.resolve({
+      data: [
+        {
+          conversation_id: 'group-1',
+          conversation_title: 'Team',
+          message_id: 'msg-1',
+          sender_login: 'alice',
+          text: 'updated',
+        },
+      ],
+    })
+  }
+
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+  notifications.error = () => {}
+
+  const chatStore = useChatStore()
+  chatStore.conversations = [
+    normalizeChatConversation(
+      {
+        id: 'group-1',
+        type: 'group',
+        title: 'Team',
+        last_message_id: 'msg-1',
+        last_message_text: 'hello',
+        last_message_at: '2026-04-16T11:00:00Z',
+        pinned_message_id: 'msg-1',
+        pinned_message: {
+          id: 'msg-1',
+          type: 'text',
+          text: 'hello',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+        },
+        members: [{ email: 'alice@example.com', login: 'alice' }],
+      },
+      'alice@example.com',
+    ),
+  ]
+  chatStore.messagesByConversation = {
+    'group-1': [
+      normalizeChatMessage({
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        type: 'text',
+        sender_email: 'alice@example.com',
+        sender_login: 'alice',
+        text: 'hello',
+        created_at: '2026-04-16T11:00:00Z',
+      }),
+    ],
+  }
+
+  await chatStore.editMessage({ conversationId: 'group-1', messageId: 'msg-1', text: 'updated' })
+  assert.equal(chatStore.messagesByConversation['group-1'][0].text, 'updated')
+  assert.equal(chatStore.conversations[0].lastMessageText, 'updated')
+  assert.equal(chatStore.conversations[0].pinnedMessage.text, 'updated')
+
+  await chatStore.setReaction({ conversationId: 'group-1', messageId: 'msg-1', emoji: '🔥' })
+  assert.equal(chatStore.messagesByConversation['group-1'][0].reactions[0].emoji, '🔥')
+
+  await chatStore.pinMessage({ conversationId: 'group-1', messageId: 'msg-1' })
+  assert.equal(chatStore.conversations[0].pinnedMessageId, 'msg-1')
+
+  const results = await chatStore.searchMessages('upd')
+  assert.equal(results[0].messageId, 'msg-1')
+
+  await chatStore.deleteMessage({ conversationId: 'group-1', messageId: 'msg-1' })
+  assert.equal(chatStore.messagesByConversation['group-1'].length, 0)
+  assert.equal(chatStore.conversations[0].pinnedMessageId, '')
+  assert.equal(chatStore.conversations[0].lastMessageText, '')
+
+  delete globalThis.localStorage
+  delete globalThis.window
 })

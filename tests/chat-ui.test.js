@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  buildChatSearchExcerpt,
   filterChatUsersForSearch,
   getAudioMessageButtonLabel,
   getDroppedImageFile,
@@ -9,7 +10,11 @@ import {
   getChatMessageStatusTitle,
   getChatAudioRecorderLabel,
   getChatMicrophoneErrorMessage,
+  getChatReplyPreviewText,
+  getCurrentUserReactionEmoji,
   getConversationMembersSummary,
+  groupChatReactions,
+  isChatMessageEditable,
   getRecentChatItems,
   insertEmojiIntoText,
   isChatMessageReadByPeer,
@@ -185,6 +190,63 @@ test('falls back to dropped files and ignores non-image payloads', () => {
     }),
     null,
   )
+})
+
+test('groups reactions by emoji and detects current user reaction', () => {
+  const reactions = [
+    { emoji: '🔥', userEmail: 'alice@example.com', userLogin: 'alice' },
+    { emoji: '🔥', userEmail: 'bob@example.com', userLogin: 'bob' },
+    { emoji: '👍', userEmail: 'carol@example.com', userLogin: 'carol' },
+  ]
+
+  assert.deepEqual(groupChatReactions(reactions), [
+    { emoji: '🔥', count: 2 },
+    { emoji: '👍', count: 1 },
+  ])
+  assert.equal(getCurrentUserReactionEmoji(reactions, 'alice@example.com'), '🔥')
+  assert.equal(getCurrentUserReactionEmoji(reactions, 'nobody@example.com'), '')
+})
+
+test('allows editing only own text messages', () => {
+  assert.equal(
+    isChatMessageEditable(
+      { type: 'text', senderEmail: 'alice@example.com' },
+      'alice@example.com',
+    ),
+    true,
+  )
+  assert.equal(
+    isChatMessageEditable(
+      { type: 'audio', senderEmail: 'alice@example.com' },
+      'alice@example.com',
+    ),
+    false,
+  )
+  assert.equal(
+    isChatMessageEditable(
+      { type: 'text', senderEmail: 'bob@example.com' },
+      'alice@example.com',
+    ),
+    false,
+  )
+})
+
+test('builds reply preview labels for text and one-time media', () => {
+  assert.equal(getChatReplyPreviewText({ type: 'text', text: '  Привет  ' }), 'Привет')
+  assert.equal(getChatReplyPreviewText({ type: 'audio', text: 'ignored' }), 'Голосовое сообщение')
+  assert.equal(getChatReplyPreviewText({ type: 'image', text: 'ignored' }), 'Изображение')
+})
+
+test('builds compact search excerpt around the match', () => {
+  const excerpt = buildChatSearchExcerpt(
+    'Это довольно длинное сообщение про критичный релиз и срочное исправление бага в чате',
+    'релиз',
+    40,
+  )
+
+  assert.match(excerpt, /релиз/i)
+  assert.ok(excerpt.length <= 42)
+  assert.equal(buildChatSearchExcerpt('Короткий текст', '', 40), 'Короткий текст')
 })
 
 test('inserts emoji at cursor position and returns next cursor index', () => {
