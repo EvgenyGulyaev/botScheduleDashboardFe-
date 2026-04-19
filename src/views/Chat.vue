@@ -3,9 +3,9 @@
     class="min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:min-h-[calc(100vh-5rem)] xl:overflow-hidden"
   >
     <div
-      class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 xl:h-full xl:min-h-0 xl:max-w-none xl:px-8 2xl:px-10"
+      class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 xl:h-full xl:min-h-0 xl:max-w-none xl:px-6 xl:py-3 2xl:px-8"
     >
-      <div class="mb-4 flex justify-end gap-2">
+      <div class="mb-4 flex justify-end gap-2 xl:mb-2">
         <span
           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm"
           :title="socketLabel"
@@ -25,7 +25,7 @@
         </button>
       </div>
 
-      <div class="mb-5 space-y-3">
+      <div class="mb-5 space-y-3 xl:mb-3 xl:space-y-2">
         <InlineNotice
           v-if="chatStore.error"
           tone="error"
@@ -44,12 +44,12 @@
         />
       </div>
 
-      <div class="grid gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <div class="grid gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-4">
         <aside class="xl:min-h-0">
           <section
-            class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:h-full xl:overflow-y-auto"
+            class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:h-full xl:overflow-y-auto xl:p-3.5"
           >
-            <div class="mb-4 flex items-start justify-between gap-3">
+            <div class="mb-4 flex items-start justify-between gap-3 xl:mb-3">
               <div>
                 <h3 class="text-base font-semibold text-slate-950">Чаты</h3>
                 <p class="text-xs text-slate-500">Поиск по логину или email</p>
@@ -67,7 +67,7 @@
             <input
               v-model="chatSearch"
               type="search"
-              class="mb-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white"
+              class="mb-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white xl:mb-3 xl:py-2"
               placeholder="Найти человека"
             />
 
@@ -163,7 +163,7 @@
           <section
             class="flex h-[calc(100vh-12rem)] min-h-[34rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0"
           >
-            <div class="border-b border-slate-200 px-6 py-5">
+            <div class="border-b border-slate-200 px-6 py-5 xl:px-5 xl:py-4">
               <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0">
                   <h3 class="truncate text-2xl font-bold text-slate-950">
@@ -191,7 +191,7 @@
             </div>
 
             <div class="flex min-h-0 flex-1 flex-col">
-              <div ref="messagesScroller" class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              <div ref="messagesScroller" class="min-h-0 flex-1 overflow-y-auto px-6 py-5 xl:px-5 xl:py-4">
                 <div
                   v-if="
                     activeConversation && activeMessages.length === 0 && !chatStore.loading.messages
@@ -273,7 +273,7 @@
                 </div>
               </div>
 
-              <div class="border-t border-slate-200 px-6 py-5">
+              <div class="border-t border-slate-200 px-6 py-5 xl:px-5 xl:py-4">
                 <form class="space-y-3" @submit.prevent="sendCurrentMessage">
                   <div ref="emojiPickerRoot" class="relative">
                     <textarea
