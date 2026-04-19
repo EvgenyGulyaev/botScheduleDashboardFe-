@@ -218,7 +218,7 @@
                     "
                   >
                     <div
-                      class="max-w-[82%] rounded-3xl border px-4 py-3"
+                      class="min-w-0 max-w-[82%] rounded-3xl border px-4 py-3"
                       :class="
                         message.senderEmail === currentUserEmail
                           ? 'border-emerald-100 bg-emerald-50/80'
@@ -270,10 +270,9 @@
                       </div>
                       <p
                         v-else
-                        class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700"
-                      >
-                        {{ message.text }}
-                      </p>
+                        class="mt-2 whitespace-pre-wrap break-all text-sm leading-6 text-slate-700 [overflow-wrap:anywhere] [&_a]:font-medium [&_a]:text-sky-700 [&_a]:underline [&_a]:decoration-sky-300 [&_a]:underline-offset-2 [&_a]:transition hover:[&_a]:text-sky-800 [&_em]:italic [&_strong]:font-semibold"
+                        v-html="renderMessageText(message.text)"
+                      ></p>
                       <div class="mt-3 flex items-center gap-3 text-xs text-slate-500">
                         <span>{{ formatMessageTime(message.createdAt) }}</span>
                         <span
@@ -612,6 +611,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
+import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
   getChatAudioRecorderLabel,
   getAudioMessageButtonLabel,
@@ -803,6 +803,8 @@ const messageSenderLabel = (message) =>
 const messageStatusIcon = (message) => getChatMessageStatusIcon(message, currentUserEmail.value)
 
 const messageStatusTitle = (message) => getChatMessageStatusTitle(message, currentUserEmail.value)
+
+const renderMessageText = (text) => renderChatMarkdown(text)
 
 const focusComposer = async (cursor = null) => {
   await nextTick()
