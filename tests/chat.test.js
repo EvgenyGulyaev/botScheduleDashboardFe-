@@ -375,6 +375,53 @@ test('chat store sends websocket commands with auth user context', async () => {
   delete globalThis.WebSocket
 })
 
+test('chat store marks previous peer message as read before sending a reply', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+
+  const fakeApi = createFakeApi()
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+  notifications.error = () => {}
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const chatStore = useChatStore()
+  chatStore.messagesByConversation = {
+    'group-1': [
+      normalizeChatMessage({
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        sender_email: 'bob@example.com',
+        sender_login: 'bob',
+        text: 'Привет',
+        created_at: '2026-04-16T11:00:00Z',
+        delivered_to: [],
+        read_by: [],
+      }),
+    ],
+  }
+  chatStore.connect()
+  chatStore.sendMessage({ conversationId: 'group-1', text: 'answer' })
+
+  const readEnvelope = JSON.parse(FakeWebSocket.instances[0].sent[0])
+  const sendEnvelope = JSON.parse(FakeWebSocket.instances[0].sent[1])
+  assert.equal(readEnvelope.event, 'mark_read')
+  assert.equal(readEnvelope.data.conversation_id, 'group-1')
+  assert.equal(readEnvelope.data.message_id, 'msg-1')
+  assert.equal(sendEnvelope.event, 'send_message')
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
 test('chat store shows toast for incoming inactive conversation message', () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()

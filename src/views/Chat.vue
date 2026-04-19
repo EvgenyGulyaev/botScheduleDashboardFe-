@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100">
-    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+  <div class="min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:overflow-hidden">
+    <div class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 xl:h-full xl:min-h-0">
       <div class="mb-4 flex justify-end gap-2">
         <span
           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm"
@@ -40,9 +40,9 @@
         />
       </div>
 
-      <div class="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <aside>
-          <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="grid gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <aside class="xl:min-h-0">
+          <section class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:h-full xl:overflow-y-auto">
             <div class="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 class="text-base font-semibold text-slate-950">Чаты</h3>
@@ -136,8 +136,8 @@
           </section>
         </aside>
 
-        <main>
-          <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <main class="min-h-[34rem] xl:min-h-0">
+          <section class="flex h-[calc(100vh-12rem)] min-h-[34rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0">
             <div class="border-b border-slate-200 px-6 py-5">
               <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0">
@@ -165,8 +165,8 @@
               </div>
             </div>
 
-            <div class="flex min-h-[36rem] flex-col">
-              <div class="flex-1 overflow-y-auto px-6 py-5">
+            <div class="flex min-h-0 flex-1 flex-col">
+              <div ref="messagesScroller" class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
                 <div
                   v-if="activeConversation && activeMessages.length === 0 && !chatStore.loading.messages"
                   class="flex h-full min-h-[24rem] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500"
@@ -226,6 +226,7 @@
                     rows="3"
                     class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
                     placeholder="Напиши сообщение"
+                    @keydown="handleComposerKeydown"
                   ></textarea>
                   <button
                     type="submit"
@@ -310,7 +311,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
 import {
   filterChatUsersForSearch,
@@ -319,6 +320,7 @@ import {
   getChatMessageStatusTitle,
   getConversationMembersSummary,
   getRecentChatItems,
+  isChatSendShortcut,
 } from '../lib/chat-ui.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useChatStore } from '../stores/chat.js'
@@ -334,6 +336,7 @@ const creatingGroup = ref(false)
 const deletingGroup = ref(false)
 const sendingMessage = ref(false)
 const groupModalOpen = ref(false)
+const messagesScroller = ref(null)
 const groupForm = ref({
   title: '',
   memberEmails: [],
@@ -434,6 +437,16 @@ const messageStatusIcon = (message) =>
 
 const messageStatusTitle = (message) =>
   getChatMessageStatusTitle(message, currentUserEmail.value)
+
+const scrollMessagesToBottom = async () => {
+  await nextTick()
+  const scroller = messagesScroller.value
+  if (!scroller) {
+    return
+  }
+
+  scroller.scrollTop = scroller.scrollHeight
+}
 
 const selectConversation = async (conversationId) => {
   try {
@@ -539,6 +552,19 @@ const sendCurrentMessage = async () => {
   }
 }
 
+const handleComposerKeydown = (event) => {
+  if (!isChatSendShortcut(event)) {
+    return
+  }
+
+  event.preventDefault()
+  if (sendingMessage.value || !composerText.value.trim() || !activeConversation.value) {
+    return
+  }
+
+  sendCurrentMessage()
+}
+
 onMounted(async () => {
   try {
     await chatStore.loadInitialState()
@@ -559,6 +585,14 @@ watch(
       groupForm.value = { title: '', memberEmails: [] }
     }
   },
+)
+
+watch(
+  () => [chatStore.activeConversationId, activeMessages.value.length],
+  () => {
+    scrollMessagesToBottom()
+  },
+  { flush: 'post' },
 )
 
 onUnmounted(() => {

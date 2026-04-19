@@ -56,3 +56,6 @@ export const getChatMessageStatusIcon = (message = {}, currentUserEmail = '') =>
 
 export const getChatMessageStatusTitle = (message = {}, currentUserEmail = '') =>
   isChatMessageReadByPeer(message, currentUserEmail) ? 'Прочитано собеседником' : 'Отправлено'
+
+export const isChatSendShortcut = (event = {}) =>
+  event.key === 'Enter' && (event.metaKey || event.ctrlKey)

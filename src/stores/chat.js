@@ -94,6 +94,17 @@ const sendSocketEnvelope = (socket, event, data) => {
 const getSocketOpenState = () =>
   typeof WebSocket !== 'undefined' && WebSocket.OPEN != null ? WebSocket.OPEN : 1
 
+const latestPeerMessage = (messages = [], currentUserEmail = '') => {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message?.senderEmail && message.senderEmail !== currentUserEmail) {
+      return message
+    }
+  }
+
+  return null
+}
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     users: [],
@@ -442,6 +453,17 @@ export const useChatStore = defineStore('chat', {
 
       if (!socket) {
         return false
+      }
+
+      const messageToRead = latestPeerMessage(
+        this.messagesByConversation[conversationId] || [],
+        currentUser.email || '',
+      )
+      if (messageToRead) {
+        sendSocketEnvelope(socket, 'mark_read', {
+          conversation_id: conversationId || '',
+          message_id: messageToRead.id,
+        })
       }
 
       return sendSocketEnvelope(socket, 'send_message', {

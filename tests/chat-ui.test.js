@@ -8,6 +8,7 @@ import {
   getConversationMembersSummary,
   getRecentChatItems,
   isChatMessageReadByPeer,
+  isChatSendShortcut,
 } from '../src/lib/chat-ui.js'
 
 test('filters users by login or email and excludes current user', () => {
@@ -94,4 +95,11 @@ test('message read status uses double check when peer has read it', () => {
   assert.equal(isChatMessageReadByPeer(message, 'wardercompany@gmail.com'), true)
   assert.equal(getChatMessageStatusIcon(message, 'wardercompany@gmail.com'), '✓✓')
   assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Прочитано собеседником')
+})
+
+test('detects cmd enter and ctrl enter as chat send shortcut', () => {
+  assert.equal(isChatSendShortcut({ key: 'Enter', metaKey: true, ctrlKey: false }), true)
+  assert.equal(isChatSendShortcut({ key: 'Enter', metaKey: false, ctrlKey: true }), true)
+  assert.equal(isChatSendShortcut({ key: 'Enter', metaKey: false, ctrlKey: false }), false)
+  assert.equal(isChatSendShortcut({ key: 'a', metaKey: true, ctrlKey: false }), false)
 })
