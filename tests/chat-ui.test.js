@@ -119,6 +119,22 @@ test('audio message status uses listener identity instead of current user playba
   assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Голосовое прослушано')
 })
 
+test('image message status uses viewer identity instead of generic read receipts', () => {
+  const message = {
+    type: 'image',
+    readBy: [],
+    image: {
+      consumed: true,
+      consumedByEmail: 'nika@example.com',
+      expired: false,
+    },
+  }
+
+  assert.equal(isChatMessageReadByPeer(message, 'wardercompany@gmail.com'), true)
+  assert.equal(getChatMessageStatusIcon(message, 'wardercompany@gmail.com'), '✓✓')
+  assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Изображение просмотрено')
+})
+
 test('message read status uses double check when peer has read it', () => {
   const message = {
     readBy: [{ email: 'nika@example.com', login: 'nika' }],

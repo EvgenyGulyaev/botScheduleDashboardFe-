@@ -170,6 +170,32 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(message.audio.expiresAt, '2026-04-17T11:00:00Z')
   assert.equal(message.audio.consumedByEmail, '')
   assert.equal(message.deliveredTo[0].login, 'bob')
+
+  const imageMessage = normalizeChatMessage({
+    id: 'msg-image',
+    conversation_id: 'group-1',
+    type: 'image',
+    sender_email: 'alice@example.com',
+    sender_login: 'alice',
+    text: 'Изображение',
+    created_at: '2026-04-16T11:02:00Z',
+    delivered_to: [],
+    read_by: [],
+    image: {
+      id: 'image-1',
+      mime_type: 'image/png',
+      size_bytes: 321,
+      consumed: false,
+      consumed_by_email: '',
+      consumed_by_login: '',
+      expires_at: '2026-04-17T11:00:00Z',
+      expired: false,
+    },
+  })
+
+  assert.equal(imageMessage.type, 'image')
+  assert.equal(imageMessage.image.mimeType, 'image/png')
+  assert.equal(imageMessage.image.expiresAt, '2026-04-17T11:00:00Z')
 })
 
 test('applies message_persisted into conversations and messages', () => {
@@ -509,6 +535,82 @@ test('chat store uploads and consumes one-time audio messages', async () => {
   assert.equal(blob.type, 'audio/webm')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumed, true)
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumedByEmail, 'alice@example.com')
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
+test('chat store uploads and consumes one-time image messages', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const calls = []
+  const fakeApi = {
+    get(url, config) {
+      calls.push(['get', url, config])
+      return Promise.resolve({ data: new Blob(['img'], { type: 'image/png' }) })
+    },
+    post(url, body, config) {
+      calls.push(['post', url, body, config])
+      return Promise.resolve({
+        data: {
+          id: 'msg-image',
+          conversation_id: 'group-1',
+          type: 'image',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'Изображение',
+          image: {
+            id: 'image-1',
+            mime_type: 'image/png',
+            size_bytes: 3,
+            consumed: false,
+            consumed_by_email: '',
+            consumed_by_login: '',
+            expires_at: '2026-04-17T11:00:00Z',
+            expired: false,
+          },
+        },
+      })
+    },
+  }
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+  notifications.error = () => {}
+
+  const chatStore = useChatStore()
+  const message = await chatStore.sendImageMessage({
+    conversationId: 'group-1',
+    imageBlob: new Blob(['img'], { type: 'image/png' }),
+    filename: 'photo.png',
+  })
+
+  assert.equal(calls[0][0], 'post')
+  assert.equal(calls[0][1], '/chat/conversations/group-1/image')
+  assert.ok(calls[0][2] instanceof FormData)
+  assert.equal(calls[0][3].headers.Authorization, 'Bearer token-123')
+  assert.equal(message.type, 'image')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].image.mimeType, 'image/png')
+
+  const blob = await chatStore.consumeImageMessage({
+    conversationId: 'group-1',
+    messageId: 'msg-image',
+  })
+
+  assert.equal(calls[1][0], 'get')
+  assert.equal(calls[1][2].responseType, 'blob')
+  assert.equal(blob.type, 'image/png')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].image.consumed, true)
+  assert.equal(chatStore.messagesByConversation['group-1'][0].image.consumedByEmail, 'alice@example.com')
 
   delete globalThis.localStorage
   delete globalThis.window

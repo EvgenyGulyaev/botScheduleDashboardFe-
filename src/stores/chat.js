@@ -140,6 +140,26 @@ const updateAudioMessage = (state, conversationId, messageId, patch = {}) => {
   return nextMessage
 }
 
+const updateImageMessage = (state, conversationId, messageId, patch = {}) => {
+  const messages = ensureMessagesCollection(state, conversationId)
+  const index = messages.findIndex((message) => message.id === messageId)
+  if (index === -1) {
+    return null
+  }
+
+  const nextMessage = {
+    ...messages[index],
+    image: {
+      ...(messages[index].image || {}),
+      ...patch,
+    },
+  }
+  const nextMessages = [...messages]
+  nextMessages[index] = nextMessage
+  state.messagesByConversation[conversationId] = nextMessages
+  return nextMessage
+}
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     users: [],
@@ -563,6 +583,71 @@ export const useChatStore = defineStore('chat', {
           },
         )
         updateAudioMessage(this, conversationId, messageId, {
+          consumed: true,
+          consumedByEmail: currentUser.email || '',
+          consumedByLogin: currentUser.login || '',
+        })
+        return response.data
+      } catch (error) {
+        if (error?.response?.status === 410) {
+          await this.loadMessages(conversationId)
+        }
+        throw error
+      }
+    },
+
+    async sendImageMessage({ conversationId, imageBlob, filename = 'image.png' }) {
+      if (!conversationId || !imageBlob) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const currentUser = getCurrentUser(authStore)
+      const socket = this.socket || this.connect()
+      if (socket) {
+        markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
+      }
+
+      const form = new FormData()
+      const file =
+        typeof File !== 'undefined'
+          ? new File([imageBlob], filename, {
+              type: imageBlob.type || 'image/png',
+            })
+          : imageBlob
+      form.append('image', file, filename)
+
+      const response = await api.post(`/chat/conversations/${conversationId}/image`, form, {
+        headers:
+          currentUser?.email && authStore.token
+            ? { Authorization: `Bearer ${authStore.token}` }
+            : undefined,
+      })
+      const message = normalizeChatMessage(response.data)
+      const messages = ensureMessagesCollection(this, conversationId)
+      if (!messages.some((item) => item.id === message.id)) {
+        this.messagesByConversation[conversationId] = [...messages, message]
+      }
+      return message
+    },
+
+    async consumeImageMessage({ conversationId, messageId }) {
+      if (!conversationId || !messageId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const currentUser = getCurrentUser(authStore)
+      try {
+        const response = await api.get(
+          `/chat/conversations/${conversationId}/messages/${messageId}/image`,
+          {
+            responseType: 'blob',
+          },
+        )
+        updateImageMessage(this, conversationId, messageId, {
           consumed: true,
           consumedByEmail: currentUser.email || '',
           consumedByLogin: currentUser.login || '',

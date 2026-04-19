@@ -61,6 +61,25 @@ const normalizeChatAudio = (audio = null) => {
   }
 }
 
+const normalizeChatImage = (image = null) => {
+  if (!image) {
+    return null
+  }
+
+  return {
+    id: normalizeString(image.id),
+    mimeType: normalizeString(image.mime_type ?? image.mimeType),
+    sizeBytes: Number(image.size_bytes ?? image.sizeBytes ?? 0),
+    consumed: Boolean(image.consumed),
+    consumedAt: normalizeIso(image.consumed_at ?? image.consumedAt),
+    consumedByEmail: normalizeString(image.consumed_by_email ?? image.consumedByEmail),
+    consumedByLogin: normalizeString(image.consumed_by_login ?? image.consumedByLogin),
+    expiresAt: normalizeIso(image.expires_at ?? image.expiresAt),
+    expired: Boolean(image.expired),
+    expiredAt: normalizeIso(image.expired_at ?? image.expiredAt),
+  }
+}
+
 const dedupeReceipts = (receipts = [], extra = []) => {
   const merged = []
   const seen = new Set()
@@ -131,7 +150,7 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
 export const normalizeChatMessage = (message = {}) => ({
   id: normalizeString(message.id),
   conversationId: normalizeString(message.conversation_id ?? message.conversationId),
-  type: normalizeString(message.type || (message.audio ? 'audio' : 'text')),
+  type: normalizeString(message.type || (message.audio ? 'audio' : message.image ? 'image' : 'text')),
   senderEmail: normalizeString(message.sender_email ?? message.senderEmail),
   senderLogin: normalizeString(message.sender_login ?? message.senderLogin),
   text: normalizeString(message.text),
@@ -139,6 +158,7 @@ export const normalizeChatMessage = (message = {}) => ({
   deliveredTo: toArray(message.delivered_to ?? message.deliveredTo).map(normalizeReceipt),
   readBy: toArray(message.read_by ?? message.readBy).map(normalizeReceipt),
   audio: normalizeChatAudio(message.audio),
+  image: normalizeChatImage(message.image),
 })
 
 export const normalizeChatUsers = (users = []) => toArray(users).map(normalizeChatUser)

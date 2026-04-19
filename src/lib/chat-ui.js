@@ -57,25 +57,29 @@ export const getChatMessageSenderLabel = (message = {}, currentUser = {}) => {
   return message.senderLogin || message.senderEmail || 'Пользователь'
 }
 
-export const isAudioMessageExpired = (audio = {}, now = Date.now()) => {
-  if (!audio) {
+export const isOneTimeMediaExpired = (media = {}, now = Date.now()) => {
+  if (!media) {
     return false
   }
 
-  if (audio.expired) {
+  if (media.expired) {
     return true
   }
 
-  const expiresAt = audio.expiresAt ? new Date(audio.expiresAt).getTime() : null
+  const expiresAt = media.expiresAt ? new Date(media.expiresAt).getTime() : null
   return Number.isFinite(expiresAt) && expiresAt <= now
 }
 
-export const isAudioMessageConsumedByPeer = (audio = {}, currentUserEmail = '') =>
-  Boolean(audio?.consumedByEmail) && audio.consumedByEmail !== currentUserEmail
+export const isOneTimeMediaConsumedByPeer = (media = {}, currentUserEmail = '') =>
+  Boolean(media?.consumedByEmail) && media.consumedByEmail !== currentUserEmail
 
 export const isChatMessageReadByPeer = (message = {}, currentUserEmail = '') => {
   if (message?.type === 'audio' && message.audio) {
-    return isAudioMessageConsumedByPeer(message.audio, currentUserEmail)
+    return isOneTimeMediaConsumedByPeer(message.audio, currentUserEmail)
+  }
+
+  if (message?.type === 'image' && message.image) {
+    return isOneTimeMediaConsumedByPeer(message.image, currentUserEmail)
   }
 
   return (message.readBy || []).some((receipt) => receipt.email && receipt.email !== currentUserEmail)
@@ -88,7 +92,9 @@ export const getChatMessageStatusTitle = (message = {}, currentUserEmail = '') =
   isChatMessageReadByPeer(message, currentUserEmail)
     ? message?.type === 'audio'
       ? 'Голосовое прослушано'
-      : 'Прочитано собеседником'
+      : message?.type === 'image'
+        ? 'Изображение просмотрено'
+        : 'Прочитано собеседником'
     : 'Отправлено'
 
 export const getAudioMessageButtonLabel = (
@@ -96,7 +102,7 @@ export const getAudioMessageButtonLabel = (
   playingAudioMessageId = null,
   targetMessageId = message?.id,
 ) => {
-  if (message?.audio?.consumed || isAudioMessageExpired(message?.audio)) {
+  if (message?.audio?.consumed || isOneTimeMediaExpired(message?.audio)) {
     return 'Недоступно'
   }
 
@@ -105,6 +111,22 @@ export const getAudioMessageButtonLabel = (
   }
 
   return 'Прослушать 1 раз'
+}
+
+export const getImageMessageButtonLabel = (
+  message = {},
+  viewingImageMessageId = null,
+  targetMessageId = message?.id,
+) => {
+  if (message?.image?.consumed || isOneTimeMediaExpired(message?.image)) {
+    return 'Недоступно'
+  }
+
+  if (viewingImageMessageId && targetMessageId && viewingImageMessageId === targetMessageId) {
+    return 'Открываем…'
+  }
+
+  return 'Открыть 1 раз'
 }
 
 export const getChatAudioRecorderLabel = (isRecording = false) =>

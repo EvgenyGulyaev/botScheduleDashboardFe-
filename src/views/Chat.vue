@@ -252,6 +252,22 @@
                           {{ formatAudioDuration(message.audio?.durationSeconds) }}
                         </span>
                       </div>
+                      <div
+                        v-else-if="message.type === 'image'"
+                        class="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
+                      >
+                        <button
+                          type="button"
+                          class="rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          :disabled="imageMessageUnavailable(message)"
+                          @click="openImageMessage(message)"
+                        >
+                          {{ imageMessageButtonLabel(message) }}
+                        </button>
+                        <span class="text-xs text-slate-500">
+                          {{ formatFileSize(message.image?.sizeBytes) }}
+                        </span>
+                      </div>
                       <p
                         v-else
                         class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700"
@@ -276,14 +292,30 @@
               <div class="border-t border-slate-200 px-6 py-5 xl:px-5 xl:py-4">
                 <form class="space-y-3" @submit.prevent="sendCurrentMessage">
                   <div ref="emojiPickerRoot" class="relative">
+                    <input
+                      ref="imageInput"
+                      type="file"
+                      accept="image/*"
+                      class="hidden"
+                      @change="handleImageSelected"
+                    />
                     <textarea
                       ref="composerTextarea"
                       v-model="composerText"
                       rows="3"
-                      class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-24 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+                      class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-36 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
                       placeholder="Напиши сообщение"
                       @keydown="handleComposerKeydown"
                     ></textarea>
+                    <button
+                      type="button"
+                      class="absolute right-[6.25rem] top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      aria-label="Выбрать изображение"
+                      :disabled="!activeConversation || sendingImage"
+                      @click="triggerImagePicker"
+                    >
+                      🖼
+                    </button>
                     <button
                       type="button"
                       class="absolute right-14 top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
@@ -331,28 +363,23 @@
                       </div>
                     </div>
                   </div>
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <div class="flex flex-col gap-2">
-                      <div class="text-sm text-slate-600">
-                        <span v-if="isRecordingAudio" class="font-semibold text-rose-700">
-                          Запись {{ formatAudioDuration(recordingSeconds) }} /
-                          {{ formatAudioDuration(chatAudioMaxSeconds) }}. Нажми микрофон ещё раз,
-                          чтобы остановить.
-                        </span>
-                        <span v-else-if="recordedAudioUrl" class="font-semibold text-slate-900">
-                          Аудио готово к отправке, {{ formatAudioDuration(recordedAudioDuration) }}
-                        </span>
-                        <span v-else class="text-slate-500">
-                          Можно записать голосовое до
-                          {{ formatAudioDuration(chatAudioMaxSeconds) }}.
-                        </span>
-                      </div>
-                    </div>
+                  <div
+                    v-if="isRecordingAudio"
+                    class="text-sm font-semibold text-rose-700"
+                  >
+                    Запись {{ formatAudioDuration(recordingSeconds) }} /
+                    {{ formatAudioDuration(chatAudioMaxSeconds) }}. Нажми микрофон ещё раз, чтобы
+                    остановить.
+                  </div>
 
-                    <div
-                      v-if="recordedAudioUrl"
-                      class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"
-                    >
+                  <div
+                    v-if="recordedAudioUrl"
+                    class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                  >
+                    <div class="text-sm font-semibold text-slate-900">
+                      Аудио готово к отправке, {{ formatAudioDuration(recordedAudioDuration) }}
+                    </div>
+                    <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
                       <audio :src="recordedAudioUrl" controls class="h-10 w-full sm:flex-1"></audio>
                       <button
                         type="button"
@@ -370,30 +397,63 @@
                         Удалить
                       </button>
                     </div>
+                  </div>
 
-                    <div
-                      v-if="recordingError"
-                      class="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-3"
-                    >
-                      <p class="text-xs text-rose-700">
-                        {{ recordingError }}
-                      </p>
-                      <div class="mt-2 flex flex-wrap gap-2">
+                  <div
+                    v-if="selectedImageUrl"
+                    class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                  >
+                    <div class="text-sm font-semibold text-slate-900">
+                      Изображение готово к отправке, {{ selectedImageName }}
+                    </div>
+                    <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <img
+                        :src="selectedImageUrl"
+                        alt="Предпросмотр изображения"
+                        class="h-24 w-full rounded-2xl object-cover sm:w-36"
+                      />
+                      <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                         <button
                           type="button"
-                          class="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-700"
-                          @click="startAudioRecording"
+                          class="rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          :disabled="sendingImage || !activeConversation"
+                          @click="sendCurrentImage"
                         >
-                          Запросить доступ снова
+                          {{ sendingImage ? 'Отправляем…' : 'Отправить изображение' }}
                         </button>
                         <button
                           type="button"
-                          class="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
-                          @click="microphoneHelpOpen = true"
+                          class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-100"
+                          @click="discardSelectedImage"
                         >
-                          Как дать доступ
+                          Удалить
                         </button>
                       </div>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="recordingError"
+                    class="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-3"
+                  >
+                    <p class="text-xs text-rose-700">
+                      {{ recordingError }}
+                    </p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        class="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-700"
+                        @click="startAudioRecording"
+                      >
+                        Запросить доступ снова
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                        @click="microphoneHelpOpen = true"
+                      >
+                        Как дать доступ
+                      </button>
                     </div>
                   </div>
                   <button
@@ -409,6 +469,31 @@
           </section>
         </main>
       </div>
+    </div>
+
+    <div
+      v-if="imageViewerOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
+      @click.self="closeImageViewer"
+    >
+      <section class="w-full max-w-5xl rounded-3xl bg-white p-4 shadow-2xl">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <h3 class="text-lg font-bold text-slate-950">Изображение</h3>
+          <button
+            type="button"
+            class="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            @click="closeImageViewer"
+          >
+            Закрыть
+          </button>
+        </div>
+        <img
+          v-if="imageViewerUrl"
+          :src="imageViewerUrl"
+          alt="Одноразовое изображение"
+          class="max-h-[75vh] w-full rounded-2xl object-contain"
+        />
+      </section>
     </div>
 
     <div
@@ -530,6 +615,7 @@ import InlineNotice from '../components/InlineNotice.vue'
 import {
   getChatAudioRecorderLabel,
   getAudioMessageButtonLabel,
+  getImageMessageButtonLabel,
   filterChatUsersForSearch,
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
@@ -551,12 +637,14 @@ const notifications = useNotificationsStore()
 const chatSearch = ref('')
 const composerText = ref('')
 const composerTextarea = ref(null)
+const imageInput = ref(null)
 const emojiPickerRoot = ref(null)
 const emojiPickerOpen = ref(false)
 const creatingGroup = ref(false)
 const deletingGroup = ref(false)
 const sendingMessage = ref(false)
 const sendingAudio = ref(false)
+const sendingImage = ref(false)
 const groupModalOpen = ref(false)
 const messagesScroller = ref(null)
 const isRecordingAudio = ref(false)
@@ -564,9 +652,15 @@ const recordingSeconds = ref(0)
 const recordedAudioDuration = ref(0)
 const recordedAudioBlob = ref(null)
 const recordedAudioUrl = ref('')
+const selectedImageBlob = ref(null)
+const selectedImageUrl = ref('')
+const selectedImageName = ref('')
 const recordingError = ref('')
 const microphoneHelpOpen = ref(false)
 const playingAudioMessageId = ref('')
+const viewingImageMessageId = ref('')
+const imageViewerOpen = ref(false)
+const imageViewerUrl = ref('')
 const mediaRecorder = ref(null)
 const recordingStream = ref(null)
 const recordingTimer = ref(null)
@@ -761,6 +855,12 @@ const audioMessageButtonLabel = (message) =>
 const audioMessageUnavailable = (message) =>
   audioMessageButtonLabel(message) === 'Недоступно' || playingAudioMessageId.value === message?.id
 
+const imageMessageButtonLabel = (message) =>
+  getImageMessageButtonLabel(message, viewingImageMessageId.value, message?.id)
+
+const imageMessageUnavailable = (message) =>
+  imageMessageButtonLabel(message) === 'Недоступно' || viewingImageMessageId.value === message?.id
+
 const clearRecordingTimer = () => {
   if (recordingTimer.value) {
     clearInterval(recordingTimer.value)
@@ -789,6 +889,18 @@ const discardRecordedAudio = () => {
   recordingError.value = ''
 }
 
+const discardSelectedImage = () => {
+  if (selectedImageUrl.value) {
+    URL.revokeObjectURL(selectedImageUrl.value)
+  }
+  selectedImageBlob.value = null
+  selectedImageUrl.value = ''
+  selectedImageName.value = ''
+  if (imageInput.value) {
+    imageInput.value.value = ''
+  }
+}
+
 const stopAudioRecording = () => {
   clearRecordingTimer()
   isRecordingAudio.value = false
@@ -808,6 +920,22 @@ const toggleAudioRecording = () => {
   }
 
   startAudioRecording()
+}
+
+const triggerImagePicker = () => {
+  imageInput.value?.click()
+}
+
+const handleImageSelected = (event) => {
+  const file = event?.target?.files?.[0]
+  if (!file) {
+    return
+  }
+
+  discardSelectedImage()
+  selectedImageBlob.value = file
+  selectedImageName.value = file.name || 'image.png'
+  selectedImageUrl.value = URL.createObjectURL(file)
 }
 
 const startAudioRecording = async () => {
@@ -900,6 +1028,26 @@ const sendCurrentAudio = async () => {
   }
 }
 
+const sendCurrentImage = async () => {
+  if (!activeConversation.value || !selectedImageBlob.value) {
+    return
+  }
+
+  sendingImage.value = true
+  try {
+    await chatStore.sendImageMessage({
+      conversationId: activeConversation.value.id,
+      imageBlob: selectedImageBlob.value,
+      filename: selectedImageName.value || 'image.png',
+    })
+    discardSelectedImage()
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось отправить изображение')
+  } finally {
+    sendingImage.value = false
+  }
+}
+
 const playAudioMessage = async (message) => {
   if (!activeConversation.value || !message?.id || message.audio?.consumed) {
     return
@@ -932,6 +1080,45 @@ const playAudioMessage = async (message) => {
     playingAudioMessageId.value = ''
     notifications.errorFrom(error, 'Не удалось воспроизвести аудио')
   }
+}
+
+const closeImageViewer = () => {
+  if (imageViewerUrl.value) {
+    URL.revokeObjectURL(imageViewerUrl.value)
+  }
+  imageViewerUrl.value = ''
+  imageViewerOpen.value = false
+}
+
+const openImageMessage = async (message) => {
+  if (!activeConversation.value || !message?.id || message.image?.consumed) {
+    return
+  }
+
+  viewingImageMessageId.value = message.id
+  try {
+    const blob = await chatStore.consumeImageMessage({
+      conversationId: activeConversation.value.id,
+      messageId: message.id,
+    })
+    imageViewerUrl.value = URL.createObjectURL(blob)
+    imageViewerOpen.value = true
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось открыть изображение')
+  } finally {
+    viewingImageMessageId.value = ''
+  }
+}
+
+const formatFileSize = (value) => {
+  const size = Math.max(0, Number(value) || 0)
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`
+  }
+  if (size >= 1024) {
+    return `${Math.round(size / 1024)} KB`
+  }
+  return `${size} B`
 }
 
 const scrollMessagesToBottom = async () => {
@@ -1098,6 +1285,8 @@ onUnmounted(() => {
   clearRecordingTimer()
   stopRecordingTracks()
   discardRecordedAudio()
+  discardSelectedImage()
+  closeImageViewer()
   chatStore.disconnect()
 })
 </script>
