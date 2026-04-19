@@ -509,7 +509,7 @@ export const useChatStore = defineStore('chat', {
 
       if (shouldNotify) {
         const notice = buildIncomingChatNotice(envelope)
-        useNotificationsStore().info(`${notice.title}. ${notice.message}`, { duration: 7000 })
+        useNotificationsStore().chat(`${notice.title}. ${notice.message}`, { duration: 7000 })
 
         if (this.soundEnabled) {
           playChatNotificationSound()

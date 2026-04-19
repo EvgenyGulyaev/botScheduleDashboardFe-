@@ -39,6 +39,10 @@ export const useNotificationsStore = defineStore('notifications', {
       return this.notify('info', message, options)
     },
 
+    chat(message, options) {
+      return this.notify('chat', message, options)
+    },
+
     error(message, options) {
       return this.notify('error', message, options)
     },

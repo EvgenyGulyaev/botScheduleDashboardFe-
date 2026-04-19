@@ -383,9 +383,9 @@ test('chat store shows toast for incoming inactive conversation message', () => 
   authStore.user = { email: 'alice@example.com', login: 'alice' }
 
   const notifications = useNotificationsStore()
-  const infoCalls = []
-  notifications.info = (message, options) => {
-    infoCalls.push({ message, options })
+  const chatCalls = []
+  notifications.chat = (message, options) => {
+    chatCalls.push({ message, options })
   }
 
   const chatStore = useChatStore()
@@ -415,14 +415,14 @@ test('chat store shows toast for incoming inactive conversation message', () => 
     },
   })
 
-  assert.equal(infoCalls.length, 1)
-  assert.match(infoCalls[0].message, /Новое сообщение от bob/)
+  assert.equal(chatCalls.length, 1)
+  assert.match(chatCalls[0].message, /Новое сообщение от bob/)
   assert.equal(chatStore.messagesByConversation['group-1'][0].text, 'Привет')
 
   delete globalThis.localStorage
 })
 
-test('chat store does not show toast for active conversation message', () => {
+test('chat store shows toast for incoming active conversation message', () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()
 
@@ -430,9 +430,9 @@ test('chat store does not show toast for active conversation message', () => {
   authStore.user = { email: 'alice@example.com', login: 'alice' }
 
   const notifications = useNotificationsStore()
-  const infoCalls = []
-  notifications.info = (message) => {
-    infoCalls.push(message)
+  const chatCalls = []
+  notifications.chat = (message, options) => {
+    chatCalls.push({ message, options })
   }
 
   const chatStore = useChatStore()
@@ -458,7 +458,8 @@ test('chat store does not show toast for active conversation message', () => {
     },
   })
 
-  assert.equal(infoCalls.length, 0)
+  assert.equal(chatCalls.length, 1)
+  assert.match(chatCalls[0].message, /Новое сообщение от bob/)
 
   delete globalThis.localStorage
 })

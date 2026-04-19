@@ -57,6 +57,20 @@ test('supports persistent notifications and manual dismiss', () => {
   }
 })
 
+test('adds chat notifications for incoming messages', () => {
+  setActivePinia(createPinia())
+
+  const store = useNotificationsStore()
+  const id = store.chat('Новое сообщение', { duration: 0 })
+
+  assert.deepEqual(store.items[0], {
+    id,
+    type: 'chat',
+    message: 'Новое сообщение',
+    duration: 0,
+  })
+})
+
 test('extracts a readable message from api-like errors', () => {
   setActivePinia(createPinia())
 

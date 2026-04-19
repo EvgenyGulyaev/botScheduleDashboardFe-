@@ -49,6 +49,10 @@ const toastClass = (type) => {
     return 'border-rose-200 bg-rose-50/95 text-rose-950'
   }
 
+  if (type === 'chat') {
+    return 'border-slate-900 bg-slate-950/95 text-white'
+  }
+
   return 'border-sky-200 bg-sky-50/95 text-sky-950'
 }
 
@@ -61,6 +65,10 @@ const toastIcon = (type) => {
     return '!'
   }
 
+  if (type === 'chat') {
+    return '💬'
+  }
+
   return 'i'
 }
 
@@ -71,6 +79,10 @@ const toastTitle = (type) => {
 
   if (type === 'error') {
     return 'Ошибка'
+  }
+
+  if (type === 'chat') {
+    return 'Новое сообщение'
   }
 
   return 'Информация'

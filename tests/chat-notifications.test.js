@@ -37,7 +37,7 @@ test('notifies for messages from another user in inactive conversation', () => {
   )
 })
 
-test('does not notify for own messages or currently active conversation', () => {
+test('does not notify for own messages', () => {
   assert.equal(
     shouldNotifyIncomingChatMessage(incomingEnvelope({
       message: {
@@ -53,13 +53,15 @@ test('does not notify for own messages or currently active conversation', () => 
     }),
     false,
   )
+})
 
+test('notifies for messages from another user even in the active conversation', () => {
   assert.equal(
     shouldNotifyIncomingChatMessage(incomingEnvelope(), {
       currentUserEmail: 'alice@example.com',
       activeConversationId: 'group-1',
     }),
-    false,
+    true,
   )
 })
 
@@ -119,4 +121,47 @@ test('plays notification sound through WebAudio when available', () => {
   assert.equal(playChatNotificationSound({ audioContextFactory: FakeAudioContext }), true)
   assert.equal(calls.some(([name]) => name === 'start'), true)
   assert.equal(calls.some(([name]) => name === 'stop'), true)
+})
+
+test('resumes suspended audio context before playing notification sound', () => {
+  const calls = []
+
+  class FakeAudioContext {
+    constructor() {
+      this.currentTime = 0
+      this.destination = {}
+      this.state = 'suspended'
+    }
+
+    resume() {
+      calls.push(['resume'])
+      this.state = 'running'
+    }
+
+    createOscillator() {
+      return {
+        frequency: { setValueAtTime: (...args) => calls.push(['frequency', ...args]) },
+        connect: (...args) => calls.push(['osc-connect', ...args]),
+        start: (...args) => calls.push(['start', ...args]),
+        stop: (...args) => calls.push(['stop', ...args]),
+        set type(value) {
+          calls.push(['type', value])
+        },
+      }
+    }
+
+    createGain() {
+      return {
+        gain: {
+          setValueAtTime: (...args) => calls.push(['gain', ...args]),
+          exponentialRampToValueAtTime: (...args) => calls.push(['ramp', ...args]),
+        },
+        connect: (...args) => calls.push(['gain-connect', ...args]),
+      }
+    }
+  }
+
+  assert.equal(playChatNotificationSound({ audioContextFactory: FakeAudioContext }), true)
+  assert.equal(calls[0][0], 'resume')
+  assert.equal(calls.some(([name]) => name === 'start'), true)
 })
