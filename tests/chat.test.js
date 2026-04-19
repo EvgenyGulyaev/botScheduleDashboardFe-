@@ -157,12 +157,18 @@ test('normalizes conversation and message payloads', () => {
       size_bytes: 123,
       duration_seconds: 7,
       consumed: false,
+      consumed_by_email: '',
+      consumed_by_login: '',
+      expires_at: '2026-04-17T11:00:00Z',
+      expired: false,
     },
   })
 
   assert.equal(message.conversationId, 'group-1')
   assert.equal(message.type, 'audio')
   assert.equal(message.audio.durationSeconds, 7)
+  assert.equal(message.audio.expiresAt, '2026-04-17T11:00:00Z')
+  assert.equal(message.audio.consumedByEmail, '')
   assert.equal(message.deliveredTo[0].login, 'bob')
 })
 
@@ -445,8 +451,8 @@ test('chat store uploads and consumes one-time audio messages', async () => {
       calls.push(['get', url, config])
       return Promise.resolve({ data: new Blob(['voice'], { type: 'audio/webm' }) })
     },
-    post(url, body) {
-      calls.push(['post', url, body])
+    post(url, body, config) {
+      calls.push(['post', url, body, config])
       return Promise.resolve({
         data: {
           id: 'msg-audio',
@@ -461,6 +467,10 @@ test('chat store uploads and consumes one-time audio messages', async () => {
             size_bytes: 5,
             duration_seconds: 4,
             consumed: false,
+            consumed_by_email: '',
+            consumed_by_login: '',
+            expires_at: '2026-04-17T11:00:00Z',
+            expired: false,
           },
         },
       })
@@ -485,6 +495,7 @@ test('chat store uploads and consumes one-time audio messages', async () => {
   assert.equal(calls[0][0], 'post')
   assert.equal(calls[0][1], '/chat/conversations/group-1/audio')
   assert.ok(calls[0][2] instanceof FormData)
+  assert.equal(calls[0][3].headers.Authorization, 'Bearer token-123')
   assert.equal(message.type, 'audio')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.durationSeconds, 4)
 
@@ -497,6 +508,7 @@ test('chat store uploads and consumes one-time audio messages', async () => {
   assert.equal(calls[1][2].responseType, 'blob')
   assert.equal(blob.type, 'audio/webm')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumed, true)
+  assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumedByEmail, 'alice@example.com')
 
   delete globalThis.localStorage
   delete globalThis.window

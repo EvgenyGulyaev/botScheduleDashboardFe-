@@ -533,7 +533,12 @@ export const useChatStore = defineStore('chat', {
           : audioBlob
       form.append('audio', file, 'voice.webm')
 
-      const response = await api.post(`/chat/conversations/${conversationId}/audio`, form)
+      const response = await api.post(`/chat/conversations/${conversationId}/audio`, form, {
+        headers:
+          currentUser?.email && authStore.token
+            ? { Authorization: `Bearer ${authStore.token}` }
+            : undefined,
+      })
       const message = normalizeChatMessage(response.data)
       const messages = ensureMessagesCollection(this, conversationId)
       if (!messages.some((item) => item.id === message.id)) {
@@ -549,6 +554,7 @@ export const useChatStore = defineStore('chat', {
 
       const authStore = useAuthStore()
       const api = getApi(authStore)
+      const currentUser = getCurrentUser(authStore)
       try {
         const response = await api.get(
           `/chat/conversations/${conversationId}/messages/${messageId}/audio`,
@@ -556,11 +562,15 @@ export const useChatStore = defineStore('chat', {
             responseType: 'blob',
           },
         )
-        updateAudioMessage(this, conversationId, messageId, { consumed: true })
+        updateAudioMessage(this, conversationId, messageId, {
+          consumed: true,
+          consumedByEmail: currentUser.email || '',
+          consumedByLogin: currentUser.login || '',
+        })
         return response.data
       } catch (error) {
         if (error?.response?.status === 410) {
-          updateAudioMessage(this, conversationId, messageId, { consumed: true })
+          await this.loadMessages(conversationId)
         }
         throw error
       }

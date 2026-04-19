@@ -57,14 +57,55 @@ export const getChatMessageSenderLabel = (message = {}, currentUser = {}) => {
   return message.senderLogin || message.senderEmail || 'Пользователь'
 }
 
-export const isChatMessageReadByPeer = (message = {}, currentUserEmail = '') =>
-  (message.readBy || []).some((receipt) => receipt.email && receipt.email !== currentUserEmail)
+export const isAudioMessageExpired = (audio = {}, now = Date.now()) => {
+  if (!audio) {
+    return false
+  }
+
+  if (audio.expired) {
+    return true
+  }
+
+  const expiresAt = audio.expiresAt ? new Date(audio.expiresAt).getTime() : null
+  return Number.isFinite(expiresAt) && expiresAt <= now
+}
+
+export const isAudioMessageConsumedByPeer = (audio = {}, currentUserEmail = '') =>
+  Boolean(audio?.consumedByEmail) && audio.consumedByEmail !== currentUserEmail
+
+export const isChatMessageReadByPeer = (message = {}, currentUserEmail = '') => {
+  if (message?.type === 'audio' && message.audio) {
+    return isAudioMessageConsumedByPeer(message.audio, currentUserEmail)
+  }
+
+  return (message.readBy || []).some((receipt) => receipt.email && receipt.email !== currentUserEmail)
+}
 
 export const getChatMessageStatusIcon = (message = {}, currentUserEmail = '') =>
   isChatMessageReadByPeer(message, currentUserEmail) ? '✓✓' : '✓'
 
 export const getChatMessageStatusTitle = (message = {}, currentUserEmail = '') =>
-  isChatMessageReadByPeer(message, currentUserEmail) ? 'Прочитано собеседником' : 'Отправлено'
+  isChatMessageReadByPeer(message, currentUserEmail)
+    ? message?.type === 'audio'
+      ? 'Голосовое прослушано'
+      : 'Прочитано собеседником'
+    : 'Отправлено'
+
+export const getAudioMessageButtonLabel = (
+  message = {},
+  playingAudioMessageId = null,
+  targetMessageId = message?.id,
+) => {
+  if (message?.audio?.consumed || isAudioMessageExpired(message?.audio)) {
+    return 'Недоступно'
+  }
+
+  if (playingAudioMessageId && targetMessageId && playingAudioMessageId === targetMessageId) {
+    return 'Воспроизводим…'
+  }
+
+  return 'Прослушать 1 раз'
+}
 
 export const getChatAudioRecorderLabel = (isRecording = false) =>
   isRecording ? 'Остановить запись' : 'Начать запись'

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   filterChatUsersForSearch,
+  getAudioMessageButtonLabel,
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
   getChatMessageStatusTitle,
@@ -86,6 +87,38 @@ test('message read status ignores current user receipt', () => {
   assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Отправлено')
 })
 
+test('audio message status does not switch to peer-read until voice is listened to', () => {
+  const message = {
+    type: 'audio',
+    readBy: [{ email: 'nika@example.com', login: 'nika' }],
+    audio: {
+      consumed: false,
+      consumedByEmail: '',
+      expired: false,
+    },
+  }
+
+  assert.equal(isChatMessageReadByPeer(message, 'wardercompany@gmail.com'), false)
+  assert.equal(getChatMessageStatusIcon(message, 'wardercompany@gmail.com'), '✓')
+  assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Отправлено')
+})
+
+test('audio message status uses listener identity instead of current user playback', () => {
+  const message = {
+    type: 'audio',
+    readBy: [],
+    audio: {
+      consumed: true,
+      consumedByEmail: 'nika@example.com',
+      expired: false,
+    },
+  }
+
+  assert.equal(isChatMessageReadByPeer(message, 'wardercompany@gmail.com'), true)
+  assert.equal(getChatMessageStatusIcon(message, 'wardercompany@gmail.com'), '✓✓')
+  assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Голосовое прослушано')
+})
+
 test('message read status uses double check when peer has read it', () => {
   const message = {
     readBy: [{ email: 'nika@example.com', login: 'nika' }],
@@ -147,4 +180,23 @@ test('explains microphone permission failures with actionable messages', () => {
 test('labels audio recorder toggle by recording state', () => {
   assert.equal(getChatAudioRecorderLabel(false), 'Начать запись')
   assert.equal(getChatAudioRecorderLabel(true), 'Остановить запись')
+})
+
+test('marks consumed or expired audio message button as unavailable', () => {
+  assert.equal(
+    getAudioMessageButtonLabel({ audio: { consumed: true, expired: false } }, null),
+    'Недоступно',
+  )
+  assert.equal(
+    getAudioMessageButtonLabel({ audio: { consumed: false, expired: true } }, null),
+    'Недоступно',
+  )
+  assert.equal(
+    getAudioMessageButtonLabel({ audio: { consumed: false, expired: false } }, 'msg-1', 'msg-1'),
+    'Воспроизводим…',
+  )
+  assert.equal(
+    getAudioMessageButtonLabel({ id: 'msg-2', audio: { consumed: false, expired: false } }, null),
+    'Прослушать 1 раз',
+  )
 })

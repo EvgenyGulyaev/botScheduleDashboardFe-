@@ -52,6 +52,12 @@ const normalizeChatAudio = (audio = null) => {
     sizeBytes: Number(audio.size_bytes ?? audio.sizeBytes ?? 0),
     durationSeconds: Number(audio.duration_seconds ?? audio.durationSeconds ?? 0),
     consumed: Boolean(audio.consumed),
+    consumedAt: normalizeIso(audio.consumed_at ?? audio.consumedAt),
+    consumedByEmail: normalizeString(audio.consumed_by_email ?? audio.consumedByEmail),
+    consumedByLogin: normalizeString(audio.consumed_by_login ?? audio.consumedByLogin),
+    expiresAt: normalizeIso(audio.expires_at ?? audio.expiresAt),
+    expired: Boolean(audio.expired),
+    expiredAt: normalizeIso(audio.expired_at ?? audio.expiredAt),
   }
 }
 

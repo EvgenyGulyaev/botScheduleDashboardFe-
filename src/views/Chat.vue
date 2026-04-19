@@ -243,9 +243,7 @@
                         <button
                           type="button"
                           class="rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-                          :disabled="
-                            message.audio?.consumed || playingAudioMessageId === message.id
-                          "
+                          :disabled="audioMessageUnavailable(message)"
                           @click="playAudioMessage(message)"
                         >
                           {{ audioMessageButtonLabel(message) }}
@@ -344,8 +342,8 @@
                         <span v-else-if="recordedAudioUrl" class="font-semibold text-slate-900">
                           Аудио готово к отправке, {{ formatAudioDuration(recordedAudioDuration) }}
                         </span>
-                        <span v-else>
-                          Нажми микрофон в поле сообщения, чтобы записать голосовое до
+                        <span v-else class="text-slate-500">
+                          Можно записать голосовое до
                           {{ formatAudioDuration(chatAudioMaxSeconds) }}.
                         </span>
                       </div>
@@ -531,6 +529,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
 import {
   getChatAudioRecorderLabel,
+  getAudioMessageButtonLabel,
   filterChatUsersForSearch,
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
@@ -756,17 +755,11 @@ const requestMicrophoneFromHelp = () => {
   startAudioRecording()
 }
 
-const audioMessageButtonLabel = (message) => {
-  if (message.audio?.consumed) {
-    return 'Уже прослушано'
-  }
+const audioMessageButtonLabel = (message) =>
+  getAudioMessageButtonLabel(message, playingAudioMessageId.value, message?.id)
 
-  if (playingAudioMessageId.value === message.id) {
-    return 'Воспроизводим…'
-  }
-
-  return 'Прослушать 1 раз'
-}
+const audioMessageUnavailable = (message) =>
+  audioMessageButtonLabel(message) === 'Недоступно' || playingAudioMessageId.value === message?.id
 
 const clearRecordingTimer = () => {
   if (recordingTimer.value) {
