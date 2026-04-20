@@ -967,12 +967,7 @@ export const useChatStore = defineStore('chat', {
           : audioBlob
       form.append('audio', file, 'voice.webm')
 
-      const response = await api.post(`/chat/conversations/${conversationId}/audio`, form, {
-        headers:
-          currentUser?.email && authStore.token
-            ? { Authorization: `Bearer ${authStore.token}` }
-            : undefined,
-      })
+      const response = await api.post(`/chat/conversations/${conversationId}/audio`, form)
       const message = normalizeChatMessage(response.data)
       const messages = ensureMessagesCollection(this, conversationId)
       if (!messages.some((item) => item.id === message.id)) {
@@ -1032,12 +1027,7 @@ export const useChatStore = defineStore('chat', {
           : imageBlob
       form.append('image', file, filename)
 
-      const response = await api.post(`/chat/conversations/${conversationId}/image`, form, {
-        headers:
-          currentUser?.email && authStore.token
-            ? { Authorization: `Bearer ${authStore.token}` }
-            : undefined,
-      })
+      const response = await api.post(`/chat/conversations/${conversationId}/image`, form)
       const message = normalizeChatMessage(response.data)
       const messages = ensureMessagesCollection(this, conversationId)
       if (!messages.some((item) => item.id === message.id)) {

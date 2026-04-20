@@ -851,7 +851,7 @@ test('chat store uploads and consumes one-time audio messages', async () => {
   assert.equal(calls[0][0], 'post')
   assert.equal(calls[0][1], '/chat/conversations/group-1/audio')
   assert.ok(calls[0][2] instanceof FormData)
-  assert.equal(calls[0][3].headers.Authorization, 'Bearer token-123')
+  assert.equal(calls[0][3], undefined)
   assert.equal(message.type, 'audio')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.durationSeconds, 4)
 
@@ -927,7 +927,7 @@ test('chat store uploads and consumes one-time image messages', async () => {
   assert.equal(calls[0][0], 'post')
   assert.equal(calls[0][1], '/chat/conversations/group-1/image')
   assert.ok(calls[0][2] instanceof FormData)
-  assert.equal(calls[0][3].headers.Authorization, 'Bearer token-123')
+  assert.equal(calls[0][3], undefined)
   assert.equal(message.type, 'image')
   assert.equal(chatStore.messagesByConversation['group-1'][0].image.mimeType, 'image/png')
 
