@@ -78,7 +78,24 @@ test('updates stored session token from auth refresh response header', () => {
   assert.equal(fulfilled(response), response)
   assert.equal(authStore.token, 'fresh-token')
   assert.equal(localStorage.getItem('token'), 'fresh-token')
-  assert.equal(localStorage.getItem('user'), JSON.stringify({ id: 42, email: 'alice@example.com' }))
+  assert.equal(
+    localStorage.getItem('user'),
+    JSON.stringify({
+      id: 42,
+      email: 'alice@example.com',
+      login: '',
+      isAdmin: false,
+      notificationSettings: {
+        pushEnabled: false,
+        soundEnabled: true,
+        toastEnabled: true,
+      },
+      push: {
+        supported: false,
+        publicKey: '',
+      },
+    }),
+  )
 
   delete global.localStorage
 })

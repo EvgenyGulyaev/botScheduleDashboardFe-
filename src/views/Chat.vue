@@ -31,6 +31,16 @@
         >
           {{ chatStore.soundEnabled ? '🔔' : '🔕' }}
         </button>
+
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg shadow-sm transition hover:bg-slate-50"
+          title="Настройки"
+          aria-label="Настройки"
+          @click="openSettings"
+        >
+          ⚙️
+        </button>
       </div>
 
       <div v-if="!mobileConversationMode" class="mb-5 space-y-3 xl:mb-3 xl:space-y-2">
@@ -257,6 +267,15 @@
                       @click="handleCallAction"
                     >
                       📞
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      title="Настройки"
+                      aria-label="Настройки"
+                      @click="openSettings"
+                    >
+                      ⚙️
                     </button>
                   </div>
                 </div>
@@ -1183,6 +1202,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import InlineNotice from '../components/InlineNotice.vue'
 import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
@@ -1213,6 +1233,7 @@ import { useNotificationsStore } from '../stores/notifications.js'
 const authStore = useAuthStore()
 const chatStore = useChatStore()
 const notifications = useNotificationsStore()
+const router = useRouter()
 
 const chatSearch = ref('')
 const composerText = ref('')
@@ -1442,7 +1463,14 @@ const openChatsScreen = () => {
 
 const toggleSoundNotifications = () => {
   const enabled = chatStore.setSoundEnabled(!chatStore.soundEnabled)
+  authStore.updateProfile({
+    sound_enabled: enabled,
+  }).catch(() => {})
   notifications.info(enabled ? 'Звуковые уведомления включены' : 'Звуковые уведомления выключены')
+}
+
+const openSettings = () => {
+  router.push('/settings')
 }
 
 const formatMessageTime = (value) => {

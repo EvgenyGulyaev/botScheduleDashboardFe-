@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   clearStoredAuth,
+  normalizeAuthUser,
   normalizeAuthPayload,
   readStoredAuth,
   writeStoredAuth,
@@ -56,16 +57,57 @@ test('normalizes backend auth payloads with Token or token fields', () => {
   const upper = normalizeAuthPayload({ Token: 'upper', id: 1 })
   const lower = normalizeAuthPayload({ token: 'lower', user: { id: 2 } })
 
-  assert.deepEqual(upper, {
-    token: 'upper',
-    user: { Token: 'upper', id: 1 },
-  })
-  assert.deepEqual(lower, {
-    token: 'lower',
-    user: { id: 2 },
-  })
+  assert.equal(upper.token, 'upper')
+  assert.equal(upper.user.login, '')
+  assert.equal(upper.user.email, '')
+  assert.equal(upper.user.notificationSettings.pushEnabled, false)
+  assert.equal(upper.user.notificationSettings.soundEnabled, true)
+  assert.equal(upper.user.notificationSettings.toastEnabled, true)
+
+  assert.equal(lower.token, 'lower')
+  assert.equal(lower.user.login, '')
+  assert.equal(lower.user.email, '')
+  assert.equal(lower.user.notificationSettings.pushEnabled, false)
 })
 
 test('throws when auth payload does not contain a token', () => {
   assert.throws(() => normalizeAuthPayload({ user: { id: 1 } }), /token/i)
+})
+
+test('normalizes profile notification and push metadata', () => {
+  const user = normalizeAuthUser({
+    login: 'alice',
+    email: 'alice@example.com',
+    is_admin: true,
+    notification_settings: {
+      push_enabled: true,
+      sound_enabled: false,
+      toast_enabled: false,
+    },
+    push: {
+      supported: true,
+      public_key: 'public-key',
+    },
+  })
+
+  assert.deepEqual(user, {
+    login: 'alice',
+    email: 'alice@example.com',
+    is_admin: true,
+    isAdmin: true,
+    notification_settings: {
+      push_enabled: true,
+      sound_enabled: false,
+      toast_enabled: false,
+    },
+    notificationSettings: {
+      pushEnabled: true,
+      soundEnabled: false,
+      toastEnabled: false,
+    },
+    push: {
+      supported: true,
+      publicKey: 'public-key',
+    },
+  })
 })

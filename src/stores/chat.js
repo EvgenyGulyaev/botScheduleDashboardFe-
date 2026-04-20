@@ -13,8 +13,10 @@ import {
 import {
   buildIncomingChatNotice,
   isChatSoundEnabled,
+  isChatToastEnabled,
   playChatNotificationSound,
   setChatSoundEnabled,
+  setChatToastEnabled,
   shouldNotifyIncomingChatMessage,
 } from '../lib/chat-notifications.js'
 import { useAuthStore } from './auth.js'
@@ -257,6 +259,7 @@ export const useChatStore = defineStore('chat', {
     socket: null,
     manualDisconnect: false,
     soundEnabled: isChatSoundEnabled(),
+    toastEnabled: isChatToastEnabled(),
     searchResults: [],
     lastSearchQuery: '',
     highlightedMessageId: '',
@@ -573,6 +576,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     async loadInitialState() {
+      this.syncNotificationSettings(getCurrentUser(useAuthStore()))
       await Promise.all([this.loadUsers(), this.loadConversations(), this.loadCallConfig()])
       this.connect()
       return this
@@ -687,6 +691,21 @@ export const useChatStore = defineStore('chat', {
         playChatNotificationSound({ volume: 0.04, durationMs: 80 })
       }
       return this.soundEnabled
+    },
+
+    setToastEnabled(enabled) {
+      this.toastEnabled = setChatToastEnabled(Boolean(enabled))
+      return this.toastEnabled
+    },
+
+    syncNotificationSettings(user = {}) {
+      const settings = user?.notificationSettings || {}
+      this.soundEnabled = setChatSoundEnabled(settings.soundEnabled ?? this.soundEnabled)
+      this.toastEnabled = setChatToastEnabled(settings.toastEnabled ?? this.toastEnabled)
+      return {
+        soundEnabled: this.soundEnabled,
+        toastEnabled: this.toastEnabled,
+      }
     },
 
     sendMessage({ conversationId, recipientEmail, text, replyToMessageId }) {
@@ -1120,7 +1139,9 @@ export const useChatStore = defineStore('chat', {
 
       if (shouldNotify) {
         const notice = buildIncomingChatNotice(envelope)
-        useNotificationsStore().chat(`${notice.title}. ${notice.message}`, { duration: 7000 })
+        if (this.toastEnabled) {
+          useNotificationsStore().chat(`${notice.title}. ${notice.message}`, { duration: 7000 })
+        }
 
         if (this.soundEnabled) {
           playChatNotificationSound()

@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import {
   clearStoredAuth,
+  normalizeAuthUser,
   normalizeAuthPayload,
   readStoredAuth,
   writeStoredAuth,
@@ -41,7 +42,7 @@ export const useAuthStore = defineStore('auth', {
     init() {
       const { token, user } = readStoredAuth(localStorage)
       this.token = token
-      this.user = user
+      this.user = user ? normalizeAuthUser(user) : null
 
       if (this.api) {
         return
@@ -87,9 +88,7 @@ export const useAuthStore = defineStore('auth', {
         const res = await axios.post('/api/login', { email, password })
         const session = normalizeAuthPayload(res.data)
 
-        this.token = session.token
-        this.user = session.user
-        writeStoredAuth(localStorage, session)
+        this.applySession(session)
 
         if (!this.api) {
           this.init()
@@ -111,6 +110,51 @@ export const useAuthStore = defineStore('auth', {
       writeStoredAuth(localStorage, {
         token,
         user: this.user,
+      })
+    },
+
+    applySession({ token, user }) {
+      this.token = token
+      this.user = user ? normalizeAuthUser(user) : null
+      writeStoredAuth(localStorage, {
+        token: this.token,
+        user: this.user,
+      })
+      return this.user
+    },
+
+    applyProfile(profile) {
+      this.user = normalizeAuthUser(profile)
+      writeStoredAuth(localStorage, {
+        token: this.token,
+        user: this.user,
+      })
+      return this.user
+    },
+
+    async fetchProfile() {
+      const api = this.api
+      const response = await api.get('/profile')
+      return this.applyProfile(response.data)
+    },
+
+    async updateProfile(payload = {}) {
+      const api = this.api
+      const response = await api.patch('/profile', payload)
+      return this.applyProfile(response.data)
+    },
+
+    async savePushSubscription(payload = {}) {
+      const api = this.api
+      return api.post('/profile/push-subscriptions', payload)
+    },
+
+    async deletePushSubscription(endpoint = '') {
+      const api = this.api
+      return api.delete('/profile/push-subscriptions', {
+        data: {
+          endpoint,
+        },
       })
     },
 

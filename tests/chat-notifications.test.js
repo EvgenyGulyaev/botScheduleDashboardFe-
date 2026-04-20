@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 import {
   buildIncomingChatNotice,
   isChatSoundEnabled,
+  isChatToastEnabled,
   playChatNotificationSound,
   setChatSoundEnabled,
+  setChatToastEnabled,
   shouldNotifyIncomingChatMessage,
 } from '../src/lib/chat-notifications.js'
 
@@ -84,6 +86,20 @@ test('persists chat sound preference', () => {
   assert.equal(isChatSoundEnabled(storage), true)
   setChatSoundEnabled(false, storage)
   assert.equal(isChatSoundEnabled(storage), false)
+})
+
+test('persists chat toast preference and defaults to enabled', () => {
+  const values = new Map()
+  const storage = {
+    getItem: (key) => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value),
+  }
+
+  assert.equal(isChatToastEnabled(storage), true)
+  setChatToastEnabled(false, storage)
+  assert.equal(isChatToastEnabled(storage), false)
+  setChatToastEnabled(true, storage)
+  assert.equal(isChatToastEnabled(storage), true)
 })
 
 test('plays notification sound through WebAudio when available', () => {

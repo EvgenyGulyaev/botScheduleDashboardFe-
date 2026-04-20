@@ -1,3 +1,28 @@
+export const normalizeAuthUser = (payload = {}) => {
+  const notificationSettings = payload?.notification_settings ?? payload?.notificationSettings ?? {}
+  const push = payload?.push ?? payload?.pushConfig ?? {}
+
+  return {
+    ...payload,
+    login: payload?.login ?? '',
+    email: payload?.email ?? '',
+    isAdmin: Boolean(payload?.is_admin ?? payload?.isAdmin),
+    notificationSettings: {
+      pushEnabled: Boolean(
+        notificationSettings?.push_enabled ?? notificationSettings?.pushEnabled ?? false,
+      ),
+      soundEnabled:
+        notificationSettings?.sound_enabled ?? notificationSettings?.soundEnabled ?? true,
+      toastEnabled:
+        notificationSettings?.toast_enabled ?? notificationSettings?.toastEnabled ?? true,
+    },
+    push: {
+      supported: Boolean(push?.supported ?? false),
+      publicKey: push?.public_key ?? push?.publicKey ?? '',
+    },
+  }
+}
+
 export const readStoredAuth = (storage) => {
   const token = storage.getItem('token')
   const rawUser = storage.getItem('user')
@@ -44,6 +69,6 @@ export const normalizeAuthPayload = (payload) => {
 
   return {
     token,
-    user: payload?.user ?? payload,
+    user: normalizeAuthUser(payload?.user ?? payload),
   }
 }

@@ -1,4 +1,5 @@
 const CHAT_SOUND_ENABLED_KEY = 'chat.sound.enabled'
+const CHAT_TOAST_ENABLED_KEY = 'chat.toast.enabled'
 
 const normalizeString = (value) => String(value ?? '').trim()
 
@@ -13,6 +14,18 @@ export const setChatSoundEnabled = (enabled, storage = globalThis.localStorage) 
   }
 
   storage.setItem(CHAT_SOUND_ENABLED_KEY, enabled ? 'true' : 'false')
+  return enabled
+}
+
+export const isChatToastEnabled = (storage = globalThis.localStorage) =>
+  storage?.getItem(CHAT_TOAST_ENABLED_KEY) !== 'false'
+
+export const setChatToastEnabled = (enabled, storage = globalThis.localStorage) => {
+  if (!storage) {
+    return enabled
+  }
+
+  storage.setItem(CHAT_TOAST_ENABLED_KEY, enabled ? 'true' : 'false')
   return enabled
 }
 
