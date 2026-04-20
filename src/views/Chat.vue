@@ -2931,6 +2931,18 @@ watch(
 )
 
 watch(
+  () => mobileConversationMode.value,
+  (isConversationMode) => {
+    if (!isConversationMode || !chatStore.activeConversationId) {
+      return
+    }
+
+    scrollMessagesToBottom()
+  },
+  { flush: 'post' },
+)
+
+watch(
   () => displayedCall.value,
   async (call) => {
     callActionError.value = ''
