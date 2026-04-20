@@ -198,6 +198,32 @@ export const buildChatSearchExcerpt = (text = '', query = '', maxLength = 96) =>
   return `${prefix}${source.slice(start, end)}${suffix}`
 }
 
+export const getChatSwipeReplyState = ({
+  startX = 0,
+  startY = 0,
+  currentX = 0,
+  currentY = 0,
+  isMobile = false,
+  maxOffset = 72,
+  threshold = 64,
+} = {}) => {
+  if (!isMobile) {
+    return { offsetX: 0, shouldReply: false }
+  }
+
+  const deltaX = Number(currentX) - Number(startX)
+  const deltaY = Math.abs(Number(currentY) - Number(startY))
+  if (deltaX <= 0 || deltaY > 36 || deltaY > Math.abs(deltaX)) {
+    return { offsetX: 0, shouldReply: false }
+  }
+
+  const offsetX = Math.min(maxOffset, Math.max(0, deltaX))
+  return {
+    offsetX,
+    shouldReply: offsetX >= threshold,
+  }
+}
+
 export const getDroppedImageFile = (dataTransfer = null) => {
   const itemFile = Array.from(dataTransfer?.items || [])
     .filter((item) => item?.kind === 'file')

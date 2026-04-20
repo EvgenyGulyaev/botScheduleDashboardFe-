@@ -159,11 +159,11 @@
           </section>
         </aside>
 
-        <main class="min-h-[34rem] xl:min-h-0">
+        <main class="min-h-[30rem] xl:min-h-0">
           <section
-            class="flex h-[calc(100vh-12rem)] min-h-[34rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0"
+            class="flex h-[calc(100vh-12rem)] min-h-[30rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0"
           >
-            <div class="border-b border-slate-200 px-6 py-5 xl:px-5 xl:py-4">
+            <div class="border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4">
               <div class="flex flex-col gap-3">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div class="min-w-0">
@@ -306,7 +306,7 @@
             </div>
 
             <div class="flex min-h-0 flex-1 flex-col">
-              <div ref="messagesScroller" class="min-h-0 flex-1 overflow-y-auto px-6 py-5 xl:px-5 xl:py-4">
+              <div ref="messagesScroller" class="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4">
                 <div
                   v-if="
                     activeConversation && activeMessages.length === 0 && !chatStore.loading.messages
@@ -334,7 +334,7 @@
                   >
                     <div
                       :ref="setMessageElement(message.id)"
-                      class="min-w-0 max-w-[82%] rounded-3xl border px-4 py-3 transition"
+                      class="relative min-w-0 max-w-[86vw] rounded-3xl border px-3 py-2.5 transition sm:max-w-[82%] sm:px-4 sm:py-3"
                       :class="
                         [
                           message.senderEmail === currentUserEmail
@@ -345,8 +345,23 @@
                             : '',
                         ]
                       "
+                      :style="{
+                        transform: swipeOffsetForMessage(message.id)
+                          ? `translateX(${swipeOffsetForMessage(message.id)}px)`
+                          : '',
+                      }"
+                      @touchstart="startSwipeReplyGesture(message, $event)"
+                      @touchmove="moveSwipeReplyGesture(message, $event)"
+                      @touchend="endSwipeReplyGesture(message, $event)"
+                      @touchcancel="resetSwipeReply"
                     >
-                      <div class="flex flex-wrap items-center gap-2">
+                      <div
+                        v-if="isMobileLayout && swipeOffsetForMessage(message.id)"
+                        class="pointer-events-none absolute -left-2 top-1/2 -translate-y-1/2 text-lg text-sky-600"
+                      >
+                        ↩️
+                      </div>
+                      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
                         <span class="text-sm font-semibold text-slate-950">{{
                           messageSenderLabel(message)
                         }}</span>
@@ -365,7 +380,7 @@
                       </div>
                       <div
                         v-if="resolveReplyPreview(message)"
-                        class="mt-3 rounded-2xl border border-slate-200/80 bg-white/70 px-3 py-2"
+                        class="mt-2.5 rounded-2xl border border-slate-200/80 bg-white/70 px-3 py-2"
                       >
                         <div class="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                           Ответ на {{ replyPreviewSender(resolveReplyPreview(message)) }}
@@ -376,7 +391,7 @@
                       </div>
                       <div
                         v-if="editingMessageId === message.id"
-                        class="mt-3 space-y-3"
+                        class="mt-2.5 space-y-3"
                       >
                         <textarea
                           v-model="editingMessageText"
@@ -402,7 +417,7 @@
                       </div>
                       <div
                         v-else-if="message.type === 'audio'"
-                        class="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
+                        class="mt-2.5 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
                       >
                         <button
                           type="button"
@@ -418,7 +433,7 @@
                       </div>
                       <div
                         v-else-if="message.type === 'image'"
-                        class="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
+                        class="mt-2.5 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
                       >
                         <button
                           type="button"
@@ -439,13 +454,13 @@
                       ></p>
                       <div
                         v-if="messageReactionGroups(message).length"
-                        class="mt-3 flex flex-wrap gap-2"
+                        class="mt-2.5 flex flex-wrap gap-1.5 sm:gap-2"
                       >
                         <button
                           v-for="reaction in messageReactionGroups(message)"
                           :key="`${message.id}-${reaction.emoji}`"
                           type="button"
-                          class="rounded-full border px-2.5 py-1 text-xs font-semibold transition"
+                          class="rounded-full border px-2 py-1 text-xs font-semibold transition"
                           :class="
                             currentUserReactionEmoji(message) === reaction.emoji
                               ? 'border-indigo-300 bg-indigo-100 text-indigo-700'
@@ -456,47 +471,53 @@
                           {{ reaction.emoji }} {{ reaction.count }}
                         </button>
                       </div>
-                      <div class="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
+                      <div class="mt-2.5 flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-500 sm:gap-2 sm:text-[11px]">
                         <button
                           type="button"
-                          class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 transition hover:bg-slate-100"
+                          class="hidden rounded-full border border-slate-200 bg-white/80 px-2 py-1 transition hover:bg-slate-100 sm:inline-flex"
                           @click="startReply(message)"
                         >
                           Ответить
                         </button>
                         <button
                           type="button"
-                          class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 transition hover:bg-slate-100"
+                          class="rounded-full border border-slate-200 bg-white/80 px-2 py-1 transition hover:bg-slate-100"
                           @click="toggleReactionPicker(message)"
                         >
                           Реакция
                         </button>
                         <button
-                          v-if="canEditMessage(message)"
                           type="button"
-                          class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 transition hover:bg-slate-100"
-                          @click="startEditing(message)"
-                        >
-                          Изменить
-                        </button>
-                        <button
-                          type="button"
-                          class="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 transition hover:bg-slate-100"
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
+                          :aria-label="isPinnedMessage(message) ? 'Открепить сообщение' : 'Закрепить сообщение'"
+                          :title="isPinnedMessage(message) ? 'Открепить' : 'Закрепить'"
                           @click="toggleMessagePin(message)"
                         >
-                          {{ isPinnedMessage(message) ? 'Открепить' : 'Закрепить' }}
+                          📎
+                        </button>
+                        <button
+                          v-if="canEditMessage(message)"
+                          type="button"
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
+                          aria-label="Изменить сообщение"
+                          title="Изменить"
+                          @click="startEditing(message)"
+                        >
+                          ✏️
                         </button>
                         <button
                           type="button"
-                          class="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-700 transition hover:bg-rose-100"
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-sm text-rose-700 transition hover:bg-rose-100"
+                          aria-label="Удалить сообщение"
+                          title="Удалить"
                           @click="removeMessage(message)"
                         >
-                          Удалить
+                          🗑️
                         </button>
                       </div>
                       <div
                         v-if="reactionPickerMessageId === message.id"
-                        class="mt-3 rounded-2xl border border-slate-200 bg-white/90 px-3 py-3"
+                        class="mt-2.5 rounded-2xl border border-slate-200 bg-white/90 px-3 py-3"
                       >
                         <div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                           Реакция
@@ -513,7 +534,7 @@
                           </button>
                         </div>
                       </div>
-                      <div class="mt-3 flex items-center gap-3 text-xs text-slate-500">
+                      <div class="mt-2.5 flex items-center gap-2.5 text-xs text-slate-500">
                         <span>{{ formatMessageTime(message.createdAt) }}</span>
                         <span v-if="message.editedAt">изменено</span>
                         <span
@@ -529,11 +550,11 @@
                 </div>
               </div>
 
-              <div class="border-t border-slate-200 px-6 py-5 xl:px-5 xl:py-4">
+              <div class="border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4">
                 <form class="space-y-3" @submit.prevent="sendCurrentMessage">
                   <div
                     v-if="replyingToMessage"
-                    class="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                    class="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4"
                   >
                     <div class="min-w-0">
                       <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -575,7 +596,7 @@
                       ref="composerTextarea"
                       v-model="composerText"
                       rows="3"
-                      class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-36 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+                      class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-28 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white sm:pr-36"
                       placeholder="Напиши сообщение"
                       @keydown="handleComposerKeydown"
                     ></textarea>
@@ -587,7 +608,7 @@
                     </div>
                     <button
                       type="button"
-                      class="absolute right-[6.25rem] top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      class="absolute right-[5.25rem] top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 sm:right-[6.25rem] sm:h-9 sm:w-9 sm:text-lg"
                       aria-label="Выбрать изображение"
                       :disabled="!activeConversation || sendingImage"
                       @click="triggerImagePicker"
@@ -596,7 +617,7 @@
                     </button>
                     <button
                       type="button"
-                      class="absolute right-14 top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      class="absolute right-11 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 sm:right-14 sm:h-9 sm:w-9 sm:text-lg"
                       aria-label="Выбрать смайлик"
                       :aria-expanded="emojiPickerOpen"
                       @click="toggleEmojiPicker"
@@ -605,7 +626,7 @@
                     </button>
                     <button
                       type="button"
-                      class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-xl border text-lg shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                      class="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border text-base shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9 sm:text-lg"
                       :class="
                         isRecordingAudio
                           ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
@@ -895,6 +916,7 @@ import {
   buildChatSearchExcerpt,
   getChatAudioRecorderLabel,
   getAudioMessageButtonLabel,
+  getChatSwipeReplyState,
   getImageMessageButtonLabel,
   filterChatUsersForSearch,
   getChatMessageSenderLabel,
@@ -959,12 +981,20 @@ const replyingToMessageId = ref('')
 const editingMessageId = ref('')
 const editingMessageText = ref('')
 const reactionPickerMessageId = ref('')
+const isMobileLayout = ref(false)
+const swipeReplyState = ref({
+  messageId: '',
+  startX: 0,
+  startY: 0,
+  offsetX: 0,
+})
 const groupForm = ref({
   title: '',
   memberEmails: [],
 })
 const messageElements = new Map()
 let highlightTimerId = null
+let mobileMediaQuery = null
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -1191,6 +1221,89 @@ const scrollToMessage = async (messageId) => {
   })
   chatStore.setHighlightedMessage(messageId)
   clearHighlightLater()
+}
+
+const swipeOffsetForMessage = (messageId) =>
+  swipeReplyState.value.messageId === messageId ? swipeReplyState.value.offsetX : 0
+
+const resetSwipeReply = () => {
+  swipeReplyState.value = {
+    messageId: '',
+    startX: 0,
+    startY: 0,
+    offsetX: 0,
+  }
+}
+
+const updateMobileLayout = () => {
+  if (typeof window === 'undefined') {
+    isMobileLayout.value = false
+    return
+  }
+
+  isMobileLayout.value = window.innerWidth < 640
+}
+
+const startSwipeReplyGesture = (message, event) => {
+  if (!isMobileLayout.value || !message?.id || editingMessageId.value === message.id) {
+    return
+  }
+
+  const touch = event?.touches?.[0]
+  if (!touch) {
+    return
+  }
+
+  swipeReplyState.value = {
+    messageId: message.id,
+    startX: touch.clientX,
+    startY: touch.clientY,
+    offsetX: 0,
+  }
+}
+
+const moveSwipeReplyGesture = (message, event) => {
+  if (!isMobileLayout.value || swipeReplyState.value.messageId !== message?.id) {
+    return
+  }
+
+  const touch = event?.touches?.[0]
+  if (!touch) {
+    return
+  }
+
+  const nextState = getChatSwipeReplyState({
+    startX: swipeReplyState.value.startX,
+    startY: swipeReplyState.value.startY,
+    currentX: touch.clientX,
+    currentY: touch.clientY,
+    isMobile: isMobileLayout.value,
+  })
+
+  swipeReplyState.value = {
+    ...swipeReplyState.value,
+    offsetX: nextState.offsetX,
+  }
+}
+
+const endSwipeReplyGesture = async (message, event) => {
+  if (!isMobileLayout.value || swipeReplyState.value.messageId !== message?.id) {
+    return
+  }
+
+  const touch = event?.changedTouches?.[0]
+  const nextState = getChatSwipeReplyState({
+    startX: swipeReplyState.value.startX,
+    startY: swipeReplyState.value.startY,
+    currentX: touch?.clientX ?? swipeReplyState.value.startX,
+    currentY: touch?.clientY ?? swipeReplyState.value.startY,
+    isMobile: isMobileLayout.value,
+  })
+
+  resetSwipeReply()
+  if (nextState.shouldReply) {
+    await startReply(message)
+  }
 }
 
 const focusComposer = async (cursor = null) => {
@@ -1909,6 +2022,16 @@ const handleComposerKeydown = (event) => {
 
 onMounted(async () => {
   document.addEventListener('pointerdown', handleDocumentPointerDown)
+  updateMobileLayout()
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    mobileMediaQuery = window.matchMedia('(max-width: 639px)')
+    if (typeof mobileMediaQuery.addEventListener === 'function') {
+      mobileMediaQuery.addEventListener('change', updateMobileLayout)
+    } else if (typeof mobileMediaQuery.addListener === 'function') {
+      mobileMediaQuery.addListener(updateMobileLayout)
+    }
+    window.addEventListener('resize', updateMobileLayout)
+  }
   try {
     await chatStore.loadInitialState()
     if (!chatStore.activeConversationId && chatStore.conversations[0]) {
@@ -1988,7 +2111,19 @@ watch(
 
 onUnmounted(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateMobileLayout)
+  }
+  if (mobileMediaQuery) {
+    if (typeof mobileMediaQuery.removeEventListener === 'function') {
+      mobileMediaQuery.removeEventListener('change', updateMobileLayout)
+    } else if (typeof mobileMediaQuery.removeListener === 'function') {
+      mobileMediaQuery.removeListener(updateMobileLayout)
+    }
+    mobileMediaQuery = null
+  }
   resetComposerDropState()
+  resetSwipeReply()
   clearRecordingTimer()
   if (searchTimer.value) {
     clearTimeout(searchTimer.value)

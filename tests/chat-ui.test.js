@@ -4,6 +4,7 @@ import {
   buildChatSearchExcerpt,
   filterChatUsersForSearch,
   getAudioMessageButtonLabel,
+  getChatSwipeReplyState,
   getDroppedImageFile,
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
@@ -247,6 +248,52 @@ test('builds compact search excerpt around the match', () => {
   assert.match(excerpt, /релиз/i)
   assert.ok(excerpt.length <= 42)
   assert.equal(buildChatSearchExcerpt('Короткий текст', '', 40), 'Короткий текст')
+})
+
+test('detects reply swipe only for mobile-sized right swipes', () => {
+  assert.deepEqual(
+    getChatSwipeReplyState({
+      startX: 10,
+      startY: 10,
+      currentX: 96,
+      currentY: 20,
+      isMobile: true,
+    }),
+    { offsetX: 72, shouldReply: true },
+  )
+
+  assert.deepEqual(
+    getChatSwipeReplyState({
+      startX: 10,
+      startY: 10,
+      currentX: 40,
+      currentY: 14,
+      isMobile: true,
+    }),
+    { offsetX: 30, shouldReply: false },
+  )
+
+  assert.deepEqual(
+    getChatSwipeReplyState({
+      startX: 10,
+      startY: 10,
+      currentX: 96,
+      currentY: 70,
+      isMobile: true,
+    }),
+    { offsetX: 0, shouldReply: false },
+  )
+
+  assert.deepEqual(
+    getChatSwipeReplyState({
+      startX: 10,
+      startY: 10,
+      currentX: 96,
+      currentY: 20,
+      isMobile: false,
+    }),
+    { offsetX: 0, shouldReply: false },
+  )
 })
 
 test('inserts emoji at cursor position and returns next cursor index', () => {
