@@ -175,12 +175,16 @@
 
         <main
           v-if="!isMobileLayout || mobileView === 'conversation'"
-          :class="mobileConversationMode ? 'min-h-0 flex-1' : 'min-h-[30rem] xl:min-h-0'"
+          :class="
+            mobileConversationMode
+              ? 'min-h-0 flex-1 overflow-hidden'
+              : 'min-h-[30rem] xl:min-h-0'
+          "
         >
           <section
             :class="
               mobileConversationMode
-                ? 'flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-white'
+                ? 'flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white'
                 : 'flex h-[calc(100vh-12rem)] min-h-[30rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0'
             "
           >
@@ -509,7 +513,7 @@
                 ref="messagesScroller"
                 :class="
                   mobileConversationMode
-                    ? 'min-h-0 flex-1 overflow-y-auto px-2.5 py-3'
+                    ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-3'
                     : 'min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
                 "
               >
@@ -793,11 +797,11 @@
               <div
                 :class="
                   mobileConversationMode
-                    ? 'border-t border-slate-200 px-2.5 py-2.5'
+                    ? 'sticky bottom-0 z-10 shrink-0 border-t border-slate-200 bg-white px-2.5 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.35rem)]'
                     : 'border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
                 "
               >
-                <form class="space-y-3" @submit.prevent="sendCurrentMessage">
+                <form :class="mobileConversationMode ? 'space-y-2.5' : 'space-y-3'" @submit.prevent="sendCurrentMessage">
                   <div
                     v-if="replyingToMessage"
                     :class="
