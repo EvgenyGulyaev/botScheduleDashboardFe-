@@ -244,8 +244,8 @@ export const buildChatWebSocketUrl = (origin, token) => {
 }
 
 export const getChatReconnectDelayMs = (attempt) => {
-  const safeAttempt = Number.isFinite(attempt) ? Math.max(0, attempt) : 0
-  return Math.min(5000, 500 * 2 ** safeAttempt)
+  void attempt
+  return 2000
 }
 
 const ensureConversationCollection = (state) => {

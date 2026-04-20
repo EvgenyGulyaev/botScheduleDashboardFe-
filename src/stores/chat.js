@@ -108,6 +108,9 @@ const sendSocketEnvelope = (socket, event, data) => {
 const getSocketOpenState = () =>
   typeof WebSocket !== 'undefined' && WebSocket.OPEN != null ? WebSocket.OPEN : 1
 
+const getSocketConnectingState = () =>
+  typeof WebSocket !== 'undefined' && WebSocket.CONNECTING != null ? WebSocket.CONNECTING : 0
+
 const latestPeerMessage = (messages = [], currentUserEmail = '') => {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index]
@@ -588,8 +591,16 @@ export const useChatStore = defineStore('chat', {
         return null
       }
 
-      if (this.socket && this.socket.readyState === getSocketOpenState()) {
+      if (
+        this.socket &&
+        [getSocketConnectingState(), getSocketOpenState()].includes(this.socket.readyState)
+      ) {
         return this.socket
+      }
+
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer)
+        this.reconnectTimer = null
       }
 
       this.manualDisconnect = false
@@ -599,8 +610,13 @@ export const useChatStore = defineStore('chat', {
       this.socket = socket
 
       socket.addEventListener('open', () => {
+        if (this.socket !== socket) {
+          return
+        }
+
         this.socketStatus = 'connected'
         this.reconnectAttempts = 0
+        this.error = null
       })
 
       socket.addEventListener('message', (event) => {
@@ -608,15 +624,25 @@ export const useChatStore = defineStore('chat', {
       })
 
       socket.addEventListener('error', (event) => {
+        if (this.socket !== socket) {
+          return
+        }
+
         this.socketStatus = 'error'
-        const error = event?.error || new Error('Chat websocket error')
+        const error = event?.error || new Error('Chat websocket error. Reconnecting...')
         this.error = error
-        useNotificationsStore().errorFrom(error, 'Ошибка подключения к чату')
+
+        if ([getSocketConnectingState(), getSocketOpenState()].includes(socket.readyState)) {
+          socket.close()
+        }
       })
 
       socket.addEventListener('close', () => {
+        if (this.socket === socket) {
+          this.socket = null
+        }
+
         this.socketStatus = 'disconnected'
-        this.socket = null
 
         if (this.manualDisconnect || !authStore.token) {
           return

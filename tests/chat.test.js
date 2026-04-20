@@ -703,10 +703,10 @@ test('message_deleted removes target message and clears affected reply previews'
   assert.equal(state.messagesByConversation['group-1'][0].replyPreview, null)
 })
 
-test('reconnect delay grows with attempts', () => {
-  assert.equal(getChatReconnectDelayMs(0), 500)
-  assert.equal(getChatReconnectDelayMs(1), 1000)
-  assert.equal(getChatReconnectDelayMs(10), 5000)
+test('reconnect delay stays at two seconds for each retry', () => {
+  assert.equal(getChatReconnectDelayMs(0), 2000)
+  assert.equal(getChatReconnectDelayMs(1), 2000)
+  assert.equal(getChatReconnectDelayMs(10), 2000)
 })
 
 test('chat store sends websocket commands with auth user context', async () => {

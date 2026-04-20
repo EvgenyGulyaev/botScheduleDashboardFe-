@@ -35,16 +35,21 @@
 
       <div v-if="!mobileConversationMode" class="mb-5 space-y-3 xl:mb-3 xl:space-y-2">
         <InlineNotice
-          v-if="chatStore.error"
+          v-if="showChatErrorNotice"
           tone="error"
           title="Не всё синхронизировалось"
           :message="chatErrorMessage"
         />
-        <InlineNotice
-          v-else-if="chatStore.socketStatus === 'reconnecting'"
-          title="Переподключаемся"
-          message="Канал обновится автоматически, как только сокет вернётся в онлайн."
-        />
+        <div
+          v-else-if="showSocketRecoveryOverlay"
+          class="flex items-center gap-3 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800"
+        >
+          <span class="inline-flex h-5 w-5 animate-spin rounded-full border-2 border-sky-200 border-t-sky-600"></span>
+          <div>
+            <div class="font-semibold">{{ socketRecoveryTitle }}</div>
+            <div class="text-sky-700/90">{{ socketRecoveryMessage }}</div>
+          </div>
+        </div>
         <InlineNotice
           v-else-if="!chatStore.conversations.length && !chatStore.loading.conversations"
           title="Пока пусто"
@@ -184,10 +189,20 @@
           <section
             :class="
               mobileConversationMode
-                ? 'flex h-full min-h-0 flex-col overflow-hidden bg-white'
-                : 'flex h-[calc(100vh-12rem)] min-h-[30rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0'
+                ? 'relative flex h-full min-h-0 flex-col overflow-hidden bg-white'
+                : 'relative flex h-[calc(100vh-12rem)] min-h-[30rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0'
             "
           >
+            <div
+              v-if="showSocketRecoveryOverlay"
+              class="absolute inset-0 z-20 flex items-center justify-center bg-white/80 px-6 backdrop-blur-[1px]"
+            >
+              <div class="flex max-w-sm flex-col items-center gap-3 rounded-3xl border border-sky-100 bg-white px-5 py-5 text-center shadow-sm">
+                <span class="inline-flex h-8 w-8 animate-spin rounded-full border-[3px] border-sky-200 border-t-sky-600"></span>
+                <div class="text-base font-semibold text-slate-950">{{ socketRecoveryTitle }}</div>
+                <div class="text-sm leading-6 text-slate-600">{{ socketRecoveryMessage }}</div>
+              </div>
+            </div>
             <div
               :class="
                 mobileConversationMode
@@ -756,7 +771,7 @@
                           title="Реакция"
                           @click="toggleReactionPicker(message)"
                         >
-                          ☺️
+                          ☺
                         </button>
                       </div>
                       <div
@@ -1330,6 +1345,29 @@ const socketDotClass = computed(() => {
 })
 const soundLabel = computed(() =>
   chatStore.soundEnabled ? 'Звуковые уведомления включены' : 'Звуковые уведомления выключены',
+)
+const socketRecoveryActive = computed(() =>
+  ['connecting', 'reconnecting', 'error'].includes(chatStore.socketStatus),
+)
+const showSocketRecoveryOverlay = computed(
+  () => socketRecoveryActive.value && Boolean(chatStore.conversations.length || activeConversation.value),
+)
+const showChatErrorNotice = computed(
+  () => Boolean(chatStore.error) && !socketRecoveryActive.value,
+)
+const socketRecoveryTitle = computed(() => {
+  if (chatStore.socketStatus === 'error') {
+    return 'Переподключаем чат'
+  }
+
+  if (chatStore.socketStatus === 'connecting') {
+    return 'Подключаем чат'
+  }
+
+  return 'Возвращаем соединение'
+})
+const socketRecoveryMessage = computed(
+  () => 'Если сеть моргнула, чат сам попробует подключиться снова через 2 секунды.',
 )
 const mobileConversationMode = computed(
   () => isMobileLayout.value && mobileView.value === 'conversation',
