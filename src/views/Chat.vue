@@ -361,34 +361,68 @@
                       >
                         ↩️
                       </div>
-                      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <span class="text-sm font-semibold text-slate-950">{{
-                          messageSenderLabel(message)
-                        }}</span>
-                        <span
-                          v-if="message.senderEmail === currentUserEmail"
-                          class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800"
-                        >
-                          вы
-                        </span>
-                        <span
-                          v-if="isPinnedMessage(message)"
-                          class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
-                        >
-                          📌
-                        </span>
+                      <div class="flex items-start justify-between gap-3">
+                        <div class="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+                          <span class="text-sm font-semibold text-slate-950">{{
+                            messageSenderLabel(message)
+                          }}</span>
+                          <span
+                            v-if="message.senderEmail === currentUserEmail"
+                            class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800"
+                          >
+                            вы
+                          </span>
+                          <span
+                            v-if="isPinnedMessage(message)"
+                            class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                          >
+                            📌
+                          </span>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
+                            :aria-label="isPinnedMessage(message) ? 'Открепить сообщение' : 'Закрепить сообщение'"
+                            :title="isPinnedMessage(message) ? 'Открепить' : 'Закрепить'"
+                            @click="toggleMessagePin(message)"
+                          >
+                            📎
+                          </button>
+                          <button
+                            v-if="canEditMessage(message)"
+                            type="button"
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
+                            aria-label="Изменить сообщение"
+                            title="Изменить"
+                            @click="startEditing(message)"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            type="button"
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-sm text-rose-700 transition hover:bg-rose-100"
+                            aria-label="Удалить сообщение"
+                            title="Удалить"
+                            @click="removeMessage(message)"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
-                      <div
+                      <button
                         v-if="resolveReplyPreview(message)"
-                        class="mt-2.5 rounded-2xl border border-slate-200/80 bg-white/70 px-3 py-2"
+                        type="button"
+                        class="mt-2.5 block w-full rounded-2xl border border-slate-200/80 bg-white/70 px-3 py-2 text-left transition hover:border-sky-200 hover:bg-sky-50/70"
+                        @click="jumpToReplySource(message)"
                       >
-                        <div class="truncate text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                        <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                           Ответ на {{ replyPreviewSender(resolveReplyPreview(message)) }}
                         </div>
-                        <div class="mt-1 truncate text-sm text-slate-700">
+                        <div class="mt-1 whitespace-pre-wrap break-all text-sm leading-5 text-slate-700 [overflow-wrap:anywhere]">
                           {{ replyPreviewText(resolveReplyPreview(message)) || 'Сообщение' }}
                         </div>
-                      </div>
+                      </button>
                       <div
                         v-if="editingMessageId === message.id"
                         class="mt-2.5 space-y-3"
@@ -485,34 +519,6 @@
                           @click="toggleReactionPicker(message)"
                         >
                           Реакция
-                        </button>
-                        <button
-                          type="button"
-                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
-                          :aria-label="isPinnedMessage(message) ? 'Открепить сообщение' : 'Закрепить сообщение'"
-                          :title="isPinnedMessage(message) ? 'Открепить' : 'Закрепить'"
-                          @click="toggleMessagePin(message)"
-                        >
-                          📎
-                        </button>
-                        <button
-                          v-if="canEditMessage(message)"
-                          type="button"
-                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
-                          aria-label="Изменить сообщение"
-                          title="Изменить"
-                          @click="startEditing(message)"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-sm text-rose-700 transition hover:bg-rose-100"
-                          aria-label="Удалить сообщение"
-                          title="Удалить"
-                          @click="removeMessage(message)"
-                        >
-                          🗑️
                         </button>
                       </div>
                       <div
@@ -1490,6 +1496,15 @@ const jumpToPinnedMessage = async () => {
   }
 
   await scrollToMessage(activePinnedMessage.value.id)
+}
+
+const jumpToReplySource = async (message) => {
+  const preview = resolveReplyPreview(message)
+  if (!preview?.id) {
+    return
+  }
+
+  await scrollToMessage(preview.id)
 }
 
 const clearActivePin = async () => {
