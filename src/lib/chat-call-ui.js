@@ -50,3 +50,28 @@ export const getCallVideoGridClass = (count = 0) => {
 
   return 'grid-cols-1 sm:grid-cols-2'
 }
+
+export const getCallFocusTile = (tiles = [], preferredEmail = '') => {
+  const normalizedTiles = Array.isArray(tiles) ? tiles.filter(Boolean) : []
+  if (!normalizedTiles.length) {
+    return null
+  }
+
+  if (preferredEmail) {
+    const explicit = normalizedTiles.find((tile) => tile.email === preferredEmail)
+    if (explicit) {
+      return explicit
+    }
+  }
+
+  return (
+    normalizedTiles.find((tile) => tile.cameraEnabled || tile.hasVideo) ||
+    normalizedTiles[0] ||
+    null
+  )
+}
+
+export const getCallFocusSidebarTiles = (tiles = [], featuredEmail = '') =>
+  (Array.isArray(tiles) ? tiles : []).filter(
+    (tile) => tile?.email && (!featuredEmail || tile.email !== featuredEmail),
+  )

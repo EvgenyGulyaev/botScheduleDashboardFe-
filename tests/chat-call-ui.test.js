@@ -2,6 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   buildCallMediaConstraints,
+  getCallFocusSidebarTiles,
+  getCallFocusTile,
   getCallVideoGridClass,
   mergeCallMediaEntry,
   setStreamTracksEnabled,
@@ -98,4 +100,34 @@ test('picks tighter grid classes as participant count grows', () => {
   assert.equal(getCallVideoGridClass(1), 'grid-cols-1')
   assert.equal(getCallVideoGridClass(2), 'grid-cols-1 sm:grid-cols-2')
   assert.equal(getCallVideoGridClass(4), 'grid-cols-1 sm:grid-cols-2')
+})
+
+test('picks focused call tile by explicit email or sensible fallback', () => {
+  const tiles = [
+    { email: 'audio@example.com', cameraEnabled: false, hasVideo: false },
+    { email: 'video@example.com', cameraEnabled: true, hasVideo: true },
+    { email: 'other@example.com', cameraEnabled: false, hasVideo: true },
+  ]
+
+  assert.equal(getCallFocusTile(tiles, 'other@example.com')?.email, 'other@example.com')
+  assert.equal(getCallFocusTile(tiles, 'missing@example.com')?.email, 'video@example.com')
+  assert.equal(getCallFocusTile([{ email: 'audio@example.com', hasVideo: false }], '')?.email, 'audio@example.com')
+  assert.equal(getCallFocusTile([], 'video@example.com'), null)
+})
+
+test('builds sidebar tiles without the currently focused participant', () => {
+  const tiles = [
+    { email: 'self@example.com' },
+    { email: 'peer-a@example.com' },
+    { email: 'peer-b@example.com' },
+  ]
+
+  assert.deepEqual(
+    getCallFocusSidebarTiles(tiles, 'peer-a@example.com').map((tile) => tile.email),
+    ['self@example.com', 'peer-b@example.com'],
+  )
+  assert.deepEqual(
+    getCallFocusSidebarTiles(tiles, '').map((tile) => tile.email),
+    ['self@example.com', 'peer-a@example.com', 'peer-b@example.com'],
+  )
 })

@@ -204,6 +204,87 @@
               </div>
             </div>
             <div
+              v-if="showCallFocusLayout"
+              :class="
+                mobileConversationMode
+                  ? 'border-b border-slate-200 px-3 py-3'
+                  : 'border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-4 xl:px-5 xl:py-4'
+              "
+            >
+              <div class="space-y-3">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex min-w-0 items-center gap-3">
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      aria-label="Назад к чату"
+                      @click="closeCallFocus"
+                    >
+                      ←
+                    </button>
+                    <div class="min-w-0">
+                      <h3 class="truncate text-lg font-bold text-slate-950 sm:text-xl">
+                        {{ focusedCallTile?.login || focusedCallTile?.email || 'Звонок' }}
+                      </h3>
+                      <div class="truncate text-xs text-slate-500 sm:text-sm">
+                        {{ displayedCallConversation?.title || activeConversationTitle }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    <button
+                      v-if="displayedCall?.joinable && !isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="joiningCall || Boolean(callActionError)"
+                      @click="joinDisplayedCall"
+                    >
+                      {{ joiningCall ? 'Подключаем…' : 'Подключиться' }}
+                    </button>
+                    <button
+                      v-if="displayedCall?.joinable && isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      :title="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
+                      :aria-label="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
+                      @click="toggleCallCamera"
+                    >
+                      {{ localCallCameraEnabled ? '📷' : '🚫' }}
+                    </button>
+                    <button
+                      v-if="displayedCall?.joinable && isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      :title="localCallMuted ? 'Включить микрофон' : 'Выключить микрофон'"
+                      :aria-label="localCallMuted ? 'Включить микрофон' : 'Выключить микрофон'"
+                      @click="toggleCallMute"
+                    >
+                      {{ localCallMuted ? '🔇' : '🎤' }}
+                    </button>
+                    <button
+                      v-if="displayedCall?.joinable && isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="endingCall"
+                      @click="leaveDisplayedCall"
+                    >
+                      {{ endingCall ? 'Выходим…' : 'Выйти' }}
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  v-if="callActionError"
+                  class="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                >
+                  {{ callActionError }}
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-else
               :class="
                 mobileConversationMode
                   ? 'border-b border-slate-200 px-3 py-3'
@@ -419,7 +500,7 @@
             </div>
 
             <div
-              v-if="displayedCall"
+              v-if="displayedCall && !showCallFocusLayout"
               :class="
                 mobileConversationMode
                   ? 'border-b border-slate-200 bg-slate-50/80 px-3 py-3'
@@ -493,10 +574,12 @@
                   class="mt-4 grid gap-3"
                   :class="displayedCallVideoGridClass"
                 >
-                  <div
+                  <button
                     v-for="tile in displayedCallMediaTiles"
                     :key="`${displayedCall.id}-${tile.email}`"
-                    class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-950"
+                    type="button"
+                    class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-left transition hover:border-sky-300"
+                    @click="openCallFocus(tile.email)"
                   >
                     <video
                       v-if="tile.stream"
@@ -532,7 +615,7 @@
                         <span>{{ tile.cameraEnabled ? '📹' : '🚫' }}</span>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 </div>
 
                 <div
@@ -544,13 +627,28 @@
               </div>
             </div>
 
-            <div class="flex min-h-0 flex-1 flex-col">
+            <div
+              :class="
+                showCallFocusLayout
+                  ? 'flex min-h-0 flex-1 overflow-hidden bg-slate-950'
+                  : 'flex min-h-0 flex-1 flex-col'
+              "
+            >
+              <div
+                :class="
+                  showCallFocusLayout
+                    ? 'hidden min-h-0 w-full max-w-[24rem] shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col'
+                    : 'flex min-h-0 flex-1 flex-col'
+                "
+              >
               <div
                 ref="messagesScroller"
                 :class="
-                  mobileConversationMode
-                    ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-3'
-                    : 'min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
+                  showCallFocusLayout
+                    ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3'
+                    : mobileConversationMode
+                      ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-3'
+                      : 'min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
                 "
               >
                 <div
@@ -832,9 +930,11 @@
 
               <div
                 :class="
-                  mobileConversationMode
-                    ? 'sticky bottom-0 z-10 shrink-0 border-t border-slate-200 bg-white px-2.5 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.35rem)]'
-                    : 'border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
+                  showCallFocusLayout
+                    ? 'border-t border-slate-200 bg-white px-3 py-3'
+                    : mobileConversationMode
+                      ? 'sticky bottom-0 z-10 shrink-0 border-t border-slate-200 bg-white px-2.5 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.35rem)]'
+                      : 'border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
                 "
               >
                 <form :class="mobileConversationMode ? 'space-y-2.5' : 'space-y-3'" @submit.prevent="sendCurrentMessage">
@@ -1058,6 +1158,88 @@
                   </button>
                 </form>
               </div>
+              </div>
+
+              <div
+                v-if="showCallFocusLayout"
+                class="flex min-h-0 flex-1 flex-col bg-slate-950"
+              >
+                <div class="relative min-h-0 flex-1 overflow-hidden">
+                  <video
+                    v-if="focusedCallTile?.stream"
+                    :ref="focusedCallTile.isLocal ? setLocalCallVideoElement : setRemoteMediaElement(focusedCallTile.email)"
+                    class="h-full w-full bg-slate-950 object-contain"
+                    :muted="focusedCallTile.isLocal"
+                    autoplay
+                    playsinline
+                  ></video>
+                  <div
+                    v-else
+                    class="flex h-full w-full items-center justify-center bg-slate-900 text-7xl text-white/80"
+                  >
+                    {{ focusedCallTile?.isLocal ? '🙋' : '👤' }}
+                  </div>
+                  <div
+                    v-if="focusedCallTile && !focusedCallTile.cameraEnabled"
+                    class="absolute inset-0 flex items-center justify-center bg-slate-950/70 px-6 text-center text-lg font-semibold text-white"
+                  >
+                    Камера выключена
+                  </div>
+                  <div class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent px-4 py-4 text-white sm:px-6">
+                    <div class="min-w-0">
+                      <div class="truncate text-base font-semibold sm:text-lg">
+                        {{ focusedCallTile?.login || focusedCallTile?.email }}
+                      </div>
+                      <div class="mt-1 text-xs text-white/70 sm:text-sm">
+                        {{ focusedCallTile?.isLocal ? 'Вы в звонке' : 'Участник звонка' }}
+                      </div>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2 text-lg">
+                      <span>{{ focusedCallTile?.muted ? '🔇' : '🎤' }}</span>
+                      <span>{{ focusedCallTile?.cameraEnabled ? '📹' : '🚫' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="callFocusSidebarTiles.length"
+                  class="flex gap-3 overflow-x-auto border-t border-slate-800 bg-slate-900/95 px-3 py-3"
+                >
+                  <button
+                    v-for="tile in callFocusSidebarTiles"
+                    :key="`focus-${displayedCall?.id}-${tile.email}`"
+                    type="button"
+                    class="relative h-24 w-36 shrink-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 text-left transition hover:border-sky-300 sm:h-28 sm:w-44"
+                    @click="focusCallTile(tile.email)"
+                  >
+                    <video
+                      v-if="tile.stream"
+                      :ref="tile.isLocal ? setLocalCallVideoElement : setRemoteMediaElement(tile.email)"
+                      class="h-full w-full bg-slate-950 object-cover"
+                      :muted="tile.isLocal"
+                      autoplay
+                      playsinline
+                    ></video>
+                    <div
+                      v-else
+                      class="flex h-full w-full items-center justify-center bg-slate-900 text-4xl text-white/80"
+                    >
+                      {{ tile.isLocal ? '🙋' : '👤' }}
+                    </div>
+                    <div
+                      v-if="!tile.cameraEnabled"
+                      class="absolute inset-0 flex items-center justify-center bg-slate-950/70 px-3 text-center text-xs font-semibold text-white"
+                    >
+                      Камера выключена
+                    </div>
+                    <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/95 to-transparent px-3 py-2 text-white">
+                      <div class="truncate text-xs font-semibold sm:text-sm">
+                        {{ tile.login || tile.email }}
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
         </main>
@@ -1208,6 +1390,8 @@ import { useRouter } from 'vue-router'
 import InlineNotice from '../components/InlineNotice.vue'
 import {
   buildCallMediaConstraints,
+  getCallFocusSidebarTiles,
+  getCallFocusTile,
   getCallVideoGridClass,
   mergeCallMediaEntry,
   setStreamTracksEnabled,
@@ -1284,6 +1468,8 @@ const localCallMuted = ref(false)
 const localCallCameraEnabled = ref(false)
 const localCallStream = ref(null)
 const remoteCallMedia = ref([])
+const callFocusMode = ref(false)
+const focusedCallParticipantEmail = ref('')
 const mediaRecorder = ref(null)
 const recordingStream = ref(null)
 const recordingTimer = ref(null)
@@ -1415,7 +1601,13 @@ const activeConversationTitle = computed(() => activeConversation.value?.title |
 const activePinnedMessage = computed(() => activeConversation.value?.pinnedMessage || null)
 const audioRecorderLabel = computed(() => getChatAudioRecorderLabel(isRecordingAudio.value))
 const activeSearchResults = computed(() => chatStore.searchResults)
-const displayedCall = computed(() => chatStore.activeConversationCall || null)
+const displayedCall = computed(() => chatStore.activeCall || chatStore.activeConversationCall || null)
+const displayedCallConversation = computed(
+  () =>
+    chatStore.conversations.find(
+      (conversation) => conversation.id === displayedCall.value?.conversationId,
+    ) || null,
+)
 const isCurrentUserInDisplayedCall = computed(() =>
   Boolean(
     displayedCall.value?.participants?.some(
@@ -1428,24 +1620,27 @@ const displayedCallStatusText = computed(() => {
     return ''
   }
 
+  const callChatTitle = displayedCallConversation.value?.title || ''
   if (!displayedCall.value.joinable) {
-    return 'Кнопка подключения больше неактивна.'
+    return callChatTitle ? `Звонок в чате «${callChatTitle}» уже завершён.` : 'Кнопка подключения больше неактивна.'
   }
 
   if (isCurrentUserInDisplayedCall.value) {
-    return `Участников сейчас: ${displayedCall.value.participants.length}`
+    return callChatTitle
+      ? `Звонок в чате «${callChatTitle}». Участников сейчас: ${displayedCall.value.participants.length}`
+      : `Участников сейчас: ${displayedCall.value.participants.length}`
   }
 
   if (chatStore.activeCall?.id && chatStore.activeCall.id !== displayedCall.value.id) {
     return 'У тебя уже есть другой активный звонок. Сначала выйди из него.'
   }
 
-  return `Участников сейчас: ${displayedCall.value.participants.length}. Можно подключиться.`
+  return callChatTitle
+    ? `Звонок в чате «${callChatTitle}». Участников сейчас: ${displayedCall.value.participants.length}. Можно подключиться.`
+    : `Участников сейчас: ${displayedCall.value.participants.length}. Можно подключиться.`
 })
 const displayedCallVideoGridClass = computed(() =>
-  getCallVideoGridClass(
-    (isCurrentUserInDisplayedCall.value ? 1 : 0) + (displayedCall.value?.participants?.length || 0) - (isCurrentUserInDisplayedCall.value ? 1 : 0),
-  ),
+  getCallVideoGridClass(displayedCallMediaTiles.value.length),
 )
 const displayedCallMediaTiles = computed(() => {
   if (!displayedCall.value) {
@@ -1484,6 +1679,15 @@ const displayedCallMediaTiles = computed(() => {
 
   return tiles
 })
+const focusedCallTile = computed(() =>
+  getCallFocusTile(displayedCallMediaTiles.value, focusedCallParticipantEmail.value),
+)
+const callFocusSidebarTiles = computed(() =>
+  getCallFocusSidebarTiles(displayedCallMediaTiles.value, focusedCallTile.value?.email || ''),
+)
+const showCallFocusLayout = computed(
+  () => Boolean(callFocusMode.value && displayedCall.value?.joinable && focusedCallTile.value),
+)
 const replyingToMessage = computed(() => {
   if (!replyingToMessageId.value) {
     return null
@@ -1513,6 +1717,32 @@ const openChatsScreen = () => {
 
 const openSettings = () => {
   router.push('/settings')
+}
+
+const openCallFocus = (email = '') => {
+  if (!displayedCall.value?.joinable || !displayedCallMediaTiles.value.length) {
+    return
+  }
+
+  const tile = getCallFocusTile(displayedCallMediaTiles.value, email)
+  focusedCallParticipantEmail.value = tile?.email || ''
+  callFocusMode.value = true
+}
+
+const closeCallFocus = () => {
+  callFocusMode.value = false
+  focusedCallParticipantEmail.value = ''
+}
+
+const focusCallTile = (email = '') => {
+  if (!email) {
+    return
+  }
+
+  focusedCallParticipantEmail.value = email
+  if (!callFocusMode.value) {
+    callFocusMode.value = true
+  }
 }
 
 const formatMessageTime = (value) => {
@@ -2320,10 +2550,14 @@ const handleCallEnvelope = async (envelope) => {
   }
 
   if (['call_started', 'call_updated', 'call_ended'].includes(envelope.event)) {
-    const call = chatStore.activeConversationCall
-    if (!call?.joinable || !isCurrentUserInDisplayedCall.value) {
-      if (chatStore.activeCall?.conversationId !== activeConversation.value?.id) {
+    const call = chatStore.activeCall || chatStore.activeConversationCall
+    const isCurrentUserInCall = Boolean(
+      call?.participants?.some((participant) => participant.email === currentUserEmail.value),
+    )
+    if (!call?.joinable || !isCurrentUserInCall) {
+      if (!chatStore.activeCall?.joinable) {
         resetCallSession()
+        closeCallFocus()
       }
       return
     }
@@ -3123,6 +3357,7 @@ watch(
     if (!call?.joinable || !isCurrentUserInDisplayedCall.value) {
       if (!call?.joinable) {
         resetCallSession()
+        closeCallFocus()
       }
       return
     }
@@ -3141,6 +3376,24 @@ watch(
   () => {
     attachLocalMedia()
   },
+)
+
+watch(
+  () => [displayedCall.value?.id || '', displayedCallMediaTiles.value.map((tile) => tile.email).join('|')].join('::'),
+  () => {
+    if (!displayedCall.value?.joinable || !displayedCallMediaTiles.value.length) {
+      closeCallFocus()
+      return
+    }
+
+    const focusedTileStillExists = displayedCallMediaTiles.value.some(
+      (tile) => tile.email === focusedCallParticipantEmail.value,
+    )
+    if (!focusedTileStillExists) {
+      focusedCallParticipantEmail.value = getCallFocusTile(displayedCallMediaTiles.value)?.email || ''
+    }
+  },
+  { flush: 'post' },
 )
 
 onUnmounted(() => {
