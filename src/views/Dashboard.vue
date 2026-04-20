@@ -163,6 +163,39 @@
         </div>
       </div>
 
+      <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl mb-8">
+        <h3 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900">Приложения</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <button
+            v-for="app in applications"
+            :key="app.id"
+            type="button"
+            @click="openApplication(app.route)"
+            class="group rounded-2xl border-2 border-slate-200 bg-gradient-to-br from-white to-slate-50 p-5 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-2xl"
+          >
+            <div class="mb-4 flex items-start justify-between gap-3">
+              <div
+                class="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-3xl shadow-sm"
+              >
+                {{ app.icon }}
+              </div>
+              <div
+                class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600"
+              >
+                →
+              </div>
+            </div>
+
+            <div class="text-lg font-semibold text-slate-950">
+              {{ app.title }}
+            </div>
+            <div class="mt-2 text-sm leading-6 text-slate-500">
+              {{ app.description }}
+            </div>
+          </button>
+        </div>
+      </div>
+
       <!-- Все сервисы -->
       <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
         <h3
@@ -232,12 +265,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import InlineNotice from '../components/InlineNotice.vue'
 import { formatLastUpdatedLabel } from '../lib/view-feedback.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 import { isUnauthorizedError } from '../lib/auth-session.js'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const notifications = useNotificationsStore()
 const selectedService = ref('bot')
@@ -257,6 +292,16 @@ const stats = ref({
   cpu: '',
   memory: '',
 })
+
+const applications = [
+  {
+    id: 'chat',
+    title: 'Чат',
+    description: 'Прямые и групповые диалоги, звонки и уведомления в одном месте.',
+    route: '/chat',
+    icon: '💬',
+  },
+]
 
 const services = ['bot', 'dashboard', 'bot-nickname', 'shotener', 'geo3d']
 const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdatedAt.value))
@@ -344,6 +389,14 @@ const restartBot = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const openApplication = (route) => {
+  if (!route) {
+    return
+  }
+
+  router.push(route)
 }
 
 onMounted(async () => {
