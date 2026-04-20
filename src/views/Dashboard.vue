@@ -9,10 +9,16 @@
           <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
           <p class="text-base sm:text-lg text-gray-600">Статус ботов по сервисам</p>
         </div>
-        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+        <div
+          class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm"
+        >
           <div class="font-semibold text-slate-900">{{ dashboardTimestampLabel }}</div>
           <div class="mt-1">
-            {{ loadingAll ? 'Обновляем список сервисов…' : 'Данные подтягиваются без перезагрузки страницы.' }}
+            {{
+              loadingAll
+                ? 'Обновляем список сервисов…'
+                : 'Данные подтягиваются без перезагрузки страницы.'
+            }}
           </div>
         </div>
       </div>
@@ -50,10 +56,11 @@
               class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white min-w-0"
             >
               <option value="bot">Бот для расписания</option>
+              <option value="dashboard-chat">Чат</option>
               <option value="dashboard">Панель</option>
               <option value="bot-nickname">Бот для Дискорда</option>
               <option value="shotener">Сервис для ссылок</option>
-              <option value="geo3d">Сервис для 3d городов </option>
+              <option value="geo3d">Сервис для 3d городов</option>
             </select>
           </div>
 
@@ -194,7 +201,10 @@
           <div
             v-for="service in services"
             :key="service"
-            @click="selectedService = service; loadStatus()"
+            @click="
+              selectedService = service
+              loadStatus()
+            "
             class="group p-5 sm:p-6 rounded-2xl hover:shadow-2xl cursor-pointer transition-all border-2 hover:border-blue-300 hover:bg-blue-50 border-gray-200 bg-gradient-to-br from-white/80 to-gray-50"
           >
             <div class="flex items-start justify-between mb-3">
@@ -258,7 +268,7 @@ const stats = ref({
   memory: '',
 })
 
-const services = ['bot', 'dashboard', 'bot-nickname', 'shotener', 'geo3d']
+const services = ['bot', 'dashboard', 'bot-nickname', 'shotener', 'geo3d', 'dashboard-chat']
 const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdatedAt.value))
 
 // Статусы
@@ -297,7 +307,8 @@ const loadStatus = async () => {
       return
     }
     botStatus.value = 'error'
-    statusError.value = error.response?.data?.message || 'Не получилось получить данные по выбранному сервису.'
+    statusError.value =
+      error.response?.data?.message || 'Не получилось получить данные по выбранному сервису.'
   } finally {
     loading.value = false
   }
@@ -320,7 +331,8 @@ const loadAllServices = async () => {
             return
           }
           serviceStatus.value[service] = { status: 'error', icon: '🔴' }
-          allServicesError.value = 'Часть сервисов не ответила. Можно повторить обновление через кнопку выше.'
+          allServicesError.value =
+            'Часть сервисов не ответила. Можно повторить обновление через кнопку выше.'
         }
       }),
     )
