@@ -1,11 +1,19 @@
 <template>
   <div
-    class="min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:min-h-[calc(100vh-5rem)] xl:overflow-hidden"
+    :class="
+      mobileConversationMode
+        ? 'min-h-[100dvh] overflow-hidden bg-white'
+        : 'min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:min-h-[calc(100vh-5rem)] xl:overflow-hidden'
+    "
   >
     <div
-      class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 xl:h-full xl:min-h-0 xl:max-w-none xl:px-6 xl:py-3 2xl:px-8"
+      :class="
+        mobileConversationMode
+          ? 'flex h-[100dvh] flex-col px-0 py-0'
+          : 'mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 xl:h-full xl:min-h-0 xl:max-w-none xl:px-6 xl:py-3 2xl:px-8'
+      "
     >
-      <div class="mb-4 flex justify-end gap-2 xl:mb-2">
+      <div v-if="!mobileConversationMode" class="mb-4 flex justify-end gap-2 xl:mb-2">
         <span
           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm"
           :title="socketLabel"
@@ -25,7 +33,7 @@
         </button>
       </div>
 
-      <div class="mb-5 space-y-3 xl:mb-3 xl:space-y-2">
+      <div v-if="!mobileConversationMode" class="mb-5 space-y-3 xl:mb-3 xl:space-y-2">
         <InlineNotice
           v-if="chatStore.error"
           tone="error"
@@ -44,8 +52,14 @@
         />
       </div>
 
-      <div class="grid gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-4">
-        <aside class="xl:min-h-0">
+      <div
+        :class="
+          mobileConversationMode
+            ? 'flex min-h-0 flex-1 flex-col'
+            : 'grid gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[340px_minmax(0,1fr)] xl:gap-4'
+        "
+      >
+        <aside v-if="!mobileConversationMode" class="xl:min-h-0">
           <section
             class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm xl:h-full xl:overflow-y-auto xl:p-3.5"
           >
@@ -159,13 +173,78 @@
           </section>
         </aside>
 
-        <main class="min-h-[30rem] xl:min-h-0">
+        <main
+          v-if="!isMobileLayout || mobileView === 'conversation'"
+          :class="mobileConversationMode ? 'min-h-0 flex-1' : 'min-h-[30rem] xl:min-h-0'"
+        >
           <section
-            class="flex h-[calc(100vh-12rem)] min-h-[30rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0"
+            :class="
+              mobileConversationMode
+                ? 'flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-white'
+                : 'flex h-[calc(100vh-12rem)] min-h-[30rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0'
+            "
           >
-            <div class="border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4">
-              <div class="flex flex-col gap-3">
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div
+              :class="
+                mobileConversationMode
+                  ? 'border-b border-slate-200 px-3 py-3'
+                  : 'border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
+              "
+            >
+              <div :class="mobileConversationMode ? 'space-y-2' : 'flex flex-col gap-3'">
+                <div
+                  v-if="mobileConversationMode"
+                  class="flex items-center gap-2"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm"
+                    aria-label="Назад к чатам"
+                    @click="openChatsScreen"
+                  >
+                    ←
+                  </button>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="truncate text-lg font-bold text-slate-950">
+                      {{ activeConversationTitle }}
+                    </h3>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="!activePinnedMessage"
+                      :title="activePinnedMessage ? 'Перейти к закрепу' : 'Закрепов пока нет'"
+                      aria-label="Закреплённое сообщение"
+                      @click="jumpToPinnedMessage"
+                    >
+                      📌
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      :title="searchOpen ? 'Закрыть поиск' : 'Поиск по всем чатам'"
+                      aria-label="Поиск по чатам"
+                      @click="toggleSearch"
+                    >
+                      🔎
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="!activeConversation"
+                      title="Позвонить"
+                      aria-label="Позвонить"
+                      @click="handleCallAction"
+                    >
+                      📞
+                    </button>
+                  </div>
+                </div>
+                <div
+                  v-else
+                  class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+                >
                   <div class="min-w-0">
                     <h3 class="truncate text-2xl font-bold text-slate-950">
                       {{ activeConversationTitle }}
@@ -220,9 +299,15 @@
                     </button>
                   </div>
                 </div>
+                <div
+                  v-if="mobileConversationMode && activeConversation?.type === 'group'"
+                  class="truncate text-xs text-slate-500"
+                >
+                  {{ activeGroupMembersSummary }}
+                </div>
 
                 <div
-                  v-if="activePinnedMessage"
+                  v-if="activePinnedMessage && !mobileConversationMode"
                   class="flex items-start justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
                 >
                   <div class="min-w-0">
@@ -307,9 +392,19 @@
 
             <div
               v-if="displayedCall"
-              class="border-b border-slate-200 bg-slate-50/80 px-4 py-4 sm:px-6 xl:px-5"
+              :class="
+                mobileConversationMode
+                  ? 'border-b border-slate-200 bg-slate-50/80 px-3 py-3'
+                  : 'border-b border-slate-200 bg-slate-50/80 px-4 py-4 sm:px-6 xl:px-5'
+              "
             >
-              <div class="rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+              <div
+                :class="
+                  mobileConversationMode
+                    ? 'rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm'
+                    : 'rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm'
+                "
+              >
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div class="min-w-0">
                     <div class="flex items-center gap-2">
@@ -355,7 +450,13 @@
                   </div>
                 </div>
 
-                <div class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                <div
+                  :class="
+                    mobileConversationMode
+                      ? 'mt-3 grid gap-2'
+                      : 'mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3'
+                  "
+                >
                   <div
                     v-for="participant in displayedCall.participants"
                     :key="`${displayedCall.id}-${participant.email}`"
@@ -404,24 +505,39 @@
             </div>
 
             <div class="flex min-h-0 flex-1 flex-col">
-              <div ref="messagesScroller" class="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4">
+              <div
+                ref="messagesScroller"
+                :class="
+                  mobileConversationMode
+                    ? 'min-h-0 flex-1 overflow-y-auto px-2.5 py-3'
+                    : 'min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
+                "
+              >
                 <div
                   v-if="
                     activeConversation && activeMessages.length === 0 && !chatStore.loading.messages
                   "
-                  class="flex h-full min-h-[24rem] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500"
+                  :class="
+                    mobileConversationMode
+                      ? 'flex h-full min-h-[12rem] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500'
+                      : 'flex h-full min-h-[24rem] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500'
+                  "
                 >
                   Пока сообщений нет. Напиши первое сообщение внизу.
                 </div>
 
                 <div
                   v-else-if="!activeConversation"
-                  class="flex h-full min-h-[24rem] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500"
+                  :class="
+                    mobileConversationMode
+                      ? 'flex h-full min-h-[12rem] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500'
+                      : 'flex h-full min-h-[24rem] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500'
+                  "
                 >
-                  Выбери чат слева или найди пользователя по логину.
+                  Выбери чат из списка или найди пользователя по логину.
                 </div>
 
-                <div v-else class="space-y-3">
+                <div :class="mobileConversationMode ? 'space-y-2.5' : 'space-y-3'">
                   <article
                     v-for="message in activeMessages"
                     :key="message.id"
@@ -432,7 +548,7 @@
                   >
                     <div
                       :ref="setMessageElement(message.id)"
-                      class="relative min-w-0 max-w-[86vw] rounded-3xl border px-3 py-2.5 transition sm:max-w-[82%] sm:px-4 sm:py-3"
+                      class="relative min-w-0 max-w-[88vw] rounded-3xl border px-3 py-2.5 transition sm:max-w-[82%] sm:px-4 sm:py-3"
                       :class="
                         [
                           message.senderEmail === currentUserEmail
@@ -674,17 +790,27 @@
                 </div>
               </div>
 
-              <div class="border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4">
+              <div
+                :class="
+                  mobileConversationMode
+                    ? 'border-t border-slate-200 px-2.5 py-2.5'
+                    : 'border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
+                "
+              >
                 <form class="space-y-3" @submit.prevent="sendCurrentMessage">
                   <div
                     v-if="replyingToMessage"
-                    class="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4"
+                    :class="
+                      mobileConversationMode
+                        ? 'flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5'
+                        : 'flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 sm:px-4'
+                    "
                   >
                     <div class="min-w-0">
                       <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         Ответ на {{ replyPreviewSender(replyingToMessage) }}
                       </div>
-                      <div class="mt-1 truncate text-sm text-slate-700">
+                      <div class="mt-1 whitespace-pre-wrap break-all text-sm text-slate-700 [overflow-wrap:anywhere]">
                         {{ replyPreviewText(replyingToMessage) || 'Сообщение' }}
                       </div>
                     </div>
@@ -719,7 +845,7 @@
                     <textarea
                       ref="composerTextarea"
                       v-model="composerText"
-                      rows="3"
+                      :rows="mobileConversationMode ? 2 : 3"
                       class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-28 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white sm:pr-36"
                       placeholder="Напиши сообщение"
                       @keydown="handleComposerKeydown"
@@ -881,7 +1007,11 @@
                   </div>
                   <button
                     type="submit"
-                    class="flex w-full items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    :class="
+                      mobileConversationMode
+                        ? 'flex w-full items-center justify-center rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50'
+                        : 'flex w-full items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50'
+                    "
                     :disabled="sendingMessage || !composerText.trim() || !activeConversation"
                   >
                     {{ sendingMessage ? 'Отправляем…' : 'Отправить' }}
@@ -1114,6 +1244,7 @@ const editingMessageId = ref('')
 const editingMessageText = ref('')
 const reactionPickerMessageId = ref('')
 const isMobileLayout = ref(false)
+const mobileView = ref('list')
 const swipeReplyState = ref({
   messageId: '',
   startX: 0,
@@ -1196,6 +1327,9 @@ const socketDotClass = computed(() => {
 const soundLabel = computed(() =>
   chatStore.soundEnabled ? 'Звуковые уведомления включены' : 'Звуковые уведомления выключены',
 )
+const mobileConversationMode = computed(
+  () => isMobileLayout.value && mobileView.value === 'conversation',
+)
 const activeConversation = computed(() => chatStore.activeConversation)
 const activeMessages = computed(() => chatStore.activeConversationMessages)
 const otherUsers = computed(() =>
@@ -1251,6 +1385,18 @@ const activeGroupMembersSummary = computed(() => {
 
   return getConversationMembersSummary(activeConversation.value, currentUserEmail.value)
 })
+
+const openConversationScreen = () => {
+  if (isMobileLayout.value) {
+    mobileView.value = 'conversation'
+  }
+}
+
+const openChatsScreen = () => {
+  if (isMobileLayout.value) {
+    mobileView.value = 'list'
+  }
+}
 
 const toggleSoundNotifications = () => {
   const enabled = chatStore.setSoundEnabled(!chatStore.soundEnabled)
@@ -1404,6 +1550,14 @@ const updateMobileLayout = () => {
   }
 
   isMobileLayout.value = window.innerWidth < 640
+  if (!isMobileLayout.value) {
+    mobileView.value = 'conversation'
+    return
+  }
+
+  if (!chatStore.activeConversationId) {
+    mobileView.value = 'list'
+  }
 }
 
 const startSwipeReplyGesture = (message, event) => {
@@ -1682,6 +1836,7 @@ const openSearchResult = async (result) => {
 
   try {
     await chatStore.setActiveConversation(result.conversationId)
+    openConversationScreen()
     closeSearch()
     await scrollToMessage(result.messageId)
   } catch {
@@ -2548,6 +2703,7 @@ const scrollMessagesToBottom = async () => {
 const selectConversation = async (conversationId) => {
   try {
     await chatStore.setActiveConversation(conversationId)
+    openConversationScreen()
   } catch {
     // notifications already handled in the store
   }
@@ -2562,6 +2718,7 @@ const openDirectConversation = async (user) => {
     const conversation = await chatStore.ensureDirectConversation(user.email)
     await chatStore.setActiveConversation(conversation.id)
     chatSearch.value = ''
+    openConversationScreen()
   } catch {
     // notifications already handled in the store
   }
@@ -2589,6 +2746,7 @@ const createGroup = async () => {
     groupForm.value = { title: '', memberEmails: [] }
     closeGroupModal()
     await chatStore.setActiveConversation(conversation.id)
+    openConversationScreen()
     notifications.success('Группа создана')
   } catch {
     // notifications already handled in the store
@@ -2685,10 +2843,15 @@ onMounted(async () => {
   }
   try {
     await chatStore.loadInitialState()
-    if (!chatStore.activeConversationId && chatStore.conversations[0]) {
+    if (!isMobileLayout.value && !chatStore.activeConversationId && chatStore.conversations[0]) {
       await selectConversation(chatStore.conversations[0].id)
     } else if (chatStore.activeConversationId) {
-      await selectConversation(chatStore.activeConversationId)
+      await chatStore.setActiveConversation(chatStore.activeConversationId)
+      if (!isMobileLayout.value) {
+        mobileView.value = 'conversation'
+      } else {
+        mobileView.value = 'list'
+      }
     }
   } catch {
     // notifications already handled in store
@@ -2730,6 +2893,9 @@ watch(
     cancelEditing()
     clearReplyState()
     reactionPickerMessageId.value = ''
+    if (isMobileLayout.value && !chatStore.activeConversationId) {
+      mobileView.value = 'list'
+    }
   },
 )
 
