@@ -460,6 +460,16 @@
                       v-if="displayedCall.joinable && isCurrentUserInDisplayedCall"
                       type="button"
                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :title="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
+                      :aria-label="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
+                      @click="toggleCallCamera"
+                    >
+                      {{ localCallCameraEnabled ? '📷' : '🚫' }}
+                    </button>
+                    <button
+                      v-if="displayedCall.joinable && isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                       :title="localCallMuted ? 'Включить микрофон' : 'Выключить микрофон'"
                       :aria-label="localCallMuted ? 'Включить микрофон' : 'Выключить микрофон'"
                       @click="toggleCallMute"
@@ -479,29 +489,48 @@
                 </div>
 
                 <div
-                  :class="
-                    mobileConversationMode
-                      ? 'mt-3 grid gap-2'
-                      : 'mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3'
-                  "
+                  v-if="displayedCallMediaTiles.length"
+                  class="mt-4 grid gap-3"
+                  :class="displayedCallVideoGridClass"
                 >
                   <div
-                    v-for="participant in displayedCall.participants"
-                    :key="`${displayedCall.id}-${participant.email}`"
-                    class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                    v-for="tile in displayedCallMediaTiles"
+                    :key="`${displayedCall.id}-${tile.email}`"
+                    class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-950"
                   >
-                    <div class="flex items-center justify-between gap-3">
+                    <video
+                      v-if="tile.stream"
+                      :ref="tile.isLocal ? setLocalCallVideoElement : setRemoteMediaElement(tile.email)"
+                      class="h-44 w-full bg-slate-950 object-cover sm:h-52"
+                      :muted="tile.isLocal"
+                      autoplay
+                      playsinline
+                    ></video>
+                    <div
+                      v-else
+                      class="flex h-44 w-full items-center justify-center bg-slate-900 text-5xl text-white/80 sm:h-52"
+                    >
+                      {{ tile.isLocal ? '🙋' : '👤' }}
+                    </div>
+                    <div
+                      v-if="!tile.cameraEnabled"
+                      class="absolute inset-0 flex items-center justify-center bg-slate-950/70 px-4 text-center text-sm font-semibold text-white"
+                    >
+                      Камера выключена
+                    </div>
+                    <div class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent px-3 py-2 text-white">
                       <div class="min-w-0">
-                        <div class="truncate text-sm font-semibold text-slate-950">
-                          {{ participant.login || participant.email }}
+                        <div class="truncate text-sm font-semibold">
+                          {{ tile.login || tile.email }}
                         </div>
-                        <div class="mt-1 text-xs text-slate-500">
-                          {{ participant.email === currentUserEmail ? 'Вы в звонке' : 'Участник звонка' }}
+                        <div class="mt-0.5 text-[11px] text-white/70">
+                          {{ tile.isLocal ? 'Вы в звонке' : 'Участник звонка' }}
                         </div>
                       </div>
-                      <span class="text-base">
-                        {{ participant.muted ? '🔇' : '🎤' }}
-                      </span>
+                      <div class="flex shrink-0 items-center gap-1.5 text-base">
+                        <span>{{ tile.muted ? '🔇' : '🎤' }}</span>
+                        <span>{{ tile.cameraEnabled ? '📹' : '🚫' }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -513,23 +542,6 @@
                   {{ callActionError }}
                 </div>
               </div>
-
-              <audio
-                v-if="localCallStream"
-                ref="localCallAudio"
-                class="hidden"
-                autoplay
-                muted
-                playsinline
-              ></audio>
-              <audio
-                v-for="remote in remoteCallAudios"
-                :key="`${displayedCall.id}-${remote.email}`"
-                :ref="setRemoteAudioElement(remote.email)"
-                class="hidden"
-                autoplay
-                playsinline
-              ></audio>
             </div>
 
             <div class="flex min-h-0 flex-1 flex-col">
@@ -1194,6 +1206,14 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import InlineNotice from '../components/InlineNotice.vue'
+import {
+  buildCallMediaConstraints,
+  getCallVideoGridClass,
+  mergeCallMediaEntry,
+  setStreamTracksEnabled,
+  streamHasActiveVideo,
+  streamHasVideo,
+} from '../lib/chat-call-ui.js'
 import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
   buildChatSearchExcerpt,
@@ -1255,14 +1275,15 @@ const playingAudioMessageId = ref('')
 const viewingImageMessageId = ref('')
 const imageViewerOpen = ref(false)
 const imageViewerUrl = ref('')
-const localCallAudio = ref(null)
+const localCallVideo = ref(null)
 const startingCall = ref(false)
 const joiningCall = ref(false)
 const endingCall = ref(false)
 const callActionError = ref('')
 const localCallMuted = ref(false)
+const localCallCameraEnabled = ref(false)
 const localCallStream = ref(null)
-const remoteCallAudios = ref([])
+const remoteCallMedia = ref([])
 const mediaRecorder = ref(null)
 const recordingStream = ref(null)
 const recordingTimer = ref(null)
@@ -1286,7 +1307,7 @@ const groupForm = ref({
   memberEmails: [],
 })
 const messageElements = new Map()
-const remoteAudioElements = new Map()
+const remoteMediaElements = new Map()
 const peerConnections = new Map()
 let highlightTimerId = null
 let mobileMediaQuery = null
@@ -1420,6 +1441,48 @@ const displayedCallStatusText = computed(() => {
   }
 
   return `Участников сейчас: ${displayedCall.value.participants.length}. Можно подключиться.`
+})
+const displayedCallVideoGridClass = computed(() =>
+  getCallVideoGridClass(
+    (isCurrentUserInDisplayedCall.value ? 1 : 0) + (displayedCall.value?.participants?.length || 0) - (isCurrentUserInDisplayedCall.value ? 1 : 0),
+  ),
+)
+const displayedCallMediaTiles = computed(() => {
+  if (!displayedCall.value) {
+    return []
+  }
+
+  const tiles = []
+  if (isCurrentUserInDisplayedCall.value && localCallStream.value) {
+    tiles.push({
+      email: currentUserEmail.value,
+      login: currentUserLogin.value,
+      muted: localCallMuted.value,
+      stream: localCallStream.value,
+      cameraEnabled: localCallCameraEnabled.value,
+      hasVideo: streamHasVideo(localCallStream.value),
+      isLocal: true,
+    })
+  }
+
+  for (const participant of displayedCall.value.participants || []) {
+    if (!participant?.email || participant.email === currentUserEmail.value) {
+      continue
+    }
+
+    const mediaEntry = remoteCallMedia.value.find((item) => item.email === participant.email)
+    tiles.push({
+      email: participant.email,
+      login: participant.login || participant.email,
+      muted: Boolean(participant.muted),
+      stream: mediaEntry?.stream || null,
+      cameraEnabled: mediaEntry?.cameraEnabled ?? false,
+      hasVideo: mediaEntry?.hasVideo ?? false,
+      isLocal: false,
+    })
+  }
+
+  return tiles
 })
 const replyingToMessage = computed(() => {
   if (!replyingToMessageId.value) {
@@ -1893,72 +1956,84 @@ const openSearchResult = async (result) => {
   }
 }
 
-const setRemoteAudioElement = (email) => (element) => {
+const setRemoteMediaElement = (email) => (element) => {
   if (element) {
-    remoteAudioElements.set(email, element)
-    const remote = remoteCallAudios.value.find((item) => item.email === email)
+    remoteMediaElements.set(email, element)
+    const remote = remoteCallMedia.value.find((item) => item.email === email)
     if (remote?.stream) {
       element.srcObject = remote.stream
     }
     return
   }
 
-  remoteAudioElements.delete(email)
+  remoteMediaElements.delete(email)
 }
 
-const resetRemoteAudios = () => {
-  for (const entry of remoteCallAudios.value) {
+const setLocalCallVideoElement = (element) => {
+  localCallVideo.value = element || null
+  attachLocalMedia()
+}
+
+const resetRemoteMedia = () => {
+  for (const entry of remoteCallMedia.value) {
     const tracks = entry.stream?.getTracks?.() || []
     for (const track of tracks) {
       track.stop()
     }
   }
-  remoteCallAudios.value = []
+  remoteCallMedia.value = []
 }
 
-const attachLocalAudio = () => {
-  if (localCallAudio.value) {
-    localCallAudio.value.srcObject = localCallStream.value
+const attachLocalMedia = () => {
+  if (localCallVideo.value) {
+    localCallVideo.value.srcObject = localCallStream.value
   }
 }
 
-const upsertRemoteAudioStream = (participant, stream) => {
+const updateRemoteMediaState = (email, patch = {}) => {
+  if (!email) {
+    return
+  }
+
+  remoteCallMedia.value = remoteCallMedia.value.map((entry) =>
+    entry.email === email
+      ? {
+          ...entry,
+          ...patch,
+        }
+      : entry,
+  )
+}
+
+const upsertRemoteMediaStream = (participant, stream) => {
   if (!participant?.email) {
     return
   }
 
-  const next = [...remoteCallAudios.value]
+  const next = [...remoteCallMedia.value]
   const index = next.findIndex((item) => item.email === participant.email)
-  const entry = {
-    email: participant.email,
-    login: participant.login || participant.email,
-    muted: Boolean(participant.muted),
-    stream,
-  }
+  const entry = mergeCallMediaEntry(next[index], participant, stream)
 
   if (index === -1) {
     next.push(entry)
   } else {
-    next[index] = {
-      ...next[index],
-      ...entry,
-    }
+    next[index] = entry
   }
-  remoteCallAudios.value = next
+  remoteCallMedia.value = next
 
-  const element = remoteAudioElements.get(participant.email)
+  const element = remoteMediaElements.get(participant.email)
   if (element) {
     element.srcObject = stream
   }
 }
 
-const syncRemoteAudioMeta = (call) => {
+const syncRemoteMediaMeta = (call) => {
   if (!call) {
-    resetRemoteAudios()
+    resetRemoteMedia()
     return
   }
 
-  remoteCallAudios.value = remoteCallAudios.value
+  remoteCallMedia.value = remoteCallMedia.value
     .filter((entry) =>
       call.participants.some(
         (participant) =>
@@ -1967,11 +2042,7 @@ const syncRemoteAudioMeta = (call) => {
     )
     .map((entry) => {
       const participant = call.participants.find((item) => item.email === entry.email) || {}
-      return {
-        ...entry,
-        login: participant.login || entry.login,
-        muted: Boolean(participant.muted),
-      }
+      return mergeCallMediaEntry(entry, participant, entry.stream)
     })
 }
 
@@ -1981,8 +2052,9 @@ const stopLocalCallStream = () => {
     track.stop()
   }
   localCallStream.value = null
-  if (localCallAudio.value) {
-    localCallAudio.value.srcObject = null
+  localCallCameraEnabled.value = false
+  if (localCallVideo.value) {
+    localCallVideo.value.srcObject = null
   }
 }
 
@@ -2002,7 +2074,7 @@ const resetCallSession = () => {
   for (const email of peerConnections.keys()) {
     closePeerConnection(email)
   }
-  resetRemoteAudios()
+  resetRemoteMedia()
   stopLocalCallStream()
   localCallMuted.value = false
 }
@@ -2016,7 +2088,7 @@ const ensureCallConfig = async () => {
   }
 }
 
-const ensureLocalCallStream = async () => {
+const ensureLocalCallStream = async ({ preferVideo = true } = {}) => {
   if (localCallStream.value) {
     return localCallStream.value
   }
@@ -2028,10 +2100,25 @@ const ensureLocalCallStream = async () => {
     throw new Error('Браузер не дал доступ к микрофону для звонка')
   }
 
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  let stream = null
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(
+      buildCallMediaConstraints({ video: preferVideo }),
+    )
+  } catch (error) {
+    if (!preferVideo) {
+      throw error
+    }
+
+    stream = await navigator.mediaDevices.getUserMedia(
+      buildCallMediaConstraints({ video: false }),
+    )
+    notifications.info('Камера недоступна, подключили звонок только с аудио')
+  }
   localCallStream.value = stream
   localCallMuted.value = false
-  attachLocalAudio()
+  localCallCameraEnabled.value = streamHasActiveVideo(stream)
+  attachLocalMedia()
   return stream
 }
 
@@ -2061,6 +2148,22 @@ const sendRtcSignal = (call, remoteParticipant, kind, payload) =>
     payload,
   })
 
+const broadcastLocalMediaState = (call) => {
+  if (!call?.participants?.length) {
+    return
+  }
+
+  for (const participant of call.participants) {
+    if (!participant?.email || participant.email === currentUserEmail.value) {
+      continue
+    }
+
+    sendRtcSignal(call, participant, 'media-state', {
+      camera_enabled: localCallCameraEnabled.value,
+    })
+  }
+}
+
 const ensurePeerConnection = async (call, remoteParticipant, createOffer = false) => {
   if (!call?.id || !remoteParticipant?.email || remoteParticipant.email === currentUserEmail.value) {
     return null
@@ -2087,7 +2190,7 @@ const ensurePeerConnection = async (call, remoteParticipant, createOffer = false
     connection.ontrack = (event) => {
       const [streamValue] = event.streams
       if (streamValue) {
-        upsertRemoteAudioStream(remoteParticipant, streamValue)
+        upsertRemoteMediaStream(remoteParticipant, streamValue)
       }
     }
     connection.onconnectionstatechange = () => {
@@ -2125,7 +2228,7 @@ const syncDisplayedCallPeers = async (call) => {
     }
   }
 
-  syncRemoteAudioMeta(call)
+  syncRemoteMediaMeta(call)
 
   const remoteParticipants = call.participants.filter(
     (participant) => participant.email && participant.email !== currentUserEmail.value,
@@ -2169,6 +2272,13 @@ const handleIncomingCallSignal = async (envelope) => {
 
   const connection = await ensurePeerConnection(call, remoteParticipant, false)
   if (!connection) {
+    return
+  }
+
+  if (data.kind === 'media-state') {
+    updateRemoteMediaState(remoteParticipant.email, {
+      cameraEnabled: Boolean(data.payload?.camera_enabled),
+    })
     return
   }
 
@@ -2220,6 +2330,7 @@ const handleCallEnvelope = async (envelope) => {
 
     try {
       await syncDisplayedCallPeers(call)
+      broadcastLocalMediaState(call)
     } catch (error) {
       callActionError.value = error?.message || 'Не удалось синхронизировать звонок'
     }
@@ -2241,6 +2352,7 @@ const startDisplayedCall = async () => {
     await ensureLocalCallStream()
     const call = await chatStore.startCall(activeConversation.value.id)
     await syncDisplayedCallPeers(call)
+    broadcastLocalMediaState(call)
   } catch (error) {
     callActionError.value = error?.message || 'Не удалось начать звонок'
     notifications.errorFrom(error, 'Не удалось начать звонок')
@@ -2268,6 +2380,7 @@ const joinDisplayedCall = async () => {
       callId: displayedCall.value.id,
     })
     await syncDisplayedCallPeers(call)
+    broadcastLocalMediaState(call)
   } catch (error) {
     callActionError.value = error?.message || 'Не удалось подключиться к звонку'
     notifications.errorFrom(error, 'Не удалось подключиться к звонку')
@@ -2322,6 +2435,22 @@ const toggleCallMute = async () => {
     }
     notifications.errorFrom(error, 'Не удалось обновить состояние микрофона')
   }
+}
+
+const toggleCallCamera = async () => {
+  if (!displayedCall.value?.id || !isCurrentUserInDisplayedCall.value || !localCallStream.value) {
+    return
+  }
+
+  const nextEnabled = !localCallCameraEnabled.value
+  const changed = setStreamTracksEnabled(localCallStream.value, 'video', nextEnabled)
+  if (!changed) {
+    notifications.info('Камера недоступна в текущем звонке')
+    return
+  }
+
+  localCallCameraEnabled.value = nextEnabled
+  broadcastLocalMediaState(displayedCall.value)
 }
 
 const handleCallAction = async () => {
@@ -3010,7 +3139,7 @@ watch(
 watch(
   () => localCallStream.value,
   () => {
-    attachLocalAudio()
+    attachLocalMedia()
   },
 )
 
