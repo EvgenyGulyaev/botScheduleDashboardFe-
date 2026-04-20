@@ -207,7 +207,7 @@
               v-if="showCallFocusLayout"
               :class="
                 mobileConversationMode
-                  ? 'border-b border-slate-200 px-3 py-3'
+                  ? 'fixed inset-x-0 top-0 z-50 bg-gradient-to-b from-slate-950 via-slate-950/90 to-transparent px-3 py-4'
                   : 'border-b border-slate-200 px-4 py-4 sm:px-6 sm:py-4 xl:px-5 xl:py-4'
               "
             >
@@ -216,17 +216,33 @@
                   <div class="flex min-w-0 items-center gap-3">
                     <button
                       type="button"
-                      class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      :class="
+                        mobileConversationMode
+                          ? 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-base text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15'
+                          : 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100'
+                      "
                       aria-label="Назад к чату"
                       @click="closeCallFocus"
                     >
                       ←
                     </button>
                     <div class="min-w-0">
-                      <h3 class="truncate text-lg font-bold text-slate-950 sm:text-xl">
+                      <h3
+                        :class="
+                          mobileConversationMode
+                            ? 'truncate text-lg font-bold text-white sm:text-xl'
+                            : 'truncate text-lg font-bold text-slate-950 sm:text-xl'
+                        "
+                      >
                         {{ focusedCallTile?.login || focusedCallTile?.email || 'Звонок' }}
                       </h3>
-                      <div class="truncate text-xs text-slate-500 sm:text-sm">
+                      <div
+                        :class="
+                          mobileConversationMode
+                            ? 'truncate text-xs text-white/70 sm:text-sm'
+                            : 'truncate text-xs text-slate-500 sm:text-sm'
+                        "
+                      >
                         {{ displayedCallConversation?.title || activeConversationTitle }}
                       </div>
                     </div>
@@ -236,7 +252,11 @@
                     <button
                       v-if="displayedCall?.joinable && !isCurrentUserInDisplayedCall"
                       type="button"
-                      class="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      :class="
+                        mobileConversationMode
+                          ? 'rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-50'
+                          : 'rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50'
+                      "
                       :disabled="joiningCall || Boolean(callActionError)"
                       @click="joinDisplayedCall"
                     >
@@ -245,7 +265,11 @@
                     <button
                       v-if="displayedCall?.joinable && isCurrentUserInDisplayedCall"
                       type="button"
-                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      :class="
+                        mobileConversationMode
+                          ? 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-lg text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15'
+                          : 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100'
+                      "
                       :title="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
                       :aria-label="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
                       @click="toggleCallCamera"
@@ -255,7 +279,11 @@
                     <button
                       v-if="displayedCall?.joinable && isCurrentUserInDisplayedCall"
                       type="button"
-                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      :class="
+                        mobileConversationMode
+                          ? 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-lg text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15'
+                          : 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100'
+                      "
                       :title="localCallMuted ? 'Включить микрофон' : 'Выключить микрофон'"
                       :aria-label="localCallMuted ? 'Включить микрофон' : 'Выключить микрофон'"
                       @click="toggleCallMute"
@@ -265,7 +293,11 @@
                     <button
                       v-if="displayedCall?.joinable && isCurrentUserInDisplayedCall"
                       type="button"
-                      class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :class="
+                        mobileConversationMode
+                          ? 'rounded-2xl border border-rose-300/40 bg-rose-500/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500/30 disabled:cursor-not-allowed disabled:opacity-50'
+                          : 'rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50'
+                      "
                       :disabled="endingCall"
                       @click="leaveDisplayedCall"
                     >
@@ -276,7 +308,11 @@
 
                 <div
                   v-if="callActionError"
-                  class="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                  :class="
+                    mobileConversationMode
+                      ? 'rounded-2xl border border-rose-300/30 bg-rose-500/20 px-3 py-2 text-sm text-white'
+                      : 'rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700'
+                  "
                 >
                   {{ callActionError }}
                 </div>
@@ -630,14 +666,16 @@
             <div
               :class="
                 showCallFocusLayout
-                  ? 'flex min-h-0 flex-1 overflow-hidden bg-slate-950'
+                  ? mobileConversationMode
+                    ? 'fixed inset-0 z-40 flex min-h-0 flex-1 overflow-hidden bg-slate-950'
+                    : 'flex min-h-0 flex-1 overflow-hidden bg-slate-950'
                   : 'flex min-h-0 flex-1 flex-col'
               "
             >
               <div
                 :class="
                   showCallFocusLayout
-                    ? 'hidden min-h-0 w-full max-w-[24rem] shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col'
+                    ? 'hidden min-h-0 w-[20rem] shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col xl:w-[22rem] 2xl:w-[26rem]'
                     : 'flex min-h-0 flex-1 flex-col'
                 "
               >
@@ -1203,7 +1241,11 @@
 
                 <div
                   v-if="callFocusSidebarTiles.length"
-                  class="flex gap-3 overflow-x-auto border-t border-slate-800 bg-slate-900/95 px-3 py-3"
+                  :class="
+                    mobileConversationMode
+                      ? 'hidden'
+                      : 'flex gap-3 overflow-x-auto border-t border-slate-800 bg-slate-900/95 px-3 py-3'
+                  "
                 >
                   <button
                     v-for="tile in callFocusSidebarTiles"
@@ -1684,6 +1726,17 @@ const focusedCallTile = computed(() =>
 )
 const callFocusSidebarTiles = computed(() =>
   getCallFocusSidebarTiles(displayedCallMediaTiles.value, focusedCallTile.value?.email || ''),
+)
+const shouldAutoOpenCallFocus = computed(
+  () =>
+    Boolean(
+      displayedCall.value?.joinable &&
+        isCurrentUserInDisplayedCall.value &&
+        displayedCallMediaTiles.value.length &&
+        displayedCallMediaTiles.value.some(
+          (tile) => tile?.stream || tile?.hasVideo || tile?.cameraEnabled,
+        ),
+    ),
 )
 const showCallFocusLayout = computed(
   () => Boolean(callFocusMode.value && displayedCall.value?.joinable && focusedCallTile.value),
@@ -2587,6 +2640,7 @@ const startDisplayedCall = async () => {
     const call = await chatStore.startCall(activeConversation.value.id)
     await syncDisplayedCallPeers(call)
     broadcastLocalMediaState(call)
+    openCallFocus(currentUserEmail.value)
   } catch (error) {
     callActionError.value = error?.message || 'Не удалось начать звонок'
     notifications.errorFrom(error, 'Не удалось начать звонок')
@@ -2615,6 +2669,7 @@ const joinDisplayedCall = async () => {
     })
     await syncDisplayedCallPeers(call)
     broadcastLocalMediaState(call)
+    openCallFocus(currentUserEmail.value)
   } catch (error) {
     callActionError.value = error?.message || 'Не удалось подключиться к звонку'
     notifications.errorFrom(error, 'Не удалось подключиться к звонку')
@@ -3391,6 +3446,20 @@ watch(
     )
     if (!focusedTileStillExists) {
       focusedCallParticipantEmail.value = getCallFocusTile(displayedCallMediaTiles.value)?.email || ''
+    }
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => [shouldAutoOpenCallFocus.value, isMobileLayout.value, mobileConversationMode.value].join('::'),
+  () => {
+    if (!shouldAutoOpenCallFocus.value) {
+      return
+    }
+
+    if (isMobileLayout.value || !callFocusMode.value) {
+      openCallFocus(currentUserEmail.value)
     }
   },
   { flush: 'post' },

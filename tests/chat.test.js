@@ -849,9 +849,9 @@ test('chat store uploads and consumes one-time audio messages', async () => {
   })
 
   assert.equal(calls[0][0], 'post')
-  assert.equal(calls[0][1], '/chat/conversations/group-1/audio')
+  assert.equal(calls[0][1], '/chat/conversations/group-1/audio/token-123')
   assert.ok(calls[0][2] instanceof FormData)
-  assert.equal(calls[0][3], undefined)
+  assert.equal(calls[0][3].headers['X-Chat-Token'], 'token-123')
   assert.equal(message.type, 'audio')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.durationSeconds, 4)
 
@@ -925,9 +925,9 @@ test('chat store uploads and consumes one-time image messages', async () => {
   })
 
   assert.equal(calls[0][0], 'post')
-  assert.equal(calls[0][1], '/chat/conversations/group-1/image')
+  assert.equal(calls[0][1], '/chat/conversations/group-1/image/token-123')
   assert.ok(calls[0][2] instanceof FormData)
-  assert.equal(calls[0][3], undefined)
+  assert.equal(calls[0][3].headers['X-Chat-Token'], 'token-123')
   assert.equal(message.type, 'image')
   assert.equal(chatStore.messagesByConversation['group-1'][0].image.mimeType, 'image/png')
 
@@ -1113,6 +1113,36 @@ test('chat store bootstrap and active conversation actions work with api data', 
   delete globalThis.localStorage
   delete globalThis.window
   delete globalThis.WebSocket
+})
+
+test('chat store treats empty current call payload as no active call', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const fakeApi = createFakeApi()
+  fakeApi.get = (url) => {
+    fakeApi.calls.push(['get', url])
+    if (url === '/chat/conversations/group-1/call') {
+      return Promise.resolve({ data: null })
+    }
+    return Promise.resolve({ data: [] })
+  }
+
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  chatStore.activeCall = { id: 'call-1', conversationId: 'group-1', participants: [] }
+
+  const call = await chatStore.loadConversationCall('group-1')
+
+  assert.equal(call, null)
+  assert.equal(chatStore.activeCallsByConversation['group-1'], null)
+  assert.equal(chatStore.activeCall, null)
+
+  delete globalThis.localStorage
 })
 
 test('chat store uses backend direct-conversation payload contract', async () => {

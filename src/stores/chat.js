@@ -49,6 +49,23 @@ const getCurrentOrigin = () => {
   return 'http://localhost:5173'
 }
 
+const withTokenQuery = (path, token = '') => {
+  if (!token) {
+    return path
+  }
+
+  const separator = path.includes('?') ? '&' : '?'
+  return `${path}${separator}token=${encodeURIComponent(token)}`
+}
+
+const withTokenPath = (path, token = '') => {
+  if (!token) {
+    return path
+  }
+
+  return `${path}/${encodeURIComponent(token)}`
+}
+
 const normalizeSearchResults = (results = []) =>
   (Array.isArray(results) ? results : []).map((item) => ({
     conversationId: item?.conversation_id ?? item?.conversationId ?? '',
@@ -411,6 +428,13 @@ export const useChatStore = defineStore('chat', {
       try {
         const response = await api.get(`/chat/conversations/${conversationId}/call`)
         const call = normalizeChatCall(response.data)
+        if (!call?.id) {
+          this.activeCallsByConversation[conversationId] = null
+          if (this.activeCall?.conversationId === conversationId) {
+            this.activeCall = null
+          }
+          return null
+        }
         this.activeCallsByConversation[conversationId] = call
         if (call?.participants?.some((participant) => participant.email === authStore.user?.email)) {
           this.activeCall = call
@@ -967,7 +991,13 @@ export const useChatStore = defineStore('chat', {
           : audioBlob
       form.append('audio', file, 'voice.webm')
 
-      const response = await api.post(`/chat/conversations/${conversationId}/audio`, form)
+      const response = await api.post(withTokenPath(`/chat/conversations/${conversationId}/audio`, authStore.token), form, {
+        headers: authStore.token
+          ? {
+              'X-Chat-Token': authStore.token,
+            }
+          : undefined,
+      })
       const message = normalizeChatMessage(response.data)
       const messages = ensureMessagesCollection(this, conversationId)
       if (!messages.some((item) => item.id === message.id)) {
@@ -1027,7 +1057,13 @@ export const useChatStore = defineStore('chat', {
           : imageBlob
       form.append('image', file, filename)
 
-      const response = await api.post(`/chat/conversations/${conversationId}/image`, form)
+      const response = await api.post(withTokenPath(`/chat/conversations/${conversationId}/image`, authStore.token), form, {
+        headers: authStore.token
+          ? {
+              'X-Chat-Token': authStore.token,
+            }
+          : undefined,
+      })
       const message = normalizeChatMessage(response.data)
       const messages = ensureMessagesCollection(this, conversationId)
       if (!messages.some((item) => item.id === message.id)) {
