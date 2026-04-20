@@ -169,23 +169,32 @@
     </nav>
 
     <!-- Контент -->
-    <div class="pt-4 pb-12">
+    <div :class="contentWrapperClass">
       <router-view />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth.js'
 import AppNotifications from './components/AppNotifications.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const isMobileMenuOpen = ref(false)
 let removeAfterEachHook = null
+
+const contentWrapperClass = computed(() => {
+  if (route.name === 'Chat') {
+    return 'pt-0 pb-0'
+  }
+
+  return 'pt-4 pb-12'
+})
 
 // Toggle мобильного меню
 const toggleMobileMenu = () => {

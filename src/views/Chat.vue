@@ -2,14 +2,14 @@
   <div
     :class="
       mobileConversationMode
-        ? 'min-h-[100dvh] overflow-hidden bg-white'
+        ? 'fixed inset-x-0 bottom-0 top-16 overflow-hidden bg-white'
         : 'min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:min-h-[calc(100vh-5rem)] xl:overflow-hidden'
     "
   >
     <div
       :class="
         mobileConversationMode
-          ? 'flex h-[100dvh] flex-col px-0 py-0'
+          ? 'flex h-full flex-col px-0 py-0'
           : 'mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 xl:h-full xl:min-h-0 xl:max-w-none xl:px-6 xl:py-3 2xl:px-8'
       "
     >
@@ -184,7 +184,7 @@
           <section
             :class="
               mobileConversationMode
-                ? 'flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-white'
+                ? 'flex h-full min-h-0 flex-col overflow-hidden bg-white'
                 : 'flex h-[calc(100vh-12rem)] min-h-[30rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm xl:h-full xl:min-h-0'
             "
           >
