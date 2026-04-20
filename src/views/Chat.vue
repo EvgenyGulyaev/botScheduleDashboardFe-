@@ -508,17 +508,21 @@
                       <div class="mt-2.5 flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-500 sm:gap-2 sm:text-[11px]">
                         <button
                           type="button"
-                          class="hidden rounded-full border border-slate-200 bg-white/80 px-2 py-1 transition hover:bg-slate-100 sm:inline-flex"
+                          class="hidden h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100 sm:inline-flex"
+                          aria-label="Ответить"
+                          title="Ответить"
                           @click="startReply(message)"
                         >
-                          Ответить
+                          ↩️
                         </button>
                         <button
                           type="button"
-                          class="rounded-full border border-slate-200 bg-white/80 px-2 py-1 transition hover:bg-slate-100"
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
+                          aria-label="Реакция"
+                          title="Реакция"
                           @click="toggleReactionPicker(message)"
                         >
-                          Реакция
+                          ☺️
                         </button>
                       </div>
                       <div
