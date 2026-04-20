@@ -1314,6 +1314,43 @@
     </div>
 
     <div
+      v-if="audioPlayerOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm"
+      @click.self="closeAudioPlayer"
+    >
+      <section class="w-full max-w-xl rounded-3xl bg-white p-4 shadow-2xl">
+        <div class="mb-3 flex items-center justify-between gap-4">
+          <div class="min-w-0">
+            <h3 class="truncate text-lg font-bold text-slate-950">Аудиосообщение</h3>
+            <p v-if="audioPlayerTitle" class="mt-1 truncate text-sm text-slate-500">
+              {{ audioPlayerTitle }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            @click="closeAudioPlayer"
+          >
+            Закрыть
+          </button>
+        </div>
+
+        <audio
+          v-if="audioPlayerUrl"
+          ref="audioPlayerElement"
+          :src="audioPlayerUrl"
+          controls
+          autoplay
+          class="w-full"
+        ></audio>
+
+        <p class="mt-3 text-sm leading-6 text-slate-500">
+          Если звук не стартовал сам, нажми play на плеере.
+        </p>
+      </section>
+    </div>
+
+    <div
       v-if="groupModalOpen"
       class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm"
       @click.self="closeGroupModal"
@@ -1501,6 +1538,10 @@ const playingAudioMessageId = ref('')
 const viewingImageMessageId = ref('')
 const imageViewerOpen = ref(false)
 const imageViewerUrl = ref('')
+const audioPlayerOpen = ref(false)
+const audioPlayerUrl = ref('')
+const audioPlayerTitle = ref('')
+const audioPlayerElement = ref(null)
 const localCallVideo = ref(null)
 const startingCall = ref(false)
 const joiningCall = ref(false)
@@ -3090,31 +3131,31 @@ const playAudioMessage = async (message) => {
   }
 
   playingAudioMessageId.value = message.id
-  let objectUrl = ''
   try {
     const blob = await chatStore.consumeAudioMessage({
       conversationId: activeConversation.value.id,
       messageId: message.id,
     })
-    objectUrl = URL.createObjectURL(blob)
-    const audio = new Audio(objectUrl)
-    audio.addEventListener(
-      'ended',
-      () => {
-        URL.revokeObjectURL(objectUrl)
-        if (playingAudioMessageId.value === message.id) {
-          playingAudioMessageId.value = ''
-        }
-      },
-      { once: true },
-    )
-    await audio.play()
-  } catch (error) {
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl)
+
+    closeAudioPlayer()
+    audioPlayerUrl.value = URL.createObjectURL(blob)
+    audioPlayerTitle.value = `${getChatMessageSenderLabel(message, currentUserEmail.value)} · ${formatAudioDuration(message.audio?.durationSeconds)}`
+    audioPlayerOpen.value = true
+
+    await nextTick()
+    const player = audioPlayerElement.value
+    if (player) {
+      player.currentTime = 0
+      const playback = player.play()
+      if (playback && typeof playback.catch === 'function') {
+        playback.catch(() => {})
+      }
     }
-    playingAudioMessageId.value = ''
+  } catch (error) {
+    closeAudioPlayer()
     notifications.errorFrom(error, 'Не удалось воспроизвести аудио')
+  } finally {
+    playingAudioMessageId.value = ''
   }
 }
 
@@ -3124,6 +3165,20 @@ const closeImageViewer = () => {
   }
   imageViewerUrl.value = ''
   imageViewerOpen.value = false
+}
+
+const closeAudioPlayer = () => {
+  if (audioPlayerElement.value) {
+    audioPlayerElement.value.pause()
+    audioPlayerElement.value.removeAttribute('src')
+    audioPlayerElement.value.load()
+  }
+  if (audioPlayerUrl.value) {
+    URL.revokeObjectURL(audioPlayerUrl.value)
+  }
+  audioPlayerUrl.value = ''
+  audioPlayerTitle.value = ''
+  audioPlayerOpen.value = false
 }
 
 const openImageMessage = async (message) => {
@@ -3493,6 +3548,7 @@ onUnmounted(() => {
   discardRecordedAudio()
   discardSelectedImage()
   closeImageViewer()
+  closeAudioPlayer()
   if (unsubscribeSocketEnvelope) {
     unsubscribeSocketEnvelope()
     unsubscribeSocketEnvelope = null
