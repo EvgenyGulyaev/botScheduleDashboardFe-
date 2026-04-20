@@ -94,6 +94,35 @@ const normalizeReplyPreview = (reply = null) => {
   }
 }
 
+const normalizeCallParticipant = (participant = {}) => ({
+  email: normalizeString(participant.email),
+  login: normalizeString(participant.login),
+  joinedAt: normalizeIso(participant.joined_at ?? participant.joinedAt),
+  muted: Boolean(participant.muted),
+})
+
+export const normalizeChatCall = (call = null) => {
+  if (!call) {
+    return null
+  }
+
+  return {
+    id: normalizeString(call.id ?? call.call_id ?? call.callId),
+    conversationId: normalizeString(call.conversation_id ?? call.conversationId),
+    messageId: normalizeString(call.message_id ?? call.messageId),
+    startedByEmail: normalizeString(call.started_by_email ?? call.startedByEmail),
+    startedByLogin: normalizeString(call.started_by_login ?? call.startedByLogin),
+    startedAt: normalizeIso(call.started_at ?? call.startedAt),
+    endedAt: normalizeIso(call.ended_at ?? call.endedAt),
+    joinable: Boolean(call.joinable ?? !normalizeIso(call.ended_at ?? call.endedAt)),
+    maxParticipants: Number(call.max_participants ?? call.maxParticipants ?? 4),
+    participantCount: Number(
+      call.participant_count ?? call.participantCount ?? toArray(call.participants).length,
+    ),
+    participants: toArray(call.participants).map(normalizeCallParticipant),
+  }
+}
+
 const normalizeReaction = (reaction = {}) => ({
   emoji: normalizeString(reaction.emoji),
   userEmail: normalizeString(reaction.user_email ?? reaction.userEmail),
@@ -192,6 +221,7 @@ export const normalizeChatMessage = (message = {}) => ({
   reactions: toArray(message.reactions).map(normalizeReaction),
   audio: normalizeChatAudio(message.audio),
   image: normalizeChatImage(message.image),
+  call: normalizeChatCall(message.call),
 })
 
 export const normalizeChatUsers = (users = []) => toArray(users).map(normalizeChatUser)
@@ -229,6 +259,14 @@ const ensureConversationCollection = (state) => {
 
   if (!Array.isArray(state.users)) {
     state.users = []
+  }
+
+  if (!state.activeCallsByConversation || typeof state.activeCallsByConversation !== 'object') {
+    state.activeCallsByConversation = {}
+  }
+
+  if (state.activeCall === undefined) {
+    state.activeCall = null
   }
 }
 
@@ -323,6 +361,37 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
 
   const event = envelope.event || envelope.type
   const data = envelope.data || {}
+
+  const applyCallState = (callPayload) => {
+    const normalized = normalizeChatCall(callPayload)
+    if (!normalized?.conversationId) {
+      return null
+    }
+
+    state.activeCallsByConversation[normalized.conversationId] = normalized
+    if (
+      normalized.participants.some((participant) => participant.email === currentUserEmail)
+    ) {
+      state.activeCall = normalized
+    }
+    return normalized
+  }
+
+  const clearCallState = (callPayload, conversationPayload) => {
+    const normalized = normalizeChatCall(callPayload)
+    const conversationId =
+      normalized?.conversationId ||
+      normalizeString(conversationPayload?.id ?? conversationPayload?.conversation_id)
+
+    if (conversationId) {
+      state.activeCallsByConversation[conversationId] = null
+    }
+    if (state.activeCall?.id && normalized?.id && state.activeCall.id === normalized.id) {
+      state.activeCall = null
+    } else if (conversationId && state.activeCall?.conversationId === conversationId) {
+      state.activeCall = null
+    }
+  }
 
   if (event === 'message_persisted') {
     if (data.conversation) {
@@ -468,6 +537,36 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
       )
     }
 
+    return state
+  }
+
+  if (event === 'call_started' || event === 'call_updated') {
+    if (data.conversation) {
+      upsertConversation(
+        state,
+        { ...data.conversation, members: data.members ?? data.conversation.members },
+        currentUserEmail,
+      )
+    }
+    if (data.message) {
+      upsertMessage(state, data.message)
+    }
+    applyCallState(data.call)
+    return state
+  }
+
+  if (event === 'call_ended') {
+    if (data.conversation) {
+      upsertConversation(
+        state,
+        { ...data.conversation, members: data.members ?? data.conversation.members },
+        currentUserEmail,
+      )
+    }
+    if (data.message) {
+      upsertMessage(state, data.message)
+    }
+    clearCallState(data.call, data.conversation)
     return state
   }
 

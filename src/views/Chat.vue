@@ -205,7 +205,7 @@
                       :disabled="!activeConversation"
                       title="Позвонить"
                       aria-label="Позвонить"
-                      @click="showCallPlaceholder"
+                      @click="handleCallAction"
                     >
                       📞
                     </button>
@@ -303,6 +303,104 @@
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div
+              v-if="displayedCall"
+              class="border-b border-slate-200 bg-slate-50/80 px-4 py-4 sm:px-6 xl:px-5"
+            >
+              <div class="rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex h-2.5 w-2.5 rounded-full" :class="displayedCall.joinable ? 'bg-emerald-500' : 'bg-slate-300'"></span>
+                      <h4 class="text-base font-semibold text-slate-950">
+                        {{ displayedCall.joinable ? 'Идёт звонок' : 'Звонок завершён' }}
+                      </h4>
+                    </div>
+                    <p class="mt-1 text-sm text-slate-500">
+                      {{ displayedCallStatusText }}
+                    </p>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button
+                      v-if="displayedCall.joinable && !isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="joiningCall || Boolean(callActionError)"
+                      @click="joinDisplayedCall"
+                    >
+                      {{ joiningCall ? 'Подключаем…' : 'Подключиться' }}
+                    </button>
+                    <button
+                      v-if="displayedCall.joinable && isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :title="localCallMuted ? 'Включить микрофон' : 'Выключить микрофон'"
+                      :aria-label="localCallMuted ? 'Включить микрофон' : 'Выключить микрофон'"
+                      @click="toggleCallMute"
+                    >
+                      {{ localCallMuted ? '🔇' : '🎤' }}
+                    </button>
+                    <button
+                      v-if="displayedCall.joinable && isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="endingCall"
+                      @click="leaveDisplayedCall"
+                    >
+                      {{ endingCall ? 'Выходим…' : 'Выйти' }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <div
+                    v-for="participant in displayedCall.participants"
+                    :key="`${displayedCall.id}-${participant.email}`"
+                    class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                  >
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="truncate text-sm font-semibold text-slate-950">
+                          {{ participant.login || participant.email }}
+                        </div>
+                        <div class="mt-1 text-xs text-slate-500">
+                          {{ participant.email === currentUserEmail ? 'Вы в звонке' : 'Участник звонка' }}
+                        </div>
+                      </div>
+                      <span class="text-base">
+                        {{ participant.muted ? '🔇' : '🎤' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="callActionError"
+                  class="mt-3 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                >
+                  {{ callActionError }}
+                </div>
+              </div>
+
+              <audio
+                v-if="localCallStream"
+                ref="localCallAudio"
+                class="hidden"
+                autoplay
+                muted
+                playsinline
+              ></audio>
+              <audio
+                v-for="remote in remoteCallAudios"
+                :key="`${displayedCall.id}-${remote.email}`"
+                :ref="setRemoteAudioElement(remote.email)"
+                class="hidden"
+                autoplay
+                playsinline
+              ></audio>
             </div>
 
             <div class="flex min-h-0 flex-1 flex-col">
@@ -479,6 +577,22 @@
                         </button>
                         <span class="text-xs text-slate-500">
                           {{ formatFileSize(message.image?.sizeBytes) }}
+                        </span>
+                      </div>
+                      <div
+                        v-else-if="message.type === 'call'"
+                        class="mt-2.5 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2"
+                      >
+                        <button
+                          type="button"
+                          class="rounded-xl bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          :disabled="!message.call?.joinable || (chatStore.activeCall && chatStore.activeCall.id && chatStore.activeCall.id !== message.call?.id)"
+                          @click="joinCallFromMessage(message)"
+                        >
+                          {{ callMessageButtonLabel(message) }}
+                        </button>
+                        <span class="text-xs text-slate-500">
+                          {{ callMessageMeta(message) }}
                         </span>
                       </div>
                       <p
@@ -981,6 +1095,14 @@ const playingAudioMessageId = ref('')
 const viewingImageMessageId = ref('')
 const imageViewerOpen = ref(false)
 const imageViewerUrl = ref('')
+const localCallAudio = ref(null)
+const startingCall = ref(false)
+const joiningCall = ref(false)
+const endingCall = ref(false)
+const callActionError = ref('')
+const localCallMuted = ref(false)
+const localCallStream = ref(null)
+const remoteCallAudios = ref([])
 const mediaRecorder = ref(null)
 const recordingStream = ref(null)
 const recordingTimer = ref(null)
@@ -1003,8 +1125,11 @@ const groupForm = ref({
   memberEmails: [],
 })
 const messageElements = new Map()
+const remoteAudioElements = new Map()
+const peerConnections = new Map()
 let highlightTimerId = null
 let mobileMediaQuery = null
+let unsubscribeSocketEnvelope = null
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -1085,6 +1210,33 @@ const activeConversationTitle = computed(() => activeConversation.value?.title |
 const activePinnedMessage = computed(() => activeConversation.value?.pinnedMessage || null)
 const audioRecorderLabel = computed(() => getChatAudioRecorderLabel(isRecordingAudio.value))
 const activeSearchResults = computed(() => chatStore.searchResults)
+const displayedCall = computed(() => chatStore.activeConversationCall || null)
+const isCurrentUserInDisplayedCall = computed(() =>
+  Boolean(
+    displayedCall.value?.participants?.some(
+      (participant) => participant.email === currentUserEmail.value,
+    ),
+  ),
+)
+const displayedCallStatusText = computed(() => {
+  if (!displayedCall.value) {
+    return ''
+  }
+
+  if (!displayedCall.value.joinable) {
+    return 'Кнопка подключения больше неактивна.'
+  }
+
+  if (isCurrentUserInDisplayedCall.value) {
+    return `Участников сейчас: ${displayedCall.value.participants.length}`
+  }
+
+  if (chatStore.activeCall?.id && chatStore.activeCall.id !== displayedCall.value.id) {
+    return 'У тебя уже есть другой активный звонок. Сначала выйди из него.'
+  }
+
+  return `Участников сейчас: ${displayedCall.value.participants.length}. Можно подключиться.`
+})
 const replyingToMessage = computed(() => {
   if (!replyingToMessageId.value) {
     return null
@@ -1537,8 +1689,485 @@ const openSearchResult = async (result) => {
   }
 }
 
-const showCallPlaceholder = () => {
-  notifications.info('Звонилку добавим следующим этапом после завершения фазы сообщений')
+const setRemoteAudioElement = (email) => (element) => {
+  if (element) {
+    remoteAudioElements.set(email, element)
+    const remote = remoteCallAudios.value.find((item) => item.email === email)
+    if (remote?.stream) {
+      element.srcObject = remote.stream
+    }
+    return
+  }
+
+  remoteAudioElements.delete(email)
+}
+
+const resetRemoteAudios = () => {
+  for (const entry of remoteCallAudios.value) {
+    const tracks = entry.stream?.getTracks?.() || []
+    for (const track of tracks) {
+      track.stop()
+    }
+  }
+  remoteCallAudios.value = []
+}
+
+const attachLocalAudio = () => {
+  if (localCallAudio.value) {
+    localCallAudio.value.srcObject = localCallStream.value
+  }
+}
+
+const upsertRemoteAudioStream = (participant, stream) => {
+  if (!participant?.email) {
+    return
+  }
+
+  const next = [...remoteCallAudios.value]
+  const index = next.findIndex((item) => item.email === participant.email)
+  const entry = {
+    email: participant.email,
+    login: participant.login || participant.email,
+    muted: Boolean(participant.muted),
+    stream,
+  }
+
+  if (index === -1) {
+    next.push(entry)
+  } else {
+    next[index] = {
+      ...next[index],
+      ...entry,
+    }
+  }
+  remoteCallAudios.value = next
+
+  const element = remoteAudioElements.get(participant.email)
+  if (element) {
+    element.srcObject = stream
+  }
+}
+
+const syncRemoteAudioMeta = (call) => {
+  if (!call) {
+    resetRemoteAudios()
+    return
+  }
+
+  remoteCallAudios.value = remoteCallAudios.value
+    .filter((entry) =>
+      call.participants.some(
+        (participant) =>
+          participant.email === entry.email && participant.email !== currentUserEmail.value,
+      ),
+    )
+    .map((entry) => {
+      const participant = call.participants.find((item) => item.email === entry.email) || {}
+      return {
+        ...entry,
+        login: participant.login || entry.login,
+        muted: Boolean(participant.muted),
+      }
+    })
+}
+
+const stopLocalCallStream = () => {
+  const tracks = localCallStream.value?.getTracks?.() || []
+  for (const track of tracks) {
+    track.stop()
+  }
+  localCallStream.value = null
+  if (localCallAudio.value) {
+    localCallAudio.value.srcObject = null
+  }
+}
+
+const closePeerConnection = (email) => {
+  const connection = peerConnections.get(email)
+  if (!connection) {
+    return
+  }
+  connection.onicecandidate = null
+  connection.ontrack = null
+  connection.onconnectionstatechange = null
+  connection.close()
+  peerConnections.delete(email)
+}
+
+const resetCallSession = () => {
+  for (const email of peerConnections.keys()) {
+    closePeerConnection(email)
+  }
+  resetRemoteAudios()
+  stopLocalCallStream()
+  localCallMuted.value = false
+}
+
+const ensureCallConfig = async () => {
+  try {
+    return await chatStore.loadCallConfig()
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось загрузить конфиг звонков')
+    throw error
+  }
+}
+
+const ensureLocalCallStream = async () => {
+  if (localCallStream.value) {
+    return localCallStream.value
+  }
+  if (
+    typeof navigator === 'undefined' ||
+    !navigator.mediaDevices?.getUserMedia ||
+    (typeof window !== 'undefined' && window.isSecureContext === false)
+  ) {
+    throw new Error('Браузер не дал доступ к микрофону для звонка')
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  localCallStream.value = stream
+  localCallMuted.value = false
+  attachLocalAudio()
+  return stream
+}
+
+const shouldInitiateOffer = (call, remoteParticipant) => {
+  const localParticipant = call?.participants?.find(
+    (participant) => participant.email === currentUserEmail.value,
+  )
+  if (!localParticipant || !remoteParticipant?.email) {
+    return false
+  }
+
+  const localJoinedAt = localParticipant.joinedAt || ''
+  const remoteJoinedAt = remoteParticipant.joinedAt || ''
+  if (localJoinedAt !== remoteJoinedAt) {
+    return localJoinedAt > remoteJoinedAt
+  }
+
+  return currentUserEmail.value > remoteParticipant.email
+}
+
+const sendRtcSignal = (call, remoteParticipant, kind, payload) =>
+  chatStore.sendCallSignal({
+    callId: call?.id,
+    conversationId: call?.conversationId,
+    recipientEmail: remoteParticipant?.email,
+    kind,
+    payload,
+  })
+
+const ensurePeerConnection = async (call, remoteParticipant, createOffer = false) => {
+  if (!call?.id || !remoteParticipant?.email || remoteParticipant.email === currentUserEmail.value) {
+    return null
+  }
+
+  let connection = peerConnections.get(remoteParticipant.email)
+  if (!connection) {
+    await ensureCallConfig()
+    const stream = await ensureLocalCallStream()
+    connection = new RTCPeerConnection({
+      iceServers: chatStore.callConfig?.iceServers || [{ urls: ['stun:stun.l.google.com:19302'] }],
+    })
+    peerConnections.set(remoteParticipant.email, connection)
+
+    for (const track of stream.getTracks()) {
+      connection.addTrack(track, stream)
+    }
+
+    connection.onicecandidate = (event) => {
+      if (event.candidate) {
+        sendRtcSignal(call, remoteParticipant, 'ice-candidate', event.candidate.toJSON())
+      }
+    }
+    connection.ontrack = (event) => {
+      const [streamValue] = event.streams
+      if (streamValue) {
+        upsertRemoteAudioStream(remoteParticipant, streamValue)
+      }
+    }
+    connection.onconnectionstatechange = () => {
+      if (['failed', 'closed', 'disconnected'].includes(connection.connectionState)) {
+        closePeerConnection(remoteParticipant.email)
+      }
+    }
+  }
+
+  if (createOffer) {
+    const offer = await connection.createOffer()
+    await connection.setLocalDescription(offer)
+    sendRtcSignal(call, remoteParticipant, 'offer', {
+      type: offer.type,
+      sdp: offer.sdp,
+    })
+  }
+
+  return connection
+}
+
+const syncDisplayedCallPeers = async (call) => {
+  if (!call || !isCurrentUserInDisplayedCall.value || !call.joinable) {
+    return
+  }
+
+  const localParticipant = call.participants.find(
+    (participant) => participant.email === currentUserEmail.value,
+  )
+  if (localParticipant) {
+    localCallMuted.value = Boolean(localParticipant.muted)
+    const tracks = localCallStream.value?.getAudioTracks?.() || []
+    for (const track of tracks) {
+      track.enabled = !localCallMuted.value
+    }
+  }
+
+  syncRemoteAudioMeta(call)
+
+  const remoteParticipants = call.participants.filter(
+    (participant) => participant.email && participant.email !== currentUserEmail.value,
+  )
+
+  for (const participant of [...peerConnections.keys()]) {
+    if (!remoteParticipants.some((item) => item.email === participant)) {
+      closePeerConnection(participant)
+    }
+  }
+
+  for (const participant of remoteParticipants) {
+    if (peerConnections.has(participant.email)) {
+      continue
+    }
+    if (shouldInitiateOffer(call, participant)) {
+      await ensurePeerConnection(call, participant, true)
+    }
+  }
+}
+
+const handleIncomingCallSignal = async (envelope) => {
+  const data = envelope?.data || {}
+  const targetConversationId = data.conversation_id || data.conversationId || ''
+  const activeCall = chatStore.activeCall
+  const call =
+    (activeCall?.id && activeCall.id === (data.call_id || data.callId) && activeCall) ||
+    chatStore.activeCallsByConversation[targetConversationId] ||
+    null
+
+  if (!call || !activeCall || activeCall.id !== call.id) {
+    return
+  }
+
+  const remoteParticipant =
+    call.participants.find((participant) => participant.email === data.sender_email) || {
+      email: data.sender_email || '',
+      login: data.sender_login || data.sender_email || '',
+      muted: false,
+    }
+
+  const connection = await ensurePeerConnection(call, remoteParticipant, false)
+  if (!connection) {
+    return
+  }
+
+  if (data.kind === 'offer') {
+    await ensureLocalCallStream()
+    await connection.setRemoteDescription(new RTCSessionDescription(data.payload))
+    const answer = await connection.createAnswer()
+    await connection.setLocalDescription(answer)
+    sendRtcSignal(call, remoteParticipant, 'answer', {
+      type: answer.type,
+      sdp: answer.sdp,
+    })
+    return
+  }
+
+  if (data.kind === 'answer') {
+    await connection.setRemoteDescription(new RTCSessionDescription(data.payload))
+    return
+  }
+
+  if (data.kind === 'ice-candidate' && data.payload) {
+    await connection.addIceCandidate(new RTCIceCandidate(data.payload))
+  }
+}
+
+const handleCallEnvelope = async (envelope) => {
+  if (!envelope?.event) {
+    return
+  }
+
+  if (envelope.event === 'call_signal') {
+    try {
+      await handleIncomingCallSignal(envelope)
+    } catch (error) {
+      console.error('call signal handling failed', error)
+      callActionError.value = error?.message || 'Не удалось обработать сигнал звонка'
+    }
+    return
+  }
+
+  if (['call_started', 'call_updated', 'call_ended'].includes(envelope.event)) {
+    const call = chatStore.activeConversationCall
+    if (!call?.joinable || !isCurrentUserInDisplayedCall.value) {
+      if (chatStore.activeCall?.conversationId !== activeConversation.value?.id) {
+        resetCallSession()
+      }
+      return
+    }
+
+    try {
+      await syncDisplayedCallPeers(call)
+    } catch (error) {
+      callActionError.value = error?.message || 'Не удалось синхронизировать звонок'
+    }
+  }
+}
+
+const startDisplayedCall = async () => {
+  if (!activeConversation.value) {
+    return
+  }
+  if (chatStore.activeCall?.id && chatStore.activeCall.conversationId !== activeConversation.value.id) {
+    notifications.info('Сначала выйди из текущего звонка')
+    return
+  }
+
+  startingCall.value = true
+  callActionError.value = ''
+  try {
+    await ensureLocalCallStream()
+    const call = await chatStore.startCall(activeConversation.value.id)
+    await syncDisplayedCallPeers(call)
+  } catch (error) {
+    callActionError.value = error?.message || 'Не удалось начать звонок'
+    notifications.errorFrom(error, 'Не удалось начать звонок')
+    resetCallSession()
+  } finally {
+    startingCall.value = false
+  }
+}
+
+const joinDisplayedCall = async () => {
+  if (!displayedCall.value?.id || !activeConversation.value) {
+    return
+  }
+  if (chatStore.activeCall?.id && chatStore.activeCall.id !== displayedCall.value.id) {
+    notifications.info('Сначала выйди из текущего звонка')
+    return
+  }
+
+  joiningCall.value = true
+  callActionError.value = ''
+  try {
+    await ensureLocalCallStream()
+    const call = await chatStore.joinCall({
+      conversationId: activeConversation.value.id,
+      callId: displayedCall.value.id,
+    })
+    await syncDisplayedCallPeers(call)
+  } catch (error) {
+    callActionError.value = error?.message || 'Не удалось подключиться к звонку'
+    notifications.errorFrom(error, 'Не удалось подключиться к звонку')
+    resetCallSession()
+  } finally {
+    joiningCall.value = false
+  }
+}
+
+const leaveDisplayedCall = async () => {
+  if (!displayedCall.value?.id || !activeConversation.value) {
+    return
+  }
+
+  endingCall.value = true
+  callActionError.value = ''
+  try {
+    await chatStore.leaveCall({
+      conversationId: activeConversation.value.id,
+      callId: displayedCall.value.id,
+    })
+  } catch (error) {
+    callActionError.value = error?.message || 'Не удалось выйти из звонка'
+    notifications.errorFrom(error, 'Не удалось выйти из звонка')
+  } finally {
+    endingCall.value = false
+    resetCallSession()
+  }
+}
+
+const toggleCallMute = async () => {
+  if (!displayedCall.value?.id || !isCurrentUserInDisplayedCall.value) {
+    return
+  }
+
+  localCallMuted.value = !localCallMuted.value
+  const tracks = localCallStream.value?.getAudioTracks?.() || []
+  for (const track of tracks) {
+    track.enabled = !localCallMuted.value
+  }
+
+  try {
+    await chatStore.setCallMuted({
+      conversationId: displayedCall.value.conversationId,
+      callId: displayedCall.value.id,
+      muted: localCallMuted.value,
+    })
+  } catch (error) {
+    localCallMuted.value = !localCallMuted.value
+    for (const track of tracks) {
+      track.enabled = !localCallMuted.value
+    }
+    notifications.errorFrom(error, 'Не удалось обновить состояние микрофона')
+  }
+}
+
+const handleCallAction = async () => {
+  if (!displayedCall.value) {
+    await startDisplayedCall()
+    return
+  }
+
+  if (!displayedCall.value.joinable) {
+    await startDisplayedCall()
+    return
+  }
+
+  if (isCurrentUserInDisplayedCall.value) {
+    notifications.info('Звонок уже идёт в этом чате')
+    return
+  }
+
+  await joinDisplayedCall()
+}
+
+const joinCallFromMessage = async (message) => {
+  if (!message?.call?.id || !message.call.joinable || !activeConversation.value) {
+    return
+  }
+  if (displayedCall.value?.id !== message.call.id) {
+    await chatStore.loadConversationCall(activeConversation.value.id)
+  }
+  await joinDisplayedCall()
+}
+
+const callMessageButtonLabel = (message) => {
+  if (!message?.call?.joinable) {
+    return 'Звонок завершён'
+  }
+  if (displayedCall.value?.id === message.call.id && isCurrentUserInDisplayedCall.value) {
+    return 'Вы в звонке'
+  }
+  if (chatStore.activeCall?.id && chatStore.activeCall.id !== message.call.id) {
+    return 'Уже в другом звонке'
+  }
+  return 'Подключиться'
+}
+
+const callMessageMeta = (message) => {
+  const count = Number(message?.call?.participantCount || 0)
+  if (!message?.call?.joinable) {
+    return 'Звонок уже завершён'
+  }
+  return count > 0 ? `${count} в звонке` : 'Можно подключиться'
 }
 
 const insertEmoji = (emoji) => {
@@ -2041,6 +2670,9 @@ const handleComposerKeydown = (event) => {
 
 onMounted(async () => {
   document.addEventListener('pointerdown', handleDocumentPointerDown)
+  unsubscribeSocketEnvelope = chatStore.addSocketEnvelopeListener((envelope) => {
+    handleCallEnvelope(envelope)
+  })
   updateMobileLayout()
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     mobileMediaQuery = window.matchMedia('(max-width: 639px)')
@@ -2128,6 +2760,33 @@ watch(
   { flush: 'post' },
 )
 
+watch(
+  () => displayedCall.value,
+  async (call) => {
+    callActionError.value = ''
+    if (!call?.joinable || !isCurrentUserInDisplayedCall.value) {
+      if (!call?.joinable) {
+        resetCallSession()
+      }
+      return
+    }
+
+    try {
+      await syncDisplayedCallPeers(call)
+    } catch (error) {
+      callActionError.value = error?.message || 'Не удалось подготовить звонок'
+    }
+  },
+  { deep: true },
+)
+
+watch(
+  () => localCallStream.value,
+  () => {
+    attachLocalAudio()
+  },
+)
+
 onUnmounted(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
   if (typeof window !== 'undefined') {
@@ -2156,6 +2815,11 @@ onUnmounted(() => {
   discardRecordedAudio()
   discardSelectedImage()
   closeImageViewer()
+  if (unsubscribeSocketEnvelope) {
+    unsubscribeSocketEnvelope()
+    unsubscribeSocketEnvelope = null
+  }
+  resetCallSession()
   chatStore.disconnect()
 })
 </script>

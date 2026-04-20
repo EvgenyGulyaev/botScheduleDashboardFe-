@@ -247,6 +247,36 @@ test('normalizes conversation and message payloads', () => {
     }).reactions[0].emoji,
     '🔥',
   )
+
+  const callMessage = normalizeChatMessage({
+    id: 'msg-call',
+    conversation_id: 'group-1',
+    type: 'call',
+    text: 'Начался звонок',
+    sender_email: 'alice@example.com',
+    sender_login: 'alice',
+    call: {
+      id: 'call-1',
+      call_id: 'call-1',
+      conversation_id: 'group-1',
+      message_id: 'msg-call',
+      started_by_email: 'alice@example.com',
+      started_by_login: 'alice',
+      started_at: '2026-04-20T10:00:00Z',
+      joinable: true,
+      max_participants: 4,
+      participant_count: 2,
+      participants: [
+        { email: 'alice@example.com', login: 'alice', muted: false },
+        { email: 'bob@example.com', login: 'bob', muted: true },
+      ],
+    },
+  })
+
+  assert.equal(callMessage.type, 'call')
+  assert.equal(callMessage.call.id, 'call-1')
+  assert.equal(callMessage.call.participantCount, 2)
+  assert.equal(callMessage.call.participants[1].muted, true)
 })
 
 test('applies message_persisted into conversations and messages', () => {
@@ -296,6 +326,125 @@ test('applies message_persisted into conversations and messages', () => {
   assert.equal(state.conversations[0].title, 'bob')
   assert.equal(state.conversations[0].members[1].login, 'bob')
   assert.equal(state.messagesByConversation['direct-1'][0].text, 'hello')
+})
+
+test('applies call lifecycle events into active call state', () => {
+  const state = {
+    users: [],
+    conversations: [],
+    messagesByConversation: {},
+    activeConversationId: 'group-1',
+    activeCall: null,
+    activeCallsByConversation: {},
+    loading: {},
+    error: null,
+    socketStatus: 'connected',
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'call_started',
+      data: {
+        conversation: {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          members: [
+            { email: 'alice@example.com', login: 'alice' },
+            { email: 'bob@example.com', login: 'bob' },
+          ],
+        },
+        members: [
+          { email: 'alice@example.com', login: 'alice' },
+          { email: 'bob@example.com', login: 'bob' },
+        ],
+        call: {
+          id: 'call-1',
+          conversation_id: 'group-1',
+          message_id: 'msg-call',
+          started_by_email: 'alice@example.com',
+          started_by_login: 'alice',
+          started_at: '2026-04-20T10:00:00Z',
+          max_participants: 4,
+          participants: [
+            { email: 'alice@example.com', login: 'alice', muted: false },
+          ],
+        },
+        message: {
+          id: 'msg-call',
+          conversation_id: 'group-1',
+          type: 'call',
+          text: 'Начался звонок',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          created_at: '2026-04-20T10:00:00Z',
+          call: {
+            call_id: 'call-1',
+            started_by_email: 'alice@example.com',
+            started_by_login: 'alice',
+            started_at: '2026-04-20T10:00:00Z',
+            joinable: true,
+            participant_count: 1,
+          },
+        },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.activeCall?.id, 'call-1')
+  assert.equal(state.activeCallsByConversation['group-1']?.id, 'call-1')
+  assert.equal(state.messagesByConversation['group-1'][0].call.joinable, true)
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'call_ended',
+      data: {
+        conversation: {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+        },
+        call: {
+          id: 'call-1',
+          conversation_id: 'group-1',
+          message_id: 'msg-call',
+          started_by_email: 'alice@example.com',
+          started_by_login: 'alice',
+          started_at: '2026-04-20T10:00:00Z',
+          ended_at: '2026-04-20T10:05:00Z',
+          max_participants: 4,
+          participants: [],
+        },
+        message: {
+          id: 'msg-call',
+          conversation_id: 'group-1',
+          type: 'call',
+          text: 'Начался звонок',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          created_at: '2026-04-20T10:00:00Z',
+          updated_at: '2026-04-20T10:05:00Z',
+          call: {
+            call_id: 'call-1',
+            started_by_email: 'alice@example.com',
+            started_by_login: 'alice',
+            started_at: '2026-04-20T10:00:00Z',
+            joinable: false,
+            ended_at: '2026-04-20T10:05:00Z',
+            participant_count: 0,
+          },
+        },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.activeCall, null)
+  assert.equal(state.activeCallsByConversation['group-1'], null)
+  assert.equal(state.messagesByConversation['group-1'][0].call.joinable, false)
 })
 
 test('applies message_read_updated into state without duplicating receipts', () => {

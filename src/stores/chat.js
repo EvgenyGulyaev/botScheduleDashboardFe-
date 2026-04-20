@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import {
   applyChatSocketEvent,
   buildChatWebSocketUrl,
+  normalizeChatCall,
   getChatReconnectDelayMs,
   normalizeChatConversation,
   normalizeChatConversations,
@@ -25,6 +26,8 @@ const createLoadingState = () => ({
   messages: false,
   search: false,
 })
+
+const socketEnvelopeListeners = new Set()
 
 const getApi = (authStore) => {
   if (!authStore.api && typeof authStore.init === 'function') {
@@ -254,6 +257,9 @@ export const useChatStore = defineStore('chat', {
     searchResults: [],
     lastSearchQuery: '',
     highlightedMessageId: '',
+    callConfig: null,
+    activeCallsByConversation: {},
+    activeCall: null,
   }),
 
   getters: {
@@ -279,9 +285,28 @@ export const useChatStore = defineStore('chat', {
           ?.members || []
       )
     },
+
+    activeConversationCall(state) {
+      if (!state.activeConversationId) {
+        return null
+      }
+
+      return state.activeCallsByConversation[state.activeConversationId] || null
+    },
   },
 
   actions: {
+    addSocketEnvelopeListener(listener) {
+      if (typeof listener !== 'function') {
+        return () => {}
+      }
+
+      socketEnvelopeListeners.add(listener)
+      return () => {
+        socketEnvelopeListeners.delete(listener)
+      }
+    },
+
     resetError() {
       this.error = null
     },
@@ -347,6 +372,53 @@ export const useChatStore = defineStore('chat', {
         throw error
       } finally {
         this.loading = { ...this.loading, messages: false }
+      }
+    },
+
+    async loadCallConfig(force = false) {
+      if (this.callConfig && !force) {
+        return this.callConfig
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.get('/chat/calls/config')
+      this.callConfig = {
+        iceServers: Array.isArray(response.data?.ice_servers)
+          ? response.data.ice_servers.map((server) => ({
+              urls: Array.isArray(server?.urls) ? server.urls.filter(Boolean) : [],
+              username: server?.username || '',
+              credential: server?.credential || '',
+            }))
+          : [{ urls: ['stun:stun.l.google.com:19302'] }],
+      }
+      return this.callConfig
+    },
+
+    async loadConversationCall(conversationId) {
+      if (!conversationId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      try {
+        const response = await api.get(`/chat/conversations/${conversationId}/call`)
+        const call = normalizeChatCall(response.data)
+        this.activeCallsByConversation[conversationId] = call
+        if (call?.participants?.some((participant) => participant.email === authStore.user?.email)) {
+          this.activeCall = call
+        }
+        return call
+      } catch (error) {
+        if (error?.response?.status === 404) {
+          this.activeCallsByConversation[conversationId] = null
+          if (this.activeCall?.conversationId === conversationId) {
+            this.activeCall = null
+          }
+          return null
+        }
+        throw error
       }
     },
 
@@ -482,6 +554,7 @@ export const useChatStore = defineStore('chat', {
       }
 
       this.activeConversationId = conversationId
+      await this.loadConversationCall(conversationId)
 
       if (!this.messagesByConversation[conversationId]) {
         await this.loadMessages(conversationId)
@@ -497,7 +570,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     async loadInitialState() {
-      await Promise.all([this.loadUsers(), this.loadConversations()])
+      await Promise.all([this.loadUsers(), this.loadConversations(), this.loadCallConfig()])
       this.connect()
       return this
     },
@@ -609,6 +682,115 @@ export const useChatStore = defineStore('chat', {
         text: text || '',
         reply_to_message_id: replyToMessageId || '',
       })
+    },
+
+    sendCallSignal(payload = {}) {
+      const authStore = useAuthStore()
+      const socket = this.socket || this.connect()
+      if (!socket) {
+        return false
+      }
+
+      return sendSocketEnvelope(socket, 'call_signal', {
+        call_id: payload.callId || '',
+        conversation_id: payload.conversationId || '',
+        recipient_email: payload.recipientEmail || '',
+        kind: payload.kind || '',
+        payload: payload.payload || {},
+        sender_email: authStore.user?.email || '',
+        sender_login: authStore.user?.login || '',
+      })
+    },
+
+    async startCall(conversationId) {
+      if (!conversationId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.post(`/chat/conversations/${conversationId}/calls`)
+      const call = normalizeChatCall(response.data)
+      this.activeCallsByConversation[conversationId] = call
+      this.activeCall = call
+      return call
+    },
+
+    async joinCall({ conversationId, callId }) {
+      if (!conversationId || !callId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.post(`/chat/conversations/${conversationId}/calls/${callId}/join`)
+      const call = normalizeChatCall(response.data)
+      this.activeCallsByConversation[conversationId] = call
+      this.activeCall = call
+      return call
+    },
+
+    async leaveCall({ conversationId, callId }) {
+      if (!conversationId || !callId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.post(`/chat/conversations/${conversationId}/calls/${callId}/leave`)
+      if (response.data?.ended) {
+        this.activeCallsByConversation[conversationId] = null
+        if (this.activeCall?.id === callId) {
+          this.activeCall = null
+        }
+        if (response.data?.message) {
+          replaceMessage(this, conversationId, response.data.message)
+        }
+        return null
+      }
+
+      const call = normalizeChatCall(response.data)
+      this.activeCallsByConversation[conversationId] = call
+      if (this.activeCall?.id === callId) {
+        this.activeCall = call
+      }
+      return call
+    },
+
+    async endCall({ conversationId, callId }) {
+      if (!conversationId || !callId) {
+        return false
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.post(`/chat/conversations/${conversationId}/calls/${callId}/end`)
+      this.activeCallsByConversation[conversationId] = null
+      if (this.activeCall?.id === callId) {
+        this.activeCall = null
+      }
+      if (response.data?.message) {
+        replaceMessage(this, conversationId, response.data.message)
+      }
+      return true
+    },
+
+    async setCallMuted({ conversationId, callId, muted }) {
+      if (!conversationId || !callId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.put(`/chat/conversations/${conversationId}/calls/${callId}/mute`, {
+        muted: Boolean(muted),
+      })
+      const call = normalizeChatCall(response.data)
+      this.activeCallsByConversation[conversationId] = call
+      if (this.activeCall?.id === callId) {
+        this.activeCall = call
+      }
+      return call
     },
 
     async editMessage({ conversationId, messageId, text }) {
@@ -901,6 +1083,14 @@ export const useChatStore = defineStore('chat', {
       })
 
       applyChatSocketEvent(this, envelope, currentUserEmail)
+
+      for (const listener of socketEnvelopeListeners) {
+        try {
+          listener(envelope)
+        } catch (error) {
+          console.error('chat socket listener failed', error)
+        }
+      }
 
       if (shouldNotify) {
         const notice = buildIncomingChatNotice(envelope)
