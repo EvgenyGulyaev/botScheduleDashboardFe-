@@ -25,16 +25,6 @@
         <button
           type="button"
           class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg shadow-sm transition hover:bg-slate-50"
-          :title="soundLabel"
-          :aria-label="soundLabel"
-          @click="toggleSoundNotifications"
-        >
-          {{ chatStore.soundEnabled ? '🔔' : '🔕' }}
-        </button>
-
-        <button
-          type="button"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg shadow-sm transition hover:bg-slate-50"
           title="Настройки"
           aria-label="Настройки"
           @click="openSettings"
@@ -1364,9 +1354,6 @@ const socketDotClass = computed(() => {
 
   return 'bg-rose-500'
 })
-const soundLabel = computed(() =>
-  chatStore.soundEnabled ? 'Звуковые уведомления включены' : 'Звуковые уведомления выключены',
-)
 const socketRecoveryActive = computed(() =>
   ['connecting', 'reconnecting', 'error'].includes(chatStore.socketStatus),
 )
@@ -1459,14 +1446,6 @@ const openChatsScreen = () => {
   if (isMobileLayout.value) {
     mobileView.value = 'list'
   }
-}
-
-const toggleSoundNotifications = () => {
-  const enabled = chatStore.setSoundEnabled(!chatStore.soundEnabled)
-  authStore.updateProfile({
-    sound_enabled: enabled,
-  }).catch(() => {})
-  notifications.info(enabled ? 'Звуковые уведомления включены' : 'Звуковые уведомления выключены')
 }
 
 const openSettings = () => {
