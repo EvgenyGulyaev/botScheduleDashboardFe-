@@ -63,6 +63,24 @@
               />
             </label>
 
+            <label class="block">
+              <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Стартовая страница
+              </span>
+              <select
+                v-model="profileForm.defaultApp"
+                class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+              >
+                <option
+                  v-for="option in DEFAULT_APP_OPTIONS"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+
             <button
               type="submit"
               class="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -155,6 +173,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { DEFAULT_APP_OPTIONS, resolveDefaultAppValue } from '../lib/default-app.js'
 import {
   getBrowserPushPermission,
   getExistingPushSubscription,
@@ -179,6 +198,7 @@ const profileForm = ref({
   login: '',
   email: '',
   password: '',
+  defaultApp: 'chat',
 })
 const notificationForm = ref({
   pushEnabled: false,
@@ -195,6 +215,7 @@ const fillForms = (user = authStore.user) => {
     login: user?.login || '',
     email: user?.email || '',
     password: '',
+    defaultApp: resolveDefaultAppValue(user?.defaultApp),
   }
   notificationForm.value = {
     pushEnabled: Boolean(user?.notificationSettings?.pushEnabled),
@@ -210,6 +231,7 @@ const saveProfile = async () => {
   const nextLogin = profileForm.value.login.trim()
   const nextEmail = profileForm.value.email.trim()
   const nextPassword = profileForm.value.password.trim()
+  const nextDefaultApp = resolveDefaultAppValue(profileForm.value.defaultApp)
 
   if (nextLogin && nextLogin !== authStore.user?.login) {
     payload.login = nextLogin
@@ -219,6 +241,9 @@ const saveProfile = async () => {
   }
   if (nextPassword) {
     payload.password = nextPassword
+  }
+  if (nextDefaultApp !== resolveDefaultAppValue(authStore.user?.defaultApp)) {
+    payload.default_app = nextDefaultApp
   }
 
   if (!Object.keys(payload).length) {

@@ -60,6 +60,7 @@ test('normalizes backend auth payloads with Token or token fields', () => {
   assert.equal(upper.token, 'upper')
   assert.equal(upper.user.login, '')
   assert.equal(upper.user.email, '')
+  assert.equal(upper.user.defaultApp, 'chat')
   assert.equal(upper.user.notificationSettings.pushEnabled, false)
   assert.equal(upper.user.notificationSettings.soundEnabled, true)
   assert.equal(upper.user.notificationSettings.toastEnabled, true)
@@ -67,6 +68,7 @@ test('normalizes backend auth payloads with Token or token fields', () => {
   assert.equal(lower.token, 'lower')
   assert.equal(lower.user.login, '')
   assert.equal(lower.user.email, '')
+  assert.equal(lower.user.defaultApp, 'chat')
   assert.equal(lower.user.notificationSettings.pushEnabled, false)
 })
 
@@ -79,6 +81,7 @@ test('normalizes profile notification and push metadata', () => {
     login: 'alice',
     email: 'alice@example.com',
     is_admin: true,
+    default_app: 'dashboard',
     notification_settings: {
       push_enabled: true,
       sound_enabled: false,
@@ -95,6 +98,8 @@ test('normalizes profile notification and push metadata', () => {
     email: 'alice@example.com',
     is_admin: true,
     isAdmin: true,
+    default_app: 'dashboard',
+    defaultApp: 'dashboard',
     notification_settings: {
       push_enabled: true,
       sound_enabled: false,

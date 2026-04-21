@@ -1,3 +1,5 @@
+import { resolveDefaultAppValue } from './default-app.js'
+
 export const normalizeAuthUser = (payload = {}) => {
   const notificationSettings = payload?.notification_settings ?? payload?.notificationSettings ?? {}
   const push = payload?.push ?? payload?.pushConfig ?? {}
@@ -7,6 +9,7 @@ export const normalizeAuthUser = (payload = {}) => {
     login: payload?.login ?? '',
     email: payload?.email ?? '',
     isAdmin: Boolean(payload?.is_admin ?? payload?.isAdmin),
+    defaultApp: resolveDefaultAppValue(payload?.default_app ?? payload?.defaultApp ?? 'chat'),
     notificationSettings: {
       pushEnabled: Boolean(
         notificationSettings?.push_enabled ?? notificationSettings?.pushEnabled ?? false,

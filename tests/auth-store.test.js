@@ -78,24 +78,37 @@ test('updates stored session token from auth refresh response header', () => {
   assert.equal(fulfilled(response), response)
   assert.equal(authStore.token, 'fresh-token')
   assert.equal(localStorage.getItem('token'), 'fresh-token')
-  assert.equal(
-    localStorage.getItem('user'),
-    JSON.stringify({
-      id: 42,
-      email: 'alice@example.com',
-      login: '',
-      isAdmin: false,
-      notificationSettings: {
-        pushEnabled: false,
-        soundEnabled: true,
-        toastEnabled: true,
-      },
-      push: {
-        supported: false,
-        publicKey: '',
-      },
-    }),
-  )
+  assert.deepEqual(JSON.parse(localStorage.getItem('user')), {
+    id: 42,
+    email: 'alice@example.com',
+    login: '',
+    isAdmin: false,
+    defaultApp: 'chat',
+    notificationSettings: {
+      pushEnabled: false,
+      soundEnabled: true,
+      toastEnabled: true,
+    },
+    push: {
+      supported: false,
+      publicKey: '',
+    },
+  })
+
+  delete global.localStorage
+})
+
+test('resolves default route from user profile', () => {
+  setActivePinia(createPinia())
+  global.localStorage = createStorageMock()
+
+  const authStore = useAuthStore()
+  authStore.init()
+  authStore.user = {
+    defaultApp: 'short-links',
+  }
+
+  assert.equal(authStore.getDefaultRoute(), '/short-links')
 
   delete global.localStorage
 })

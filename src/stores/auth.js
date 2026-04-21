@@ -8,6 +8,7 @@ import {
   readStoredAuth,
   writeStoredAuth,
 } from '../lib/auth-storage.js'
+import { resolveDefaultAppRoute } from '../lib/default-app.js'
 import { isUnauthorizedError, redirectToLogin } from '../lib/auth-session.js'
 
 const REFRESHED_TOKEN_HEADER = 'x-auth-token'
@@ -101,6 +102,56 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async loginWithGoogle(idToken = '') {
+      this.loading = true
+      this.error = null
+      try {
+        const res = await axios.post('/api/auth/google', { id_token: idToken })
+        const session = normalizeAuthPayload(res.data)
+        this.applySession(session)
+        if (!this.api) {
+          this.init()
+        }
+        return this.user
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Ошибка входа через Google'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchGoogleAuthConfig() {
+      const response = await axios.get('/api/auth/google/config')
+      return {
+        enabled: Boolean(response?.data?.enabled),
+        clientId: response?.data?.client_id || '',
+      }
+    },
+
+    async forgotPassword(email = '') {
+      return axios.post('/api/auth/forgot-password', { email })
+    },
+
+    async resetPassword({ token, password } = {}) {
+      this.loading = true
+      this.error = null
+      try {
+        const response = await axios.post('/api/auth/reset-password', { token, password })
+        const session = normalizeAuthPayload(response.data)
+        this.applySession(session)
+        if (!this.api) {
+          this.init()
+        }
+        return this.user
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Не удалось обновить пароль'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     updateSessionToken(token) {
       if (!token || token === this.token) {
         return
@@ -164,6 +215,10 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       clearStoredAuth(localStorage)
+    },
+
+    getDefaultRoute() {
+      return resolveDefaultAppRoute(this.user?.defaultApp)
     },
   },
 })

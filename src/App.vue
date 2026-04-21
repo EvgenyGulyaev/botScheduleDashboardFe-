@@ -12,65 +12,68 @@
           </div>
 
           <!-- Десктоп меню -->
-          <div class="hidden md:flex items-center space-x-4">
-            <router-link
-              to="/dashboard"
-              class="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
-            >
-              📊 Dashboard
-            </router-link>
-            <!-- Dropdown Приложения -->
-            <div class="relative group">
-              <button
-                class="flex items-center px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900 focus:outline-none"
+          <div class="hidden md:flex flex-1 items-center justify-between pl-8">
+            <div class="flex items-center space-x-4">
+              <router-link
+                to="/dashboard"
+                class="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900"
               >
-                📦 Приложения
-                <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
+                📊 Dashboard
+              </router-link>
+              <!-- Dropdown Приложения -->
+              <div class="relative group">
+                <button
+                  class="flex items-center px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900 focus:outline-none"
+                >
+                  📦 Приложения
+                  <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
 
-              <!-- Dropdown menu -->
-              <div
-                class="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
-              >
-                <div class="py-1" role="menu" aria-orientation="vertical">
-                  <router-link
-                    to="/messages"
-                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    role="menuitem"
-                  >
-                    💬 Бот Расписание
-                  </router-link>
-                  <router-link
-                    to="/chat"
-                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    role="menuitem"
-                  >
-                    💬 Чат
-                  </router-link>
-                  <router-link
-                    to="/geo3d"
-                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    role="menuitem"
-                  >
-                    🏔️ 3D Модели
-                  </router-link>
-                  <router-link
-                    to="/short-links"
-                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    role="menuitem"
-                  >
-                    🔗 Короткие ссылки
-                  </router-link>
+                <!-- Dropdown menu -->
+                <div
+                  class="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+                >
+                  <div class="py-1" role="menu" aria-orientation="vertical">
+                    <router-link
+                      to="/messages"
+                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      role="menuitem"
+                    >
+                      💬 Бот Расписание
+                    </router-link>
+                    <router-link
+                      to="/chat"
+                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      role="menuitem"
+                    >
+                      💬 Чат
+                    </router-link>
+                    <router-link
+                      to="/geo3d"
+                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      role="menuitem"
+                    >
+                      🏔️ 3D Модели
+                    </router-link>
+                    <router-link
+                      to="/short-links"
+                      class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      role="menuitem"
+                    >
+                      🔗 Короткие ссылки
+                    </router-link>
+                  </div>
                 </div>
               </div>
             </div>
+
             <button
               @click="logout"
               class="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-md hover:bg-red-600 transition-colors"

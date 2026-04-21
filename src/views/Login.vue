@@ -4,9 +4,10 @@
       <div>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">Вход в админку</h2>
         <p class="mt-3 text-center text-sm text-gray-500">
-          Введи рабочие учётные данные, чтобы открыть панель управления.
+          Введи рабочие учётные данные или зайди через Google.
         </p>
       </div>
+
       <form @submit.prevent="login" class="mt-8 space-y-6">
         <InlineNotice
           v-if="authStore.error"
@@ -14,6 +15,7 @@
           title="Не получилось войти"
           :message="authStore.error"
         />
+
         <div class="space-y-4">
           <div>
             <input
@@ -28,6 +30,7 @@
               {{ validationErrors.email }}
             </p>
           </div>
+
           <div>
             <input
               v-model="form.password"
@@ -45,6 +48,16 @@
             </p>
           </div>
         </div>
+
+        <div class="flex items-center justify-end">
+          <router-link
+            to="/forgot-password"
+            class="text-sm font-medium text-blue-600 transition hover:text-blue-700"
+          >
+            Забыли пароль?
+          </router-link>
+        </div>
+
         <button
           type="submit"
           :disabled="loading"
@@ -53,27 +66,60 @@
           {{ loading ? 'Входим...' : 'Войти' }}
         </button>
       </form>
+
+      <div class="space-y-4">
+        <div class="flex items-center gap-3 text-xs uppercase tracking-wide text-gray-400">
+          <span class="h-px flex-1 bg-gray-200"></span>
+          <span>или</span>
+          <span class="h-px flex-1 bg-gray-200"></span>
+        </div>
+
+        <div
+          v-if="googleConfig.enabled && googleConfig.clientId"
+          ref="googleButtonRoot"
+          class="flex justify-center"
+        ></div>
+
+        <div
+          v-else
+          class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-500"
+        >
+          Вход через Google пока не настроен.
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import InlineNotice from '../components/InlineNotice.vue'
 import { validateLoginForm } from '../lib/view-feedback.js'
 import { useNotificationsStore } from '../stores/notifications.js'
+import { renderGoogleLoginButton, loadGoogleIdentityScript } from '../lib/google-identity.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const notifications = useNotificationsStore()
+
 const form = ref({ email: '', password: '' })
 const loading = ref(false)
+const googleLoading = ref(false)
 const submitAttempted = ref(false)
+const googleButtonRoot = ref(null)
+const googleConfig = ref({
+  enabled: false,
+  clientId: '',
+})
 
 const validationErrors = computed(() => validateLoginForm(form.value))
-const shouldShowErrors = computed(() => submitAttempted.value && Object.keys(validationErrors.value).length > 0)
+const shouldShowErrors = computed(
+  () => submitAttempted.value && Object.keys(validationErrors.value).length > 0,
+)
+
+const goToDefaultApp = () => router.push(authStore.getDefaultRoute())
 
 const login = async () => {
   submitAttempted.value = true
@@ -87,11 +133,48 @@ const login = async () => {
   try {
     await authStore.login(form.value)
     notifications.success('Вход выполнен')
-    router.push('/dashboard')
+    await goToDefaultApp()
   } catch (error) {
     notifications.errorFrom(error, 'Ошибка входа', { duration: 5000 })
   } finally {
     loading.value = false
   }
 }
+
+const loginWithGoogle = async (credential) => {
+  if (!credential || googleLoading.value) {
+    return
+  }
+
+  googleLoading.value = true
+  authStore.error = null
+  try {
+    await authStore.loginWithGoogle(credential)
+    notifications.success('Вход через Google выполнен')
+    await goToDefaultApp()
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось войти через Google', { duration: 5000 })
+  } finally {
+    googleLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  try {
+    googleConfig.value = await authStore.fetchGoogleAuthConfig()
+    if (!googleConfig.value.enabled || !googleConfig.value.clientId) {
+      return
+    }
+
+    await loadGoogleIdentityScript()
+    await nextTick()
+    renderGoogleLoginButton({
+      element: googleButtonRoot.value,
+      clientId: googleConfig.value.clientId,
+      onCredential: loginWithGoogle,
+    })
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось подготовить вход через Google')
+  }
+})
 </script>

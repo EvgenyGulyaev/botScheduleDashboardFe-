@@ -4,6 +4,8 @@ import { resolveAuthRedirect } from './guards.js'
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },
+  { path: '/forgot-password', name: 'ForgotPassword', component: () => import('../views/ForgotPassword.vue') },
+  { path: '/reset-password', name: 'ResetPassword', component: () => import('../views/ResetPassword.vue') },
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -59,6 +61,7 @@ router.beforeEach((to) => {
   const authStore = useAuthStore()
   return resolveAuthRedirect({
     isAuthenticated: authStore.isAuthenticated,
+    defaultRoute: authStore.getDefaultRoute(),
     to,
   })
 })
