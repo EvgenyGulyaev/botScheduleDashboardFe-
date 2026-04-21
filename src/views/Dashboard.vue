@@ -61,6 +61,7 @@
               <option value="bot-nickname">Бот для Дискорда</option>
               <option value="shotener">Сервис для ссылок</option>
               <option value="geo3d">Сервис для 3d городов</option>
+              <option value="alice-speaker-service">Сервис для Алисы</option>
             </select>
           </div>
 
@@ -202,7 +203,7 @@
             v-for="service in services"
             :key="service"
             @click="
-              selectedService = service;
+              selectedService = service
               loadStatus()
             "
             class="group p-5 sm:p-6 rounded-2xl hover:shadow-2xl cursor-pointer transition-all border-2 hover:border-blue-300 hover:bg-blue-50 border-gray-200 bg-gradient-to-br from-white/80 to-gray-50"
@@ -268,7 +269,15 @@ const stats = ref({
   memory: '',
 })
 
-const services = ['bot', 'dashboard', 'bot-nickname', 'shotener', 'geo3d', 'dashboard-chat']
+const services = [
+  'bot',
+  'dashboard',
+  'bot-nickname',
+  'shotener',
+  'geo3d',
+  'dashboard-chat',
+  'alice-speaker-service',
+]
 const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdatedAt.value))
 
 // Статусы
