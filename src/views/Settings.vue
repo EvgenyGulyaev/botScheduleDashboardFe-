@@ -81,6 +81,86 @@
               </select>
             </label>
 
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div class="mb-3">
+                <div class="text-sm font-semibold text-slate-950">Алиса</div>
+                <div class="mt-1 text-xs text-slate-500">
+                  Настрой аккаунт, комнату, колонку и сценарий для уведомлений на стороне получателя.
+                </div>
+              </div>
+
+              <div v-if="aliceSettingsHint" class="mb-3 rounded-2xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                {{ aliceSettingsHint }}
+              </div>
+
+              <div class="space-y-3">
+                <label class="block">
+                  <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Яндекс-аккаунт
+                  </span>
+                  <select
+                    v-model="profileForm.aliceAccountId"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
+                    :disabled="aliceLoading"
+                    @change="onAliceAccountChange"
+                  >
+                    <option value="">Не выбран</option>
+                    <option v-for="account in aliceAccounts" :key="account.id" :value="account.id">
+                      {{ account.title }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="block">
+                  <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Комната
+                  </span>
+                  <select
+                    v-model="profileForm.aliceRoomId"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
+                    :disabled="aliceLoading || !profileForm.aliceAccountId"
+                  >
+                    <option value="">Не выбрана</option>
+                    <option v-for="room in aliceRooms" :key="room.id" :value="room.id">
+                      {{ room.name }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="block">
+                  <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Колонка
+                  </span>
+                  <select
+                    v-model="profileForm.aliceDeviceId"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
+                    :disabled="aliceLoading || !profileForm.aliceAccountId"
+                  >
+                    <option value="">Не выбрана</option>
+                    <option v-for="device in filteredAliceDevices" :key="device.id" :value="device.id">
+                      {{ device.name }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="block">
+                  <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Сценарий
+                  </span>
+                  <select
+                    v-model="profileForm.aliceScenarioId"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
+                    :disabled="aliceLoading || !profileForm.aliceAccountId"
+                  >
+                    <option value="">Не выбран</option>
+                    <option v-for="scenario in aliceScenarios" :key="scenario.id" :value="scenario.id">
+                      {{ scenario.name }}
+                    </option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
             <button
               type="submit"
               class="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -199,12 +279,22 @@ const profileForm = ref({
   email: '',
   password: '',
   defaultApp: 'chat',
+  aliceAccountId: '',
+  aliceRoomId: '',
+  aliceDeviceId: '',
+  aliceScenarioId: '',
 })
 const notificationForm = ref({
   pushEnabled: false,
   soundEnabled: true,
   toastEnabled: true,
 })
+const aliceLoading = ref(false)
+const aliceAccounts = ref([])
+const aliceRooms = ref([])
+const aliceDevices = ref([])
+const aliceScenarios = ref([])
+const aliceSettingsHint = ref('')
 
 const pushSupported = computed(
   () => isWebPushSupported() && Boolean(authStore.user?.push?.supported),
@@ -216,6 +306,10 @@ const fillForms = (user = authStore.user) => {
     email: user?.email || '',
     password: '',
     defaultApp: resolveDefaultAppValue(user?.defaultApp),
+    aliceAccountId: user?.aliceSettings?.accountId || '',
+    aliceRoomId: user?.aliceSettings?.roomId || '',
+    aliceDeviceId: user?.aliceSettings?.deviceId || '',
+    aliceScenarioId: user?.aliceSettings?.scenarioId || '',
   }
   notificationForm.value = {
     pushEnabled: Boolean(user?.notificationSettings?.pushEnabled),
@@ -232,6 +326,10 @@ const saveProfile = async () => {
   const nextEmail = profileForm.value.email.trim()
   const nextPassword = profileForm.value.password.trim()
   const nextDefaultApp = resolveDefaultAppValue(profileForm.value.defaultApp)
+  const nextAliceAccountId = profileForm.value.aliceAccountId.trim()
+  const nextAliceRoomId = profileForm.value.aliceRoomId.trim()
+  const nextAliceDeviceId = profileForm.value.aliceDeviceId.trim()
+  const nextAliceScenarioId = profileForm.value.aliceScenarioId.trim()
 
   if (nextLogin && nextLogin !== authStore.user?.login) {
     payload.login = nextLogin
@@ -244,6 +342,18 @@ const saveProfile = async () => {
   }
   if (nextDefaultApp !== resolveDefaultAppValue(authStore.user?.defaultApp)) {
     payload.default_app = nextDefaultApp
+  }
+  if (nextAliceAccountId !== (authStore.user?.aliceSettings?.accountId || '')) {
+    payload.alice_account_id = nextAliceAccountId
+  }
+  if (nextAliceRoomId !== (authStore.user?.aliceSettings?.roomId || '')) {
+    payload.alice_room_id = nextAliceRoomId
+  }
+  if (nextAliceDeviceId !== (authStore.user?.aliceSettings?.deviceId || '')) {
+    payload.alice_device_id = nextAliceDeviceId
+  }
+  if (nextAliceScenarioId !== (authStore.user?.aliceSettings?.scenarioId || '')) {
+    payload.alice_scenario_id = nextAliceScenarioId
   }
 
   if (!Object.keys(payload).length) {
@@ -320,6 +430,66 @@ const goBack = () => {
   router.push('/chat')
 }
 
+const filteredAliceDevices = computed(() =>
+  aliceDevices.value.filter(
+    (device) => !profileForm.value.aliceRoomId || device.room_id === profileForm.value.aliceRoomId,
+  ),
+)
+
+const loadAliceAccounts = async () => {
+  aliceLoading.value = true
+  aliceSettingsHint.value = ''
+  try {
+    aliceAccounts.value = await authStore.fetchAliceAccounts()
+    if (!aliceAccounts.value.length) {
+      aliceSettingsHint.value =
+        'Alice service подключён, но аккаунты ещё не добавлены. Их можно будет завести в alice-speaker-service отдельно.'
+    }
+  } catch (error) {
+    aliceAccounts.value = []
+    aliceRooms.value = []
+    aliceDevices.value = []
+    aliceScenarios.value = []
+    aliceSettingsHint.value =
+      error?.response?.data?.message || 'Alice service пока не настроен на backend.'
+  } finally {
+    aliceLoading.value = false
+  }
+}
+
+const loadAliceResources = async (accountId) => {
+  if (!accountId) {
+    aliceRooms.value = []
+    aliceDevices.value = []
+    aliceScenarios.value = []
+    return
+  }
+
+  aliceLoading.value = true
+  aliceSettingsHint.value = ''
+  try {
+    const resources = await authStore.fetchAliceAccountResources(accountId)
+    aliceRooms.value = resources.rooms
+    aliceDevices.value = resources.devices
+    aliceScenarios.value = resources.scenarios
+  } catch (error) {
+    aliceRooms.value = []
+    aliceDevices.value = []
+    aliceScenarios.value = []
+    aliceSettingsHint.value =
+      error?.response?.data?.message || 'Не удалось загрузить комнаты, колонки и сценарии Алисы.'
+  } finally {
+    aliceLoading.value = false
+  }
+}
+
+const onAliceAccountChange = async () => {
+  profileForm.value.aliceRoomId = ''
+  profileForm.value.aliceDeviceId = ''
+  profileForm.value.aliceScenarioId = ''
+  await loadAliceResources(profileForm.value.aliceAccountId)
+}
+
 onMounted(async () => {
   try {
     await authStore.fetchProfile()
@@ -327,5 +497,9 @@ onMounted(async () => {
     notifications.errorFrom(error, 'Не удалось загрузить настройки')
   }
   fillForms()
+  await loadAliceAccounts()
+  if (profileForm.value.aliceAccountId) {
+    await loadAliceResources(profileForm.value.aliceAccountId)
+  }
 })
 </script>

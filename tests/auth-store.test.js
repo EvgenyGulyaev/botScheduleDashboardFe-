@@ -93,6 +93,18 @@ test('updates stored session token from auth refresh response header', () => {
       supported: false,
       publicKey: '',
     },
+    alice_settings: {
+      account_id: '',
+      room_id: '',
+      device_id: '',
+      scenario_id: '',
+    },
+    aliceSettings: {
+      accountId: '',
+      roomId: '',
+      deviceId: '',
+      scenarioId: '',
+    },
   })
 
   delete global.localStorage

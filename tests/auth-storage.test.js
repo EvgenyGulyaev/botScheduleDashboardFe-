@@ -114,5 +114,17 @@ test('normalizes profile notification and push metadata', () => {
       supported: true,
       publicKey: 'public-key',
     },
+    alice_settings: {
+      account_id: '',
+      room_id: '',
+      device_id: '',
+      scenario_id: '',
+    },
+    aliceSettings: {
+      accountId: '',
+      roomId: '',
+      deviceId: '',
+      scenarioId: '',
+    },
   })
 })

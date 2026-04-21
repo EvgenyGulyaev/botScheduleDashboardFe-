@@ -572,6 +572,20 @@ export const useChatStore = defineStore('chat', {
       return true
     },
 
+    async announceOnAlice({ conversationId, messageId = '' } = {}) {
+      if (!conversationId) {
+        throw new Error('conversation_id is required')
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.post('/alice/announce', {
+        conversation_id: conversationId,
+        message_id: messageId,
+      })
+      return response.data || null
+    },
+
     async setActiveConversation(conversationOrId) {
       const conversationId =
         typeof conversationOrId === 'object' && conversationOrId

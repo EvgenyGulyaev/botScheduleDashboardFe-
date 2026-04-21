@@ -3,6 +3,7 @@ import { resolveDefaultAppValue } from './default-app.js'
 export const normalizeAuthUser = (payload = {}) => {
   const notificationSettings = payload?.notification_settings ?? payload?.notificationSettings ?? {}
   const push = payload?.push ?? payload?.pushConfig ?? {}
+  const alice = payload?.alice_settings ?? payload?.aliceSettings ?? {}
 
   return {
     ...payload,
@@ -22,6 +23,18 @@ export const normalizeAuthUser = (payload = {}) => {
     push: {
       supported: Boolean(push?.supported ?? false),
       publicKey: push?.public_key ?? push?.publicKey ?? '',
+    },
+    alice_settings: {
+      account_id: alice?.account_id ?? alice?.accountId ?? '',
+      room_id: alice?.room_id ?? alice?.roomId ?? '',
+      device_id: alice?.device_id ?? alice?.deviceId ?? '',
+      scenario_id: alice?.scenario_id ?? alice?.scenarioId ?? '',
+    },
+    aliceSettings: {
+      accountId: alice?.account_id ?? alice?.accountId ?? '',
+      roomId: alice?.room_id ?? alice?.roomId ?? '',
+      deviceId: alice?.device_id ?? alice?.deviceId ?? '',
+      scenarioId: alice?.scenario_id ?? alice?.scenarioId ?? '',
     },
   }
 }

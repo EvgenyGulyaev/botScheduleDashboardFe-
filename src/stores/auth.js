@@ -200,6 +200,29 @@ export const useAuthStore = defineStore('auth', {
       return api.post('/profile/push-subscriptions', payload)
     },
 
+    async fetchAliceAccounts() {
+      const api = this.api
+      const response = await api.get('/alice/accounts')
+      return Array.isArray(response.data?.items) ? response.data.items : []
+    },
+
+    async fetchAliceAccountResources(accountId = '') {
+      if (!accountId) {
+        return {
+          rooms: [],
+          devices: [],
+          scenarios: [],
+        }
+      }
+      const api = this.api
+      const response = await api.get(`/alice/accounts/${accountId}/resources`)
+      return {
+        rooms: Array.isArray(response.data?.rooms) ? response.data.rooms : [],
+        devices: Array.isArray(response.data?.devices) ? response.data.devices : [],
+        scenarios: Array.isArray(response.data?.scenarios) ? response.data.scenarios : [],
+      }
+    },
+
     async deletePushSubscription(endpoint = '') {
       const api = this.api
       return api.delete('/profile/push-subscriptions', {

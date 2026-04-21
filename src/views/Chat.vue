@@ -1184,6 +1184,14 @@
                     </div>
                   </div>
                   <button
+                    type="button"
+                    class="mb-2 flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="sendingAlice || !canAnnounceOnAlice"
+                    @click="announceOnAlice"
+                  >
+                    {{ sendingAlice ? 'Отправляем в Алису…' : 'На Алису' }}
+                  </button>
+                  <button
                     type="submit"
                     :class="
                       mobileConversationMode
@@ -1520,6 +1528,7 @@ const deletingGroup = ref(false)
 const sendingMessage = ref(false)
 const sendingAudio = ref(false)
 const sendingImage = ref(false)
+const sendingAlice = ref(false)
 const groupModalOpen = ref(false)
 const messagesScroller = ref(null)
 const isRecordingAudio = ref(false)
@@ -1611,6 +1620,9 @@ const composerEmojis = [
 ]
 
 const currentUserEmail = computed(() => authStore.user?.email || '')
+const canAnnounceOnAlice = computed(
+  () => activeConversation.value?.type === 'direct' && Boolean(activeConversation.value?.id),
+)
 const currentUserLogin = computed(() => authStore.user?.login || authStore.user?.email || '')
 const chatErrorMessage = computed(
   () =>
@@ -3332,6 +3344,25 @@ const sendCurrentMessage = async () => {
     notifications.errorFrom(error, 'Не удалось отправить сообщение')
   } finally {
     sendingMessage.value = false
+  }
+}
+
+const announceOnAlice = async () => {
+  if (!activeConversation.value?.id || activeConversation.value?.type !== 'direct') {
+    notifications.info('На Алису пока можно отправлять только из direct-диалога')
+    return
+  }
+
+  sendingAlice.value = true
+  try {
+    await chatStore.announceOnAlice({
+      conversationId: activeConversation.value.id,
+    })
+    notifications.success('Сценарий Алисы запущен')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось отправить на Алису')
+  } finally {
+    sendingAlice.value = false
   }
 }
 
