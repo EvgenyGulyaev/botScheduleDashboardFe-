@@ -84,7 +84,7 @@
           v-else
           class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-500"
         >
-          Вход через Google пока не настроен.
+          {{ googleUnavailableMessage }}
         </div>
       </div>
     </div>
@@ -114,10 +114,22 @@ const googleConfig = ref({
   clientId: '',
 })
 
+const isRawIpHost = (host = '') =>
+  /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host) || /^\[[0-9a-fA-F:]+\]$/.test(host)
+
 const validationErrors = computed(() => validateLoginForm(form.value))
 const shouldShowErrors = computed(
   () => submitAttempted.value && Object.keys(validationErrors.value).length > 0,
 )
+const googleUnavailableMessage = computed(() => {
+  const host = globalThis?.window?.location?.hostname || ''
+
+  if (isRawIpHost(host)) {
+    return 'Вход через Google недоступен на IP-адресе. Сначала подключи домен с HTTPS для админки, затем добавь этот домен в Authorized JavaScript origins в Google Cloud Console и укажи GOOGLE_CLIENT_ID на сервере.'
+  }
+
+  return 'Вход через Google пока не настроен. Проверь GOOGLE_CLIENT_ID на сервере и добавь текущий домен в Authorized JavaScript origins в Google Cloud Console.'
+})
 
 const goToDefaultApp = () => router.push(authStore.getDefaultRoute())
 
