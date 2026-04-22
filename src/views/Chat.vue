@@ -3352,13 +3352,18 @@ const announceOnAlice = async () => {
     notifications.info('На Алису пока можно отправлять только из direct-диалога')
     return
   }
+  if (!composerText.value.trim()) {
+    notifications.info('Напиши текст, который нужно отправить на Алису')
+    return
+  }
 
   sendingAlice.value = true
   try {
     await chatStore.announceOnAlice({
       conversationId: activeConversation.value.id,
+      text: composerText.value.trim(),
     })
-    notifications.success('Сценарий Алисы запущен')
+    notifications.success('Текст отправили в Алису')
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить на Алису')
   } finally {

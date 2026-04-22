@@ -199,13 +199,13 @@
           v-else
           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
         >
-          <div
-            v-for="service in services"
-            :key="service"
-            @click="
-              selectedService = service
-              loadStatus()
-            "
+	          <div
+	            v-for="service in services"
+	            :key="service"
+	            @click="
+	              selectedService = service;
+	              loadStatus()
+	            "
             class="group p-5 sm:p-6 rounded-2xl hover:shadow-2xl cursor-pointer transition-all border-2 hover:border-blue-300 hover:bg-blue-50 border-gray-200 bg-gradient-to-br from-white/80 to-gray-50"
           >
             <div class="flex items-start justify-between mb-3">

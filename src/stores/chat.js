@@ -572,7 +572,7 @@ export const useChatStore = defineStore('chat', {
       return true
     },
 
-    async announceOnAlice({ conversationId, messageId = '' } = {}) {
+    async announceOnAlice({ conversationId, messageId = '', text = '' } = {}) {
       if (!conversationId) {
         throw new Error('conversation_id is required')
       }
@@ -582,6 +582,7 @@ export const useChatStore = defineStore('chat', {
       const response = await api.post('/alice/announce', {
         conversation_id: conversationId,
         message_id: messageId,
+        text,
       })
       return response.data || null
     },
