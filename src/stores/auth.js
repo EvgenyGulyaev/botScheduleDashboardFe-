@@ -209,6 +209,7 @@ export const useAuthStore = defineStore('auth', {
     async fetchAliceAccountResources(accountId = '') {
       if (!accountId) {
         return {
+          households: [],
           rooms: [],
           devices: [],
           scenarios: [],
@@ -217,6 +218,7 @@ export const useAuthStore = defineStore('auth', {
       const api = this.api
       const response = await api.get(`/alice/accounts/${accountId}/resources`)
       return {
+        households: Array.isArray(response.data?.households) ? response.data.households : [],
         rooms: Array.isArray(response.data?.rooms) ? response.data.rooms : [],
         devices: Array.isArray(response.data?.devices) ? response.data.devices : [],
         scenarios: Array.isArray(response.data?.scenarios) ? response.data.scenarios : [],

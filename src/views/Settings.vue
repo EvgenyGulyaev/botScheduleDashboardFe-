@@ -212,7 +212,7 @@
             >
               <option value="">Не выбран</option>
               <option v-for="household in aliceHouseholds" :key="household.id" :value="household.id">
-                {{ household.label }}
+                {{ household.name || 'Без названия' }}
               </option>
             </select>
           </label>
@@ -324,6 +324,7 @@ const notificationForm = ref({
 })
 const aliceLoading = ref(false)
 const aliceAccounts = ref([])
+const aliceHouseholds = ref([])
 const aliceRooms = ref([])
 const aliceDevices = ref([])
 const aliceScenarios = ref([])
@@ -456,35 +457,6 @@ const aliceUsesScenario = computed(
   () => (selectedAliceAccount.value?.transport || 'official') === 'official',
 )
 
-const aliceHouseholds = computed(() => {
-  const labels = new Map()
-  let order = 0
-
-  for (const room of aliceRooms.value) {
-    if (!room?.household_id || labels.has(room.household_id)) {
-      continue
-    }
-    order += 1
-    labels.set(room.household_id, {
-      id: room.household_id,
-      label: `Дом ${order}`,
-    })
-  }
-
-  for (const device of aliceDevices.value) {
-    if (!device?.household_id || labels.has(device.household_id)) {
-      continue
-    }
-    order += 1
-    labels.set(device.household_id, {
-      id: device.household_id,
-      label: `Дом ${order}`,
-    })
-  }
-
-  return [...labels.values()]
-})
-
 const filteredAliceRooms = computed(() =>
   aliceRooms.value.filter(
     (room) =>
@@ -553,6 +525,7 @@ const loadAliceAccounts = async () => {
     }
   } catch (error) {
     aliceAccounts.value = []
+    aliceHouseholds.value = []
     aliceRooms.value = []
     aliceDevices.value = []
     aliceScenarios.value = []
@@ -568,6 +541,7 @@ const loadAliceResources = async (accountId) => {
     aliceRooms.value = []
     aliceDevices.value = []
     aliceScenarios.value = []
+    aliceHouseholds.value = []
     return
   }
 
@@ -575,10 +549,12 @@ const loadAliceResources = async (accountId) => {
   aliceSettingsHint.value = ''
   try {
     const resources = await authStore.fetchAliceAccountResources(accountId)
+    aliceHouseholds.value = resources.households
     aliceRooms.value = resources.rooms
     aliceDevices.value = resources.devices
     aliceScenarios.value = resources.scenarios
   } catch (error) {
+    aliceHouseholds.value = []
     aliceRooms.value = []
     aliceDevices.value = []
     aliceScenarios.value = []
