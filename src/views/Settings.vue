@@ -250,31 +250,20 @@
             </select>
           </label>
 
-          <label class="block">
+          <div class="block">
             <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Голос по умолчанию
+              Проверка колонки
             </span>
-            <div class="flex gap-2">
-              <select
-                v-model="profileForm.aliceVoice"
-                class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-                :disabled="aliceLoading || !profileForm.aliceAccountId"
-              >
-                <option v-for="voice in availableAliceVoices" :key="voice.value || 'default'" :value="voice.value">
-                  {{ voice.label }}
-                </option>
-              </select>
-              <button
-                type="button"
-                class="inline-flex shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="aliceTesting || !canTestAliceSettings"
-                title="Озвучить тестовую фразу"
-                @click="testAliceSettingsVoice"
-              >
-                {{ aliceTesting ? '…' : '🔊 Тест' }}
-              </button>
-            </div>
-          </label>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="aliceTesting || !canTestAliceSettings"
+              title="Озвучить тестовую фразу"
+              @click="testAliceSettingsVoice"
+            >
+              {{ aliceTesting ? '…' : '🔊 Тест' }}
+            </button>
+          </div>
 
           <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2">
             <div>
@@ -309,12 +298,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  filterAliceDevices,
-  filterAliceRooms,
-  getAliceHouseholdOptions,
-  getAliceVoiceOptions,
-} from '../lib/alice.js'
+import { filterAliceDevices, filterAliceRooms, getAliceHouseholdOptions } from '../lib/alice.js'
 import { DEFAULT_APP_OPTIONS, resolveDefaultAppValue } from '../lib/default-app.js'
 import {
   getBrowserPushPermission,
@@ -348,7 +332,6 @@ const profileForm = ref({
   aliceRoomId: '',
   aliceDeviceId: '',
   aliceScenarioId: '',
-  aliceVoice: '',
   aliceDisabled: false,
 })
 const notificationForm = ref({
@@ -362,7 +345,6 @@ const aliceHouseholds = ref([])
 const aliceRooms = ref([])
 const aliceDevices = ref([])
 const aliceScenarios = ref([])
-const aliceVoices = ref([])
 const aliceSettingsHint = ref('')
 
 const pushSupported = computed(
@@ -380,7 +362,6 @@ const fillForms = (user = authStore.user) => {
     aliceRoomId: user?.aliceSettings?.roomId || '',
     aliceDeviceId: user?.aliceSettings?.deviceId || '',
     aliceScenarioId: user?.aliceSettings?.scenarioId || '',
-    aliceVoice: user?.aliceSettings?.voice || '',
     aliceDisabled: Boolean(user?.aliceSettings?.disabled),
   }
   notificationForm.value = {
@@ -510,16 +491,6 @@ const filteredAliceDevices = computed(() =>
   ),
 )
 
-const availableAliceVoices = computed(() =>
-  getAliceVoiceOptions({
-    resources: { voices: aliceVoices.value },
-    account: selectedAliceAccount.value,
-    devices: filteredAliceDevices.value,
-    selectedDeviceId: profileForm.value.aliceDeviceId,
-    selectedVoice: profileForm.value.aliceVoice,
-  }),
-)
-
 const canTestAliceSettings = computed(
   () =>
     Boolean(profileForm.value.aliceAccountId) &&
@@ -534,7 +505,6 @@ const saveAliceSettings = async () => {
   const nextAliceHouseholdId = profileForm.value.aliceHouseholdId.trim()
   const nextAliceRoomId = profileForm.value.aliceRoomId.trim()
   const nextAliceDeviceId = profileForm.value.aliceDeviceId.trim()
-  const nextAliceVoice = profileForm.value.aliceVoice.trim()
   const nextAliceDisabled = Boolean(profileForm.value.aliceDisabled)
 
   if (nextAliceAccountId !== (authStore.user?.aliceSettings?.accountId || '')) {
@@ -549,11 +519,11 @@ const saveAliceSettings = async () => {
   if (nextAliceDeviceId !== (authStore.user?.aliceSettings?.deviceId || '')) {
     payload.alice_device_id = nextAliceDeviceId
   }
-  if (nextAliceVoice !== (authStore.user?.aliceSettings?.voice || '')) {
-    payload.alice_voice = nextAliceVoice
-  }
   if (nextAliceDisabled !== Boolean(authStore.user?.aliceSettings?.disabled)) {
     payload.alice_disabled = nextAliceDisabled
+  }
+  if (authStore.user?.aliceSettings?.voice) {
+    payload.alice_voice = ''
   }
   if (authStore.user?.aliceSettings?.scenarioId) {
     payload.alice_scenario_id = ''
@@ -584,23 +554,14 @@ const testAliceSettingsVoice = async () => {
 
   aliceTesting.value = true
   try {
-    const response = await authStore.announceOnAliceTest({
+    await authStore.announceOnAliceTest({
       text: 'Тест',
       accountId: profileForm.value.aliceAccountId,
       householdId: profileForm.value.aliceHouseholdId,
       roomId: profileForm.value.aliceRoomId,
       deviceId: profileForm.value.aliceDeviceId,
-      voice: profileForm.value.aliceVoice,
     })
-    if (response?.voiceFallback) {
-      notifications.info(
-        profileForm.value.aliceVoice
-          ? `Голос ${profileForm.value.aliceVoice} не поддержался, Алиса озвучила дефолтным голосом`
-          : 'Алиса озвучила дефолтным голосом',
-      )
-    } else {
-      notifications.success('Тестовая фраза отправлена в Алису')
-    }
+    notifications.success('Тестовая фраза отправлена в Алису')
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить тест в Алису')
   } finally {
@@ -635,7 +596,6 @@ const loadAliceResources = async (accountId) => {
     aliceRooms.value = []
     aliceDevices.value = []
     aliceScenarios.value = []
-    aliceVoices.value = []
     aliceHouseholds.value = []
     return
   }
@@ -648,13 +608,11 @@ const loadAliceResources = async (accountId) => {
     aliceRooms.value = resources.rooms
     aliceDevices.value = resources.devices
     aliceScenarios.value = resources.scenarios
-    aliceVoices.value = resources.voices
   } catch (error) {
     aliceHouseholds.value = []
     aliceRooms.value = []
     aliceDevices.value = []
     aliceScenarios.value = []
-    aliceVoices.value = []
     aliceSettingsHint.value =
       error?.response?.data?.message || 'Не удалось загрузить комнаты, колонки и сценарии Алисы.'
   } finally {
@@ -667,7 +625,6 @@ const onAliceAccountChange = async () => {
   profileForm.value.aliceRoomId = ''
   profileForm.value.aliceDeviceId = ''
   profileForm.value.aliceScenarioId = ''
-  profileForm.value.aliceVoice = ''
   await loadAliceResources(profileForm.value.aliceAccountId)
 }
 

@@ -103,31 +103,20 @@
             </select>
           </label>
 
-          <label class="block lg:col-span-2">
+          <div class="block lg:col-span-2">
             <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Голос
+              Проверка колонки
             </span>
-            <div class="flex gap-2">
-              <select
-                v-model="form.voice"
-                class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-                :disabled="aliceLoading || !form.accountId"
-              >
-                <option v-for="voice in availableAliceVoices" :key="voice.value || 'default'" :value="voice.value">
-                  {{ voice.label }}
-                </option>
-              </select>
-              <button
-                type="button"
-                class="inline-flex shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="sending || !canTestAliceSelection"
-                title="Озвучить тестовую фразу"
-                @click="testVoice"
-              >
-                {{ sending ? '…' : '🔊 Тест' }}
-              </button>
-            </div>
-          </label>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="sending || !canTestAliceSelection"
+              title="Озвучить тестовую фразу"
+              @click="testVoice"
+            >
+              {{ sending ? '…' : '🔊 Тест' }}
+            </button>
+          </div>
 
           <label class="block lg:col-span-2">
             <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -159,12 +148,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  filterAliceDevices,
-  filterAliceRooms,
-  getAliceHouseholdOptions,
-  getAliceVoiceOptions,
-} from '../lib/alice.js'
+import { filterAliceDevices, filterAliceRooms, getAliceHouseholdOptions } from '../lib/alice.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 
@@ -179,13 +163,11 @@ const aliceAccounts = ref([])
 const aliceHouseholds = ref([])
 const aliceRooms = ref([])
 const aliceDevices = ref([])
-const aliceVoices = ref([])
 const form = ref({
   accountId: '',
   householdId: '',
   roomId: '',
   deviceId: '',
-  voice: '',
   text: '',
 })
 
@@ -195,7 +177,6 @@ const fillForm = (user = authStore.user) => {
     householdId: user?.aliceSettings?.householdId || '',
     roomId: user?.aliceSettings?.roomId || '',
     deviceId: user?.aliceSettings?.deviceId || '',
-    voice: user?.aliceSettings?.voice || '',
     text: '',
   }
 }
@@ -220,16 +201,6 @@ const filteredAliceDevices = computed(() =>
   filterAliceDevices(aliceDevices.value, form.value.householdId, form.value.roomId),
 )
 
-const availableAliceVoices = computed(() =>
-  getAliceVoiceOptions({
-    resources: { voices: aliceVoices.value },
-    account: selectedAliceAccount.value,
-    devices: filteredAliceDevices.value,
-    selectedDeviceId: form.value.deviceId,
-    selectedVoice: form.value.voice,
-  }),
-)
-
 const canTestAliceSelection = computed(
   () =>
     Boolean(form.value.accountId) &&
@@ -252,7 +223,6 @@ const loadAliceAccounts = async () => {
     aliceHouseholds.value = []
     aliceRooms.value = []
     aliceDevices.value = []
-    aliceVoices.value = []
     aliceHint.value = error?.response?.data?.message || 'Alice service пока не настроен на backend.'
   } finally {
     aliceLoading.value = false
@@ -264,7 +234,6 @@ const loadAliceResources = async (accountId) => {
     aliceHouseholds.value = []
     aliceRooms.value = []
     aliceDevices.value = []
-    aliceVoices.value = []
     return
   }
 
@@ -275,14 +244,11 @@ const loadAliceResources = async (accountId) => {
     aliceHouseholds.value = resources.households
     aliceRooms.value = resources.rooms
     aliceDevices.value = resources.devices
-    aliceVoices.value = resources.voices
   } catch (error) {
     aliceHouseholds.value = []
     aliceRooms.value = []
     aliceDevices.value = []
-    aliceVoices.value = []
-    aliceHint.value =
-      error?.response?.data?.message || 'Не удалось загрузить комнаты, колонки и голоса Алисы.'
+    aliceHint.value = error?.response?.data?.message || 'Не удалось загрузить комнаты и колонки Алисы.'
   } finally {
     aliceLoading.value = false
   }
@@ -292,7 +258,6 @@ const onAccountChange = async () => {
   form.value.householdId = ''
   form.value.roomId = ''
   form.value.deviceId = ''
-  form.value.voice = ''
   await loadAliceResources(form.value.accountId)
 }
 
@@ -314,24 +279,15 @@ const announce = async () => {
 
   sending.value = true
   try {
-    const response = await authStore.announceOnAliceTest({
+    await authStore.announceOnAliceTest({
       text,
       accountId: form.value.accountId,
       householdId: form.value.householdId,
       roomId: form.value.roomId,
       deviceId: form.value.deviceId,
-      voice: form.value.voice,
     })
     form.value.text = ''
-    if (response?.voiceFallback) {
-      notifications.info(
-        form.value.voice
-          ? `Голос ${form.value.voice} не поддержался, Алиса озвучила дефолтным голосом`
-          : 'Алиса озвучила дефолтным голосом',
-      )
-    } else {
-      notifications.success('Текст отправлен в Алису')
-    }
+    notifications.success('Текст отправлен в Алису')
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить текст в Алису')
   } finally {
@@ -347,23 +303,14 @@ const testVoice = async () => {
 
   sending.value = true
   try {
-    const response = await authStore.announceOnAliceTest({
+    await authStore.announceOnAliceTest({
       text: 'Тест',
       accountId: form.value.accountId,
       householdId: form.value.householdId,
       roomId: form.value.roomId,
       deviceId: form.value.deviceId,
-      voice: form.value.voice,
     })
-    if (response?.voiceFallback) {
-      notifications.info(
-        form.value.voice
-          ? `Голос ${form.value.voice} не поддержался, Алиса озвучила дефолтным голосом`
-          : 'Алиса озвучила дефолтным голосом',
-      )
-    } else {
-      notifications.success('Тестовая фраза отправлена в Алису')
-    }
+    notifications.success('Тестовая фраза отправлена в Алису')
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить тест в Алису')
   } finally {
