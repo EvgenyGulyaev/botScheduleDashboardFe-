@@ -211,8 +211,8 @@
               @change="onAliceHouseholdChange"
             >
               <option value="">Не выбран</option>
-              <option v-for="household in aliceHouseholds" :key="household.id" :value="household.id">
-                {{ household.name || 'Без названия' }}
+              <option v-for="household in aliceHouseholdOptions" :key="household.id" :value="household.id">
+                {{ household.label }}
               </option>
             </select>
           </label>
@@ -224,7 +224,7 @@
             <select
               v-model="profileForm.aliceRoomId"
               class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-              :disabled="aliceLoading || !profileForm.aliceAccountId || !aliceHouseholds.length"
+              :disabled="aliceLoading || !profileForm.aliceAccountId || !aliceHouseholdOptions.length"
               @change="onAliceRoomChange"
             >
               <option value="">Не выбрана</option>
@@ -241,7 +241,7 @@
             <select
               v-model="profileForm.aliceDeviceId"
               class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-              :disabled="aliceLoading || !profileForm.aliceAccountId || !aliceHouseholds.length"
+              :disabled="aliceLoading || !profileForm.aliceAccountId || !aliceHouseholdOptions.length"
             >
               <option value="">Не выбрана</option>
               <option v-for="device in filteredAliceDevices" :key="device.id" :value="device.id">
@@ -453,6 +453,43 @@ const goBack = () => {
 const selectedAliceAccount = computed(() =>
   aliceAccounts.value.find((account) => account.id === profileForm.value.aliceAccountId) || null,
 )
+
+const aliceHouseholdOptions = computed(() => {
+  const ids = []
+  const seen = new Set()
+
+  for (const household of aliceHouseholds.value) {
+    const id = household?.id || ''
+    if (!id || seen.has(id)) {
+      continue
+    }
+    seen.add(id)
+    ids.push(id)
+  }
+
+  for (const room of aliceRooms.value) {
+    const id = room?.household_id || ''
+    if (!id || seen.has(id)) {
+      continue
+    }
+    seen.add(id)
+    ids.push(id)
+  }
+
+  for (const device of aliceDevices.value) {
+    const id = device?.household_id || ''
+    if (!id || seen.has(id)) {
+      continue
+    }
+    seen.add(id)
+    ids.push(id)
+  }
+
+  return ids.map((id, index) => ({
+    id,
+    label: `Дом ${index + 1}`,
+  }))
+})
 
 const filteredAliceRooms = computed(() =>
   aliceRooms.value.filter(
