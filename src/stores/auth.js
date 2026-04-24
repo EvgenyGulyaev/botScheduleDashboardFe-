@@ -8,7 +8,7 @@ import {
   readStoredAuth,
   writeStoredAuth,
 } from '../lib/auth-storage.js'
-import { normalizeAliceAccountResources } from '../lib/alice.js'
+import { buildAliceAnnouncementPayload, normalizeAliceAccountResources } from '../lib/alice.js'
 import { resolveDefaultAppRoute } from '../lib/default-app.js'
 import { isUnauthorizedError, redirectToLogin } from '../lib/auth-session.js'
 
@@ -218,7 +218,7 @@ export const useAuthStore = defineStore('auth', {
 
     async announceOnAliceTest(payload = {}) {
       const api = this.api
-      const response = await api.post('/alice/announce/test', payload)
+      const response = await api.post('/alice/announce/test', buildAliceAnnouncementPayload(payload))
       return response.data || null
     },
 
