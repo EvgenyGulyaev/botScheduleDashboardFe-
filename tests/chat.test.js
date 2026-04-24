@@ -772,6 +772,42 @@ test('chat store sends websocket commands with auth user context', async () => {
   delete globalThis.WebSocket
 })
 
+test('chat store sends alice announce requests with optional location and voice overrides', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const fakeApi = createFakeApi()
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  await chatStore.announceOnAlice({
+    text: 'Проверка',
+    accountId: 'acc-1',
+    householdId: 'home-1',
+    roomId: 'room-1',
+    deviceId: 'speaker-1',
+    voice: 'jane',
+  })
+
+  assert.deepEqual(fakeApi.calls[0], [
+    'post',
+    '/alice/announce',
+    {
+      text: 'Проверка',
+      account_id: 'acc-1',
+      household_id: 'home-1',
+      room_id: 'room-1',
+      device_id: 'speaker-1',
+      voice: 'jane',
+    },
+  ])
+
+  delete globalThis.localStorage
+})
+
 test('chat store marks previous peer message as read before sending a reply', async () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()

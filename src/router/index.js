@@ -31,6 +31,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/alice',
+    name: 'Alice',
+    component: () => import('../views/Alice.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
     path: '/tasks',
     name: 'Tasks',
     component: () => import('../views/Tasks.vue'),
@@ -61,6 +67,7 @@ router.beforeEach((to) => {
   const authStore = useAuthStore()
   return resolveAuthRedirect({
     isAuthenticated: authStore.isAuthenticated,
+    isAdmin: Boolean(authStore.user?.isAdmin),
     defaultRoute: authStore.getDefaultRoute(),
     to,
   })

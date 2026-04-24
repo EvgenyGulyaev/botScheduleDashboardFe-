@@ -19,6 +19,7 @@ import {
   setChatToastEnabled,
   shouldNotifyIncomingChatMessage,
 } from '../lib/chat-notifications.js'
+import { buildAliceAnnouncementPayload } from '../lib/alice.js'
 import { useAuthStore } from './auth.js'
 import { useNotificationsStore } from './notifications.js'
 
@@ -572,18 +573,34 @@ export const useChatStore = defineStore('chat', {
       return true
     },
 
-    async announceOnAlice({ conversationId, messageId = '', text = '' } = {}) {
-      if (!conversationId) {
-        throw new Error('conversation_id is required')
+    async announceOnAlice({
+      conversationId,
+      messageId = '',
+      text = '',
+      accountId = '',
+      householdId = '',
+      roomId = '',
+      deviceId = '',
+      voice = '',
+    } = {}) {
+      const payload = buildAliceAnnouncementPayload({
+        conversationId,
+        messageId,
+        text,
+        accountId,
+        householdId,
+        roomId,
+        deviceId,
+        voice,
+      })
+
+      if (!payload.conversation_id && !payload.text) {
+        throw new Error('conversation_id or text is required')
       }
 
       const authStore = useAuthStore()
       const api = getApi(authStore)
-      const response = await api.post('/alice/announce', {
-        conversation_id: conversationId,
-        message_id: messageId,
-        text,
-      })
+      const response = await api.post('/alice/announce', payload)
       return response.data || null
     },
 

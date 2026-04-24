@@ -8,6 +8,7 @@ import {
   readStoredAuth,
   writeStoredAuth,
 } from '../lib/auth-storage.js'
+import { normalizeAliceAccountResources } from '../lib/alice.js'
 import { resolveDefaultAppRoute } from '../lib/default-app.js'
 import { isUnauthorizedError, redirectToLogin } from '../lib/auth-session.js'
 
@@ -208,21 +209,17 @@ export const useAuthStore = defineStore('auth', {
 
     async fetchAliceAccountResources(accountId = '') {
       if (!accountId) {
-        return {
-          households: [],
-          rooms: [],
-          devices: [],
-          scenarios: [],
-        }
+        return normalizeAliceAccountResources()
       }
       const api = this.api
       const response = await api.get(`/alice/accounts/${accountId}/resources`)
-      return {
-        households: Array.isArray(response.data?.households) ? response.data.households : [],
-        rooms: Array.isArray(response.data?.rooms) ? response.data.rooms : [],
-        devices: Array.isArray(response.data?.devices) ? response.data.devices : [],
-        scenarios: Array.isArray(response.data?.scenarios) ? response.data.scenarios : [],
-      }
+      return normalizeAliceAccountResources(response.data)
+    },
+
+    async announceOnAliceTest(payload = {}) {
+      const api = this.api
+      const response = await api.post('/alice/announce/test', payload)
+      return response.data || null
     },
 
     async deletePushSubscription(endpoint = '') {

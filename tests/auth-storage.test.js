@@ -91,6 +91,9 @@ test('normalizes profile notification and push metadata', () => {
       supported: true,
       public_key: 'public-key',
     },
+    alice_settings: {
+      voice: 'oksana',
+    },
   })
 
   assert.deepEqual(user, {
@@ -120,6 +123,7 @@ test('normalizes profile notification and push metadata', () => {
       room_id: '',
       device_id: '',
       scenario_id: '',
+      voice: 'oksana',
       disabled: false,
     },
     aliceSettings: {
@@ -128,6 +132,7 @@ test('normalizes profile notification and push metadata', () => {
       roomId: '',
       deviceId: '',
       scenarioId: '',
+      voice: 'oksana',
       disabled: false,
     },
   })

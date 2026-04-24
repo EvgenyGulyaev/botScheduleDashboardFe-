@@ -4,6 +4,15 @@ export const normalizeAuthUser = (payload = {}) => {
   const notificationSettings = payload?.notification_settings ?? payload?.notificationSettings ?? {}
   const push = payload?.push ?? payload?.pushConfig ?? {}
   const alice = payload?.alice_settings ?? payload?.aliceSettings ?? {}
+  const aliceVoice =
+    alice?.voice ??
+    alice?.voice_id ??
+    alice?.voiceId ??
+    alice?.default_voice ??
+    alice?.defaultVoice ??
+    payload?.alice_voice ??
+    payload?.aliceVoice ??
+    ''
 
   return {
     ...payload,
@@ -30,6 +39,7 @@ export const normalizeAuthUser = (payload = {}) => {
       room_id: alice?.room_id ?? alice?.roomId ?? '',
       device_id: alice?.device_id ?? alice?.deviceId ?? '',
       scenario_id: alice?.scenario_id ?? alice?.scenarioId ?? '',
+      voice: aliceVoice,
       disabled: Boolean(alice?.disabled ?? alice?.aliceDisabled ?? false),
     },
     aliceSettings: {
@@ -38,6 +48,7 @@ export const normalizeAuthUser = (payload = {}) => {
       roomId: alice?.room_id ?? alice?.roomId ?? '',
       deviceId: alice?.device_id ?? alice?.deviceId ?? '',
       scenarioId: alice?.scenario_id ?? alice?.scenarioId ?? '',
+      voice: aliceVoice,
       disabled: Boolean(alice?.disabled ?? alice?.aliceDisabled ?? false),
     },
   }

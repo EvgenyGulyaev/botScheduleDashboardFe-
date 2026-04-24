@@ -30,6 +30,17 @@ test('redirects authenticated users to configured default route', () => {
   assert.equal(result, '/short-links')
 })
 
+test('redirects non-admin users away from admin-only routes', () => {
+  const result = resolveAuthRedirect({
+    isAuthenticated: true,
+    isAdmin: false,
+    defaultRoute: '/chat',
+    to: { path: '/alice', meta: { requiresAuth: true, requiresAdmin: true } },
+  })
+
+  assert.equal(result, '/chat')
+})
+
 test('allows navigation when route matches auth state', () => {
   const guestResult = resolveAuthRedirect({
     isAuthenticated: false,
@@ -37,9 +48,16 @@ test('allows navigation when route matches auth state', () => {
   })
   const authResult = resolveAuthRedirect({
     isAuthenticated: true,
+    isAdmin: true,
     to: { path: '/messages', meta: { requiresAuth: true } },
+  })
+  const adminResult = resolveAuthRedirect({
+    isAuthenticated: true,
+    isAdmin: true,
+    to: { path: '/alice', meta: { requiresAuth: true, requiresAdmin: true } },
   })
 
   assert.equal(guestResult, true)
   assert.equal(authResult, true)
+  assert.equal(adminResult, true)
 })
