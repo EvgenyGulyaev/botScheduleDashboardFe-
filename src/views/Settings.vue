@@ -254,15 +254,26 @@
             <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
               Голос по умолчанию
             </span>
-            <select
-              v-model="profileForm.aliceVoice"
-              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-              :disabled="aliceLoading || !profileForm.aliceAccountId"
-            >
-              <option v-for="voice in availableAliceVoices" :key="voice.value || 'default'" :value="voice.value">
-                {{ voice.label }}
-              </option>
-            </select>
+            <div class="flex gap-2">
+              <select
+                v-model="profileForm.aliceVoice"
+                class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+                :disabled="aliceLoading || !profileForm.aliceAccountId"
+              >
+                <option v-for="voice in availableAliceVoices" :key="voice.value || 'default'" :value="voice.value">
+                  {{ voice.label }}
+                </option>
+              </select>
+              <button
+                type="button"
+                class="inline-flex shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="aliceTesting || !canTestAliceSettings"
+                title="Озвучить тестовую фразу"
+                @click="testAliceSettingsVoice"
+              >
+                {{ aliceTesting ? '…' : '🔊 Тест' }}
+              </button>
+            </div>
           </label>
 
           <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2">
@@ -325,6 +336,7 @@ const notifications = useNotificationsStore()
 const profileSaving = ref(false)
 const notificationSaving = ref(false)
 const aliceSaving = ref(false)
+const aliceTesting = ref(false)
 const pushHint = ref('')
 const profileForm = ref({
   login: '',
@@ -508,6 +520,14 @@ const availableAliceVoices = computed(() =>
   }),
 )
 
+const canTestAliceSettings = computed(
+  () =>
+    Boolean(profileForm.value.aliceAccountId) &&
+    Boolean(profileForm.value.aliceHouseholdId) &&
+    Boolean(profileForm.value.aliceRoomId) &&
+    Boolean(profileForm.value.aliceDeviceId),
+)
+
 const saveAliceSettings = async () => {
   const payload = {}
   const nextAliceAccountId = profileForm.value.aliceAccountId.trim()
@@ -553,6 +573,30 @@ const saveAliceSettings = async () => {
     notifications.errorFrom(error, 'Не удалось сохранить Алису')
   } finally {
     aliceSaving.value = false
+  }
+}
+
+const testAliceSettingsVoice = async () => {
+  if (!canTestAliceSettings.value) {
+    notifications.info('Сначала выбери аккаунт, дом, комнату и колонку')
+    return
+  }
+
+  aliceTesting.value = true
+  try {
+    await authStore.announceOnAliceTest({
+      text: 'Тест',
+      accountId: profileForm.value.aliceAccountId,
+      householdId: profileForm.value.aliceHouseholdId,
+      roomId: profileForm.value.aliceRoomId,
+      deviceId: profileForm.value.aliceDeviceId,
+      voice: profileForm.value.aliceVoice,
+    })
+    notifications.success('Тестовая фраза отправлена в Алису')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось отправить тест в Алису')
+  } finally {
+    aliceTesting.value = false
   }
 }
 

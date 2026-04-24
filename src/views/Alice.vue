@@ -107,15 +107,26 @@
             <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
               Голос
             </span>
-            <select
-              v-model="form.voice"
-              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-              :disabled="aliceLoading || !form.accountId"
-            >
-              <option v-for="voice in availableAliceVoices" :key="voice.value || 'default'" :value="voice.value">
-                {{ voice.label }}
-              </option>
-            </select>
+            <div class="flex gap-2">
+              <select
+                v-model="form.voice"
+                class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+                :disabled="aliceLoading || !form.accountId"
+              >
+                <option v-for="voice in availableAliceVoices" :key="voice.value || 'default'" :value="voice.value">
+                  {{ voice.label }}
+                </option>
+              </select>
+              <button
+                type="button"
+                class="inline-flex shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="sending || !canTestAliceSelection"
+                title="Озвучить тестовую фразу"
+                @click="testVoice"
+              >
+                {{ sending ? '…' : '🔊 Тест' }}
+              </button>
+            </div>
           </label>
 
           <label class="block lg:col-span-2">
@@ -219,6 +230,14 @@ const availableAliceVoices = computed(() =>
   }),
 )
 
+const canTestAliceSelection = computed(
+  () =>
+    Boolean(form.value.accountId) &&
+    Boolean(form.value.householdId) &&
+    Boolean(form.value.roomId) &&
+    Boolean(form.value.deviceId),
+)
+
 const loadAliceAccounts = async () => {
   aliceLoading.value = true
   aliceHint.value = ''
@@ -307,6 +326,30 @@ const announce = async () => {
     notifications.success('Текст отправлен в Алису')
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить текст в Алису')
+  } finally {
+    sending.value = false
+  }
+}
+
+const testVoice = async () => {
+  if (!canTestAliceSelection.value) {
+    notifications.info('Сначала выбери аккаунт, дом, комнату и колонку')
+    return
+  }
+
+  sending.value = true
+  try {
+    await authStore.announceOnAliceTest({
+      text: 'Тест',
+      accountId: form.value.accountId,
+      householdId: form.value.householdId,
+      roomId: form.value.roomId,
+      deviceId: form.value.deviceId,
+      voice: form.value.voice,
+    })
+    notifications.success('Тестовая фраза отправлена в Алису')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось отправить тест в Алису')
   } finally {
     sending.value = false
   }
