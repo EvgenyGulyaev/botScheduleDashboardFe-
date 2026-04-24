@@ -250,22 +250,6 @@
             </select>
           </label>
 
-          <label v-if="aliceUsesScenario" class="block lg:col-span-2">
-            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Сценарий
-            </span>
-            <select
-              v-model="profileForm.aliceScenarioId"
-              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-              :disabled="aliceLoading || !profileForm.aliceAccountId"
-            >
-              <option value="">Не выбран</option>
-              <option v-for="scenario in aliceScenarios" :key="scenario.id" :value="scenario.id">
-                {{ scenario.name }}
-              </option>
-            </select>
-          </label>
-
           <div class="lg:col-span-2">
             <button
               type="submit"
@@ -453,10 +437,6 @@ const selectedAliceAccount = computed(() =>
   aliceAccounts.value.find((account) => account.id === profileForm.value.aliceAccountId) || null,
 )
 
-const aliceUsesScenario = computed(
-  () => (selectedAliceAccount.value?.transport || 'official') === 'official',
-)
-
 const filteredAliceRooms = computed(() =>
   aliceRooms.value.filter(
     (room) =>
@@ -479,7 +459,6 @@ const saveAliceSettings = async () => {
   const nextAliceHouseholdId = profileForm.value.aliceHouseholdId.trim()
   const nextAliceRoomId = profileForm.value.aliceRoomId.trim()
   const nextAliceDeviceId = profileForm.value.aliceDeviceId.trim()
-  const nextAliceScenarioId = aliceUsesScenario.value ? profileForm.value.aliceScenarioId.trim() : ''
 
   if (nextAliceAccountId !== (authStore.user?.aliceSettings?.accountId || '')) {
     payload.alice_account_id = nextAliceAccountId
@@ -493,8 +472,8 @@ const saveAliceSettings = async () => {
   if (nextAliceDeviceId !== (authStore.user?.aliceSettings?.deviceId || '')) {
     payload.alice_device_id = nextAliceDeviceId
   }
-  if (nextAliceScenarioId !== (authStore.user?.aliceSettings?.scenarioId || '')) {
-    payload.alice_scenario_id = nextAliceScenarioId
+  if (authStore.user?.aliceSettings?.scenarioId) {
+    payload.alice_scenario_id = ''
   }
 
   if (!Object.keys(payload).length) {
