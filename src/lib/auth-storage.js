@@ -19,6 +19,12 @@ export const normalizeAuthUser = (payload = {}) => {
     payload?.alice_quiet_hours_enabled ??
     payload?.aliceQuietHoursEnabled ??
     false
+  const aliceAnnounceSender =
+    alice?.announce_sender ??
+    alice?.announceSender ??
+    payload?.alice_announce_sender ??
+    payload?.aliceAnnounceSender ??
+    false
   const aliceQuietHoursStart =
     alice?.quiet_hours_start ??
     alice?.quietHoursStart ??
@@ -59,6 +65,7 @@ export const normalizeAuthUser = (payload = {}) => {
       scenario_id: alice?.scenario_id ?? alice?.scenarioId ?? '',
       voice: aliceVoice,
       disabled: Boolean(alice?.disabled ?? alice?.aliceDisabled ?? false),
+      announce_sender: Boolean(aliceAnnounceSender),
       quiet_hours_enabled: Boolean(aliceQuietHoursEnabled),
       quiet_hours_start: String(aliceQuietHoursStart || ''),
       quiet_hours_end: String(aliceQuietHoursEnd || ''),
@@ -71,6 +78,7 @@ export const normalizeAuthUser = (payload = {}) => {
       scenarioId: alice?.scenario_id ?? alice?.scenarioId ?? '',
       voice: aliceVoice,
       disabled: Boolean(alice?.disabled ?? alice?.aliceDisabled ?? false),
+      announceSender: Boolean(aliceAnnounceSender),
       quietHoursEnabled: Boolean(aliceQuietHoursEnabled),
       quietHoursStart: String(aliceQuietHoursStart || ''),
       quietHoursEnd: String(aliceQuietHoursEnd || ''),

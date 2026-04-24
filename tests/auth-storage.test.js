@@ -93,6 +93,7 @@ test('normalizes profile notification and push metadata', () => {
     },
     alice_settings: {
       voice: 'oksana',
+      announce_sender: true,
       quiet_hours_enabled: true,
       quiet_hours_start: '23:00',
       quiet_hours_end: '07:00',
@@ -128,6 +129,7 @@ test('normalizes profile notification and push metadata', () => {
       scenario_id: '',
       voice: 'oksana',
       disabled: false,
+      announce_sender: true,
       quiet_hours_enabled: true,
       quiet_hours_start: '23:00',
       quiet_hours_end: '07:00',
@@ -140,6 +142,7 @@ test('normalizes profile notification and push metadata', () => {
       scenarioId: '',
       voice: 'oksana',
       disabled: false,
+      announceSender: true,
       quietHoursEnabled: true,
       quietHoursStart: '23:00',
       quietHoursEnd: '07:00',
@@ -150,6 +153,7 @@ test('normalizes profile notification and push metadata', () => {
 test('normalizes alice quiet hours from camelCase payloads and defaults missing values', () => {
   const user = normalizeAuthUser({
     aliceSettings: {
+      announceSender: true,
       quietHoursEnabled: false,
       quietHoursStart: '22:30',
       quietHoursEnd: '06:45',
@@ -164,6 +168,7 @@ test('normalizes alice quiet hours from camelCase payloads and defaults missing 
     scenario_id: '',
     voice: '',
     disabled: false,
+    announce_sender: true,
     quiet_hours_enabled: false,
     quiet_hours_start: '22:30',
     quiet_hours_end: '06:45',
@@ -176,6 +181,7 @@ test('normalizes alice quiet hours from camelCase payloads and defaults missing 
     scenarioId: '',
     voice: '',
     disabled: false,
+    announceSender: true,
     quietHoursEnabled: false,
     quietHoursStart: '22:30',
     quietHoursEnd: '06:45',

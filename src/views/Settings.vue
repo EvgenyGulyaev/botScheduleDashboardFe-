@@ -310,6 +310,21 @@
 
           <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2">
             <div>
+              <div class="text-sm font-semibold text-slate-950">Озвучивать имя отправителя</div>
+              <div class="mt-1 text-xs text-slate-500">
+                Если включено, Алиса добавит фразу вроде «Передано от evgeny».
+              </div>
+            </div>
+            <input
+              v-model="profileForm.aliceAnnounceSender"
+              type="checkbox"
+              class="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              :disabled="aliceSaving"
+            />
+          </label>
+
+          <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2">
+            <div>
               <div class="text-sm font-semibold text-slate-950">Не получать на Алису</div>
               <div class="mt-1 text-xs text-slate-500">
                 Если включено, другим не даём отправлять тебе озвучку на колонку.
@@ -376,6 +391,7 @@ const profileForm = ref({
   aliceDeviceId: '',
   aliceScenarioId: '',
   aliceDisabled: false,
+  aliceAnnounceSender: false,
   aliceQuietHoursEnabled: false,
   aliceQuietHoursStart: '',
   aliceQuietHoursEnd: '',
@@ -409,6 +425,7 @@ const fillForms = (user = authStore.user) => {
     aliceDeviceId: user?.aliceSettings?.deviceId || '',
     aliceScenarioId: user?.aliceSettings?.scenarioId || '',
     aliceDisabled: Boolean(user?.aliceSettings?.disabled),
+    aliceAnnounceSender: Boolean(user?.aliceSettings?.announceSender),
     aliceQuietHoursEnabled: Boolean(user?.aliceSettings?.quietHoursEnabled),
     aliceQuietHoursStart: user?.aliceSettings?.quietHoursStart || '',
     aliceQuietHoursEnd: user?.aliceSettings?.quietHoursEnd || '',
@@ -559,6 +576,7 @@ const saveAliceSettings = async () => {
   const nextAliceRoomId = profileForm.value.aliceRoomId.trim()
   const nextAliceDeviceId = profileForm.value.aliceDeviceId.trim()
   const nextAliceDisabled = Boolean(profileForm.value.aliceDisabled)
+  const nextAliceAnnounceSender = Boolean(profileForm.value.aliceAnnounceSender)
   const nextAliceQuietHoursEnabled = Boolean(profileForm.value.aliceQuietHoursEnabled)
   const nextAliceQuietHoursStart = profileForm.value.aliceQuietHoursStart.trim()
   const nextAliceQuietHoursEnd = profileForm.value.aliceQuietHoursEnd.trim()
@@ -577,6 +595,9 @@ const saveAliceSettings = async () => {
   }
   if (nextAliceDisabled !== Boolean(authStore.user?.aliceSettings?.disabled)) {
     payload.alice_disabled = nextAliceDisabled
+  }
+  if (nextAliceAnnounceSender !== Boolean(authStore.user?.aliceSettings?.announceSender)) {
+    payload.alice_announce_sender = nextAliceAnnounceSender
   }
   if (nextAliceQuietHoursEnabled !== Boolean(authStore.user?.aliceSettings?.quietHoursEnabled)) {
     payload.alice_quiet_hours_enabled = nextAliceQuietHoursEnabled
