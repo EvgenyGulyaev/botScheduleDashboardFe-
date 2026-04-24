@@ -8,6 +8,7 @@ import {
   getChatReconnectDelayMs,
   normalizeChatConversation,
   normalizeChatMessage,
+  normalizeChatUsers,
 } from '../src/lib/chat.js'
 import { useAuthStore } from '../src/stores/auth.js'
 import { useChatStore } from '../src/stores/chat.js'
@@ -121,6 +122,26 @@ test('builds chat websocket url from origin and token', () => {
     buildChatWebSocketUrl('http://localhost:5173', 'token-123'),
     'ws://localhost:5173/chat/ws?token=token-123',
   )
+})
+
+test('normalizes chat users with Alice flags', () => {
+  const [user] = normalizeChatUsers([
+    {
+      email: 'bob@example.com',
+      login: 'bob',
+      is_admin: true,
+      alice_configured: true,
+      alice_enabled: false,
+    },
+  ])
+
+  assert.deepEqual(user, {
+    email: 'bob@example.com',
+    login: 'bob',
+    isAdmin: true,
+    aliceConfigured: true,
+    aliceEnabled: false,
+  })
 })
 
 test('normalizes conversation and message payloads', () => {

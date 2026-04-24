@@ -99,6 +99,7 @@ test('updates stored session token from auth refresh response header', () => {
       room_id: '',
       device_id: '',
       scenario_id: '',
+      disabled: false,
     },
     aliceSettings: {
       accountId: '',
@@ -106,6 +107,7 @@ test('updates stored session token from auth refresh response header', () => {
       roomId: '',
       deviceId: '',
       scenarioId: '',
+      disabled: false,
     },
   })
 

@@ -250,6 +250,21 @@
             </select>
           </label>
 
+          <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2">
+            <div>
+              <div class="text-sm font-semibold text-slate-950">Не получать на Алису</div>
+              <div class="mt-1 text-xs text-slate-500">
+                Если включено, другим не даём отправлять тебе озвучку на колонку.
+              </div>
+            </div>
+            <input
+              v-model="profileForm.aliceDisabled"
+              type="checkbox"
+              class="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              :disabled="aliceSaving"
+            />
+          </label>
+
           <div class="lg:col-span-2">
             <button
               type="submit"
@@ -300,6 +315,7 @@ const profileForm = ref({
   aliceRoomId: '',
   aliceDeviceId: '',
   aliceScenarioId: '',
+  aliceDisabled: false,
 })
 const notificationForm = ref({
   pushEnabled: false,
@@ -329,6 +345,7 @@ const fillForms = (user = authStore.user) => {
     aliceRoomId: user?.aliceSettings?.roomId || '',
     aliceDeviceId: user?.aliceSettings?.deviceId || '',
     aliceScenarioId: user?.aliceSettings?.scenarioId || '',
+    aliceDisabled: Boolean(user?.aliceSettings?.disabled),
   }
   notificationForm.value = {
     pushEnabled: Boolean(user?.notificationSettings?.pushEnabled),
@@ -459,6 +476,7 @@ const saveAliceSettings = async () => {
   const nextAliceHouseholdId = profileForm.value.aliceHouseholdId.trim()
   const nextAliceRoomId = profileForm.value.aliceRoomId.trim()
   const nextAliceDeviceId = profileForm.value.aliceDeviceId.trim()
+  const nextAliceDisabled = Boolean(profileForm.value.aliceDisabled)
 
   if (nextAliceAccountId !== (authStore.user?.aliceSettings?.accountId || '')) {
     payload.alice_account_id = nextAliceAccountId
@@ -471,6 +489,9 @@ const saveAliceSettings = async () => {
   }
   if (nextAliceDeviceId !== (authStore.user?.aliceSettings?.deviceId || '')) {
     payload.alice_device_id = nextAliceDeviceId
+  }
+  if (nextAliceDisabled !== Boolean(authStore.user?.aliceSettings?.disabled)) {
+    payload.alice_disabled = nextAliceDisabled
   }
   if (authStore.user?.aliceSettings?.scenarioId) {
     payload.alice_scenario_id = ''

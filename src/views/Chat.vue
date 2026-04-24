@@ -1184,9 +1184,10 @@
                     </div>
                   </div>
                   <button
+                    v-if="canAnnounceOnAlice"
                     type="button"
                     class="mb-2 flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="sendingAlice || !canAnnounceOnAlice"
+                    :disabled="sendingAlice"
                     @click="announceOnAlice"
                   >
                     {{ sendingAlice ? 'Отправляем в Алису…' : 'На Алису' }}
@@ -1620,8 +1621,34 @@ const composerEmojis = [
 ]
 
 const currentUserEmail = computed(() => authStore.user?.email || '')
+const directRecipient = computed(() => {
+  if (activeConversation.value?.type !== 'direct') {
+    return null
+  }
+
+  const recipientEmail = (activeConversation.value?.members || []).find(
+    (member) => member.email && member.email !== currentUserEmail.value,
+  )?.email
+
+  if (!recipientEmail) {
+    return null
+  }
+
+  return (
+    chatStore.users.find((user) => user.email === recipientEmail) || {
+      email: recipientEmail,
+      login: activeConversation.value?.title || recipientEmail,
+      aliceConfigured: false,
+      aliceEnabled: true,
+    }
+  )
+})
 const canAnnounceOnAlice = computed(
-  () => activeConversation.value?.type === 'direct' && Boolean(activeConversation.value?.id),
+  () =>
+    activeConversation.value?.type === 'direct' &&
+    Boolean(activeConversation.value?.id) &&
+    Boolean(directRecipient.value?.aliceConfigured) &&
+    Boolean(directRecipient.value?.aliceEnabled),
 )
 const currentUserLogin = computed(() => authStore.user?.login || authStore.user?.email || '')
 const chatErrorMessage = computed(
@@ -3350,6 +3377,14 @@ const sendCurrentMessage = async () => {
 const announceOnAlice = async () => {
   if (!activeConversation.value?.id || activeConversation.value?.type !== 'direct') {
     notifications.info('На Алису пока можно отправлять только из direct-диалога')
+    return
+  }
+  if (!directRecipient.value?.aliceEnabled) {
+    notifications.info('Этот пользователь запретил отправку на Алису')
+    return
+  }
+  if (!directRecipient.value?.aliceConfigured) {
+    notifications.info('У этого пользователя не настроена Алиса')
     return
   }
   if (!composerText.value.trim()) {

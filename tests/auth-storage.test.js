@@ -120,6 +120,7 @@ test('normalizes profile notification and push metadata', () => {
       room_id: '',
       device_id: '',
       scenario_id: '',
+      disabled: false,
     },
     aliceSettings: {
       accountId: '',
@@ -127,6 +128,7 @@ test('normalizes profile notification and push metadata', () => {
       roomId: '',
       deviceId: '',
       scenarioId: '',
+      disabled: false,
     },
   })
 })

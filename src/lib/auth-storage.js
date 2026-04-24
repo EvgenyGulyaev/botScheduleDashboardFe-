@@ -30,6 +30,7 @@ export const normalizeAuthUser = (payload = {}) => {
       room_id: alice?.room_id ?? alice?.roomId ?? '',
       device_id: alice?.device_id ?? alice?.deviceId ?? '',
       scenario_id: alice?.scenario_id ?? alice?.scenarioId ?? '',
+      disabled: Boolean(alice?.disabled ?? alice?.aliceDisabled ?? false),
     },
     aliceSettings: {
       accountId: alice?.account_id ?? alice?.accountId ?? '',
@@ -37,6 +38,7 @@ export const normalizeAuthUser = (payload = {}) => {
       roomId: alice?.room_id ?? alice?.roomId ?? '',
       deviceId: alice?.device_id ?? alice?.deviceId ?? '',
       scenarioId: alice?.scenario_id ?? alice?.scenarioId ?? '',
+      disabled: Boolean(alice?.disabled ?? alice?.aliceDisabled ?? false),
     },
   }
 }

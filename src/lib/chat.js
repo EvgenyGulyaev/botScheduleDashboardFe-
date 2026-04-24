@@ -152,6 +152,8 @@ export const normalizeChatUser = (user = {}) => ({
   email: normalizeString(user.email),
   login: normalizeString(user.login),
   isAdmin: Boolean(user.is_admin ?? user.isAdmin),
+  aliceConfigured: Boolean(user.alice_configured ?? user.aliceConfigured),
+  aliceEnabled: Boolean(user.alice_enabled ?? user.aliceEnabled ?? true),
 })
 
 export const normalizeChatMember = (member = {}) => ({
