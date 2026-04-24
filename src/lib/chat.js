@@ -213,6 +213,7 @@ export const normalizeChatMessage = (message = {}) => ({
   senderEmail: normalizeString(message.sender_email ?? message.senderEmail),
   senderLogin: normalizeString(message.sender_login ?? message.senderLogin),
   text: normalizeString(message.text),
+  aliceAnnounced: Boolean(message.alice_announced ?? message.aliceAnnounced),
   createdAt: normalizeIso(message.created_at ?? message.createdAt),
   updatedAt: normalizeIso(message.updated_at ?? message.updatedAt),
   editedAt: normalizeIso(message.edited_at ?? message.editedAt),

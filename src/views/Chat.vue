@@ -954,6 +954,12 @@
                         <span>{{ formatMessageTime(message.createdAt) }}</span>
                         <span v-if="message.editedAt">изменено</span>
                         <span
+                          v-if="message.aliceAnnounced"
+                          class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700"
+                        >
+                          Отправлено через Алису
+                        </span>
+                        <span
                           v-if="message.senderEmail === currentUserEmail"
                           class="ml-auto text-sm font-semibold tracking-tight text-slate-500"
                           :title="messageStatusTitle(message)"
@@ -1183,15 +1189,31 @@
                       </button>
                     </div>
                   </div>
-                  <button
+                  <label
                     v-if="canAnnounceOnAlice"
-                    type="button"
-                    class="mb-2 flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="sendingAlice"
-                    @click="announceOnAlice"
+                    class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left"
                   >
-                    {{ sendingAlice ? 'Отправляем в Алису…' : 'На Алису' }}
-                  </button>
+                    <div class="min-w-0">
+                      <div class="text-sm font-semibold text-slate-900">Отправлять и на Алису</div>
+                      <div class="mt-1 text-xs text-slate-500">
+                        Сообщение уйдёт в чат и будет озвучено получателю.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition"
+                      :class="sendOnAliceEnabled ? 'bg-slate-950' : 'bg-slate-300'"
+                      role="switch"
+                      :aria-checked="sendOnAliceEnabled"
+                      :title="sendOnAliceEnabled ? 'Алиса включена' : 'Алиса выключена'"
+                      @click="sendOnAliceEnabled = !sendOnAliceEnabled"
+                    >
+                      <span
+                        class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition"
+                        :class="sendOnAliceEnabled ? 'translate-x-6' : 'translate-x-1'"
+                      ></span>
+                    </button>
+                  </label>
                   <button
                     type="submit"
                     :class="
@@ -1201,7 +1223,13 @@
                     "
                     :disabled="sendingMessage || !composerText.trim() || !activeConversation"
                   >
-                    {{ sendingMessage ? 'Отправляем…' : 'Отправить' }}
+                    {{
+                      sendingMessage
+                        ? 'Отправляем…'
+                        : sendOnAliceEnabled && canAnnounceOnAlice
+                          ? 'Отправить + Алиса'
+                          : 'Отправить'
+                    }}
                   </button>
                 </form>
               </div>
@@ -1529,7 +1557,7 @@ const deletingGroup = ref(false)
 const sendingMessage = ref(false)
 const sendingAudio = ref(false)
 const sendingImage = ref(false)
-const sendingAlice = ref(false)
+const sendOnAliceEnabled = ref(false)
 const groupModalOpen = ref(false)
 const messagesScroller = ref(null)
 const isRecordingAudio = ref(false)
@@ -3351,6 +3379,7 @@ const sendCurrentMessage = async () => {
       conversationId: activeConversation.value.id,
       text,
       replyToMessageId: replyingToMessageId.value,
+      announceOnAlice: sendOnAliceEnabled.value && canAnnounceOnAlice.value,
     }
 
     if (activeConversation.value.type === 'direct') {
@@ -3371,38 +3400,6 @@ const sendCurrentMessage = async () => {
     notifications.errorFrom(error, 'Не удалось отправить сообщение')
   } finally {
     sendingMessage.value = false
-  }
-}
-
-const announceOnAlice = async () => {
-  if (!activeConversation.value?.id || activeConversation.value?.type !== 'direct') {
-    notifications.info('На Алису пока можно отправлять только из direct-диалога')
-    return
-  }
-  if (!directRecipient.value?.aliceEnabled) {
-    notifications.info('Этот пользователь запретил отправку на Алису')
-    return
-  }
-  if (!directRecipient.value?.aliceConfigured) {
-    notifications.info('У этого пользователя не настроена Алиса')
-    return
-  }
-  if (!composerText.value.trim()) {
-    notifications.info('Напиши текст, который нужно отправить на Алису')
-    return
-  }
-
-  sendingAlice.value = true
-  try {
-    await chatStore.announceOnAlice({
-      conversationId: activeConversation.value.id,
-      text: composerText.value.trim(),
-    })
-    notifications.success('Текст отправили в Алису')
-  } catch (error) {
-    notifications.errorFrom(error, 'Не удалось отправить на Алису')
-  } finally {
-    sendingAlice.value = false
   }
 }
 
@@ -3454,6 +3451,12 @@ onMounted(async () => {
 watch(groupModalOpen, (isOpen) => {
   if (!isOpen) {
     groupForm.value = { title: '', memberEmails: [] }
+  }
+})
+
+watch(canAnnounceOnAlice, (enabled) => {
+  if (!enabled) {
+    sendOnAliceEnabled.value = false
   }
 })
 

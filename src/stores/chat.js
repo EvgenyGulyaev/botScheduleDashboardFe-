@@ -747,7 +747,7 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    sendMessage({ conversationId, recipientEmail, text, replyToMessageId }) {
+    sendMessage({ conversationId, recipientEmail, text, replyToMessageId, announceOnAlice = false }) {
       const authStore = useAuthStore()
       const currentUser = getCurrentUser(authStore)
       const socket = this.socket || this.connect()
@@ -765,6 +765,7 @@ export const useChatStore = defineStore('chat', {
         sender_login: currentUser.login || '',
         text: text || '',
         reply_to_message_id: replyToMessageId || '',
+        announce_on_alice: Boolean(announceOnAlice),
       })
     },
 

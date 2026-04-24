@@ -182,6 +182,7 @@ test('normalizes conversation and message payloads', () => {
     sender_email: 'alice@example.com',
     sender_login: 'alice',
     text: 'Голосовое сообщение',
+    alice_announced: true,
     created_at: '2026-04-16T11:00:00Z',
     delivered_to: [{ email: 'bob@example.com', login: 'bob', at: '2026-04-16T11:00:00Z' }],
     read_by: [],
@@ -203,6 +204,7 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(message.audio.durationSeconds, 7)
   assert.equal(message.audio.expiresAt, '2026-04-17T11:00:00Z')
   assert.equal(message.audio.consumedByEmail, '')
+  assert.equal(message.aliceAnnounced, true)
   assert.equal(message.deliveredTo[0].login, 'bob')
 
   const imageMessage = normalizeChatMessage({
@@ -755,6 +757,7 @@ test('chat store sends websocket commands with auth user context', async () => {
     conversationId: 'group-1',
     text: 'hello',
     replyToMessageId: 'msg-1',
+    announceOnAlice: true,
   })
   const sent = JSON.parse(FakeWebSocket.instances[0].sent[0])
   assert.equal(sent.event, 'send_message')
@@ -762,6 +765,7 @@ test('chat store sends websocket commands with auth user context', async () => {
   assert.equal(sent.data.sender_login, 'alice')
   assert.equal(sent.data.conversation_id, 'group-1')
   assert.equal(sent.data.reply_to_message_id, 'msg-1')
+  assert.equal(sent.data.announce_on_alice, true)
 
   delete globalThis.localStorage
   delete globalThis.window
