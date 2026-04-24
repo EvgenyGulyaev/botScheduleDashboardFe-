@@ -93,6 +93,9 @@ test('normalizes profile notification and push metadata', () => {
     },
     alice_settings: {
       voice: 'oksana',
+      quiet_hours_enabled: true,
+      quiet_hours_start: '23:00',
+      quiet_hours_end: '07:00',
     },
   })
 
@@ -125,6 +128,9 @@ test('normalizes profile notification and push metadata', () => {
       scenario_id: '',
       voice: 'oksana',
       disabled: false,
+      quiet_hours_enabled: true,
+      quiet_hours_start: '23:00',
+      quiet_hours_end: '07:00',
     },
     aliceSettings: {
       accountId: '',
@@ -134,6 +140,44 @@ test('normalizes profile notification and push metadata', () => {
       scenarioId: '',
       voice: 'oksana',
       disabled: false,
+      quietHoursEnabled: true,
+      quietHoursStart: '23:00',
+      quietHoursEnd: '07:00',
     },
+  })
+})
+
+test('normalizes alice quiet hours from camelCase payloads and defaults missing values', () => {
+  const user = normalizeAuthUser({
+    aliceSettings: {
+      quietHoursEnabled: false,
+      quietHoursStart: '22:30',
+      quietHoursEnd: '06:45',
+    },
+  })
+
+  assert.deepEqual(user.alice_settings, {
+    account_id: '',
+    household_id: '',
+    room_id: '',
+    device_id: '',
+    scenario_id: '',
+    voice: '',
+    disabled: false,
+    quiet_hours_enabled: false,
+    quiet_hours_start: '22:30',
+    quiet_hours_end: '06:45',
+  })
+  assert.deepEqual(user.aliceSettings, {
+    accountId: '',
+    householdId: '',
+    roomId: '',
+    deviceId: '',
+    scenarioId: '',
+    voice: '',
+    disabled: false,
+    quietHoursEnabled: false,
+    quietHoursStart: '22:30',
+    quietHoursEnd: '06:45',
   })
 })

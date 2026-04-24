@@ -808,6 +808,34 @@ test('chat store sends alice announce requests with optional location and voice 
   delete globalThis.localStorage
 })
 
+test('chat store repeats alice announce for an existing message', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const fakeApi = createFakeApi()
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  await chatStore.announceOnAlice({
+    conversationId: 'group-1',
+    messageId: 'msg-1',
+  })
+
+  assert.deepEqual(fakeApi.calls[0], [
+    'post',
+    '/alice/announce',
+    {
+      conversation_id: 'group-1',
+      message_id: 'msg-1',
+    },
+  ])
+
+  delete globalThis.localStorage
+})
+
 test('chat store marks previous peer message as read before sending a reply', async () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()

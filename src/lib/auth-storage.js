@@ -13,6 +13,24 @@ export const normalizeAuthUser = (payload = {}) => {
     payload?.alice_voice ??
     payload?.aliceVoice ??
     ''
+  const aliceQuietHoursEnabled =
+    alice?.quiet_hours_enabled ??
+    alice?.quietHoursEnabled ??
+    payload?.alice_quiet_hours_enabled ??
+    payload?.aliceQuietHoursEnabled ??
+    false
+  const aliceQuietHoursStart =
+    alice?.quiet_hours_start ??
+    alice?.quietHoursStart ??
+    payload?.alice_quiet_hours_start ??
+    payload?.aliceQuietHoursStart ??
+    ''
+  const aliceQuietHoursEnd =
+    alice?.quiet_hours_end ??
+    alice?.quietHoursEnd ??
+    payload?.alice_quiet_hours_end ??
+    payload?.aliceQuietHoursEnd ??
+    ''
 
   return {
     ...payload,
@@ -41,6 +59,9 @@ export const normalizeAuthUser = (payload = {}) => {
       scenario_id: alice?.scenario_id ?? alice?.scenarioId ?? '',
       voice: aliceVoice,
       disabled: Boolean(alice?.disabled ?? alice?.aliceDisabled ?? false),
+      quiet_hours_enabled: Boolean(aliceQuietHoursEnabled),
+      quiet_hours_start: String(aliceQuietHoursStart || ''),
+      quiet_hours_end: String(aliceQuietHoursEnd || ''),
     },
     aliceSettings: {
       accountId: alice?.account_id ?? alice?.accountId ?? '',
@@ -50,6 +71,9 @@ export const normalizeAuthUser = (payload = {}) => {
       scenarioId: alice?.scenario_id ?? alice?.scenarioId ?? '',
       voice: aliceVoice,
       disabled: Boolean(alice?.disabled ?? alice?.aliceDisabled ?? false),
+      quietHoursEnabled: Boolean(aliceQuietHoursEnabled),
+      quietHoursStart: String(aliceQuietHoursStart || ''),
+      quietHoursEnd: String(aliceQuietHoursEnd || ''),
     },
   }
 }

@@ -101,6 +101,9 @@ test('updates stored session token from auth refresh response header', () => {
       scenario_id: '',
       voice: '',
       disabled: false,
+      quiet_hours_enabled: false,
+      quiet_hours_start: '',
+      quiet_hours_end: '',
     },
     aliceSettings: {
       accountId: '',
@@ -110,6 +113,9 @@ test('updates stored session token from auth refresh response header', () => {
       scenarioId: '',
       voice: '',
       disabled: false,
+      quietHoursEnabled: false,
+      quietHoursStart: '',
+      quietHoursEnd: '',
     },
   })
 

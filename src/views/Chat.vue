@@ -953,11 +953,29 @@
                       <div class="mt-2.5 flex items-center gap-2.5 text-xs text-slate-500">
                         <span>{{ formatMessageTime(message.createdAt) }}</span>
                         <span v-if="message.editedAt">изменено</span>
-                        <span
+                        <button
                           v-if="message.aliceAnnounced"
-                          class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700"
+                          type="button"
+                          class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-200 disabled:cursor-wait disabled:opacity-70"
+                          :disabled="aliceAnnouncementPendingMessageId === message.id"
+                          :title="
+                            aliceAnnouncementPendingMessageId === message.id
+                              ? 'Повторно отправляем в Алису'
+                              : 'Отправить это сообщение в Алису ещё раз'
+                          "
+                          @click="announceMessageOnAlice(message)"
                         >
-                          Отправлено через Алису
+                          {{
+                            aliceAnnouncementPendingMessageId === message.id
+                              ? 'Отправляем в Алису…'
+                              : 'Отправлено через Алису'
+                          }}
+                        </button>
+                        <span
+                          v-if="aliceAnnouncementErrorMessageId === message.id"
+                          class="text-[10px] font-semibold text-rose-600"
+                        >
+                          Не удалось повторить
                         </span>
                         <span
                           v-if="message.senderEmail === currentUserEmail"
@@ -1189,50 +1207,6 @@
                       </button>
                     </div>
                   </div>
-                  <label
-                    v-if="showAliceComposerToggle"
-                    class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left"
-                    :class="canAnnounceOnAlice ? '' : 'opacity-60'"
-                  >
-                    <div class="min-w-0">
-                      <div class="text-sm font-semibold text-slate-900">Отправлять и на Алису</div>
-                      <div class="mt-1 text-xs text-slate-500">
-                        {{
-                          activeConversation?.type === 'group'
-                            ? 'Сообщение уйдёт в чат и будет озвучено на все доступные колонки участников без дублей.'
-                            : 'Сообщение уйдёт в чат и будет озвучено получателю.'
-                        }}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition"
-                      :class="
-                        !canAnnounceOnAlice
-                          ? 'cursor-not-allowed bg-slate-200'
-                          : sendOnAliceEnabled
-                            ? 'bg-slate-950'
-                            : 'bg-slate-300'
-                      "
-                      role="switch"
-                      :aria-checked="sendOnAliceEnabled"
-                      :aria-disabled="!canAnnounceOnAlice"
-                      :title="
-                        !canAnnounceOnAlice
-                          ? 'Нет доступных настроек Алисы'
-                          : sendOnAliceEnabled
-                            ? 'Алиса включена'
-                            : 'Алиса выключена'
-                      "
-                      :disabled="!canAnnounceOnAlice"
-                      @click="sendOnAliceEnabled = !sendOnAliceEnabled"
-                    >
-                      <span
-                        class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition"
-                        :class="sendOnAliceEnabled ? 'translate-x-6' : 'translate-x-1'"
-                      ></span>
-                    </button>
-                  </label>
                   <button
                     type="submit"
                     :class="
@@ -1242,13 +1216,7 @@
                     "
                     :disabled="sendingMessage || !composerText.trim() || !activeConversation"
                   >
-                    {{
-                      sendingMessage
-                        ? 'Отправляем…'
-                        : sendOnAliceEnabled && canAnnounceOnAlice
-                          ? 'Отправить + Алиса'
-                          : 'Отправить'
-                    }}
+                    {{ sendingMessage ? 'Отправляем…' : 'Отправить' }}
                   </button>
                 </form>
               </div>
@@ -1576,7 +1544,6 @@ const deletingGroup = ref(false)
 const sendingMessage = ref(false)
 const sendingAudio = ref(false)
 const sendingImage = ref(false)
-const sendOnAliceEnabled = ref(false)
 const groupModalOpen = ref(false)
 const messagesScroller = ref(null)
 const isRecordingAudio = ref(false)
@@ -1620,6 +1587,8 @@ const replyingToMessageId = ref('')
 const editingMessageId = ref('')
 const editingMessageText = ref('')
 const reactionPickerMessageId = ref('')
+const aliceAnnouncementPendingMessageId = ref('')
+const aliceAnnouncementErrorMessageId = ref('')
 const isMobileLayout = ref(false)
 const mobileView = ref('list')
 const swipeReplyState = ref({
@@ -1668,68 +1637,8 @@ const composerEmojis = [
 ]
 
 const currentUserEmail = computed(() => authStore.user?.email || '')
-const showAliceComposerToggle = computed(() =>
-  ['direct', 'group'].includes(activeConversation.value?.type || ''),
-)
-const directRecipient = computed(() => {
-  if (activeConversation.value?.type !== 'direct') {
-    return null
-  }
-
-  const recipientEmail = (activeConversation.value?.members || []).find(
-    (member) => member.email && member.email !== currentUserEmail.value,
-  )?.email
-
-  if (!recipientEmail) {
-    return null
-  }
-
-  return (
-    chatStore.users.find((user) => user.email === recipientEmail) || {
-      email: recipientEmail,
-      login: activeConversation.value?.title || recipientEmail,
-      aliceConfigured: false,
-      aliceEnabled: true,
-    }
-  )
-})
-const groupAliceRecipients = computed(() => {
-  if (activeConversation.value?.type !== 'group') {
-    return []
-  }
-
-  return (activeConversation.value?.members || [])
-    .filter((member) => member.email && member.email !== currentUserEmail.value)
-    .map((member) => {
-      const matchedUser = chatStore.users.find((user) => user.email === member.email)
-      return (
-        matchedUser || {
-          email: member.email,
-          login: member.login || member.email,
-          aliceConfigured: false,
-          aliceEnabled: true,
-        }
-      )
-    })
-})
-const canAnnounceOnAlice = computed(
-  () => {
-    if (!Boolean(activeConversation.value?.id)) {
-      return false
-    }
-
-    if (activeConversation.value?.type === 'direct') {
-      return Boolean(directRecipient.value?.aliceConfigured) && Boolean(directRecipient.value?.aliceEnabled)
-    }
-
-    if (activeConversation.value?.type === 'group') {
-      return groupAliceRecipients.value.some(
-        (user) => Boolean(user?.aliceConfigured) && Boolean(user?.aliceEnabled),
-      )
-    }
-
-    return false
-  },
+const shouldAutoAnnounceOnAlice = computed(
+  () => ['direct', 'group'].includes(activeConversation.value?.type || ''),
 )
 const currentUserLogin = computed(() => authStore.user?.login || authStore.user?.email || '')
 const chatErrorMessage = computed(
@@ -3216,7 +3125,7 @@ const sendCurrentAudio = async () => {
       conversationId: activeConversation.value.id,
       audioBlob: recordedAudioBlob.value,
       durationSeconds: recordedAudioDuration.value,
-      announceOnAlice: sendOnAliceEnabled.value && canAnnounceOnAlice.value,
+      announceOnAlice: shouldAutoAnnounceOnAlice.value,
     })
     discardRecordedAudio()
   } catch (error) {
@@ -3319,6 +3228,30 @@ const openImageMessage = async (message) => {
     notifications.errorFrom(error, 'Не удалось открыть изображение')
   } finally {
     viewingImageMessageId.value = ''
+  }
+}
+
+const announceMessageOnAlice = async (message) => {
+  if (
+    !activeConversation.value?.id ||
+    !message?.id ||
+    aliceAnnouncementPendingMessageId.value === message.id
+  ) {
+    return
+  }
+
+  aliceAnnouncementPendingMessageId.value = message.id
+  aliceAnnouncementErrorMessageId.value = ''
+
+  try {
+    await chatStore.announceOnAlice({
+      conversationId: activeConversation.value.id,
+      messageId: message.id,
+    })
+  } catch {
+    aliceAnnouncementErrorMessageId.value = message.id
+  } finally {
+    aliceAnnouncementPendingMessageId.value = ''
   }
 }
 
@@ -3433,7 +3366,7 @@ const sendCurrentMessage = async () => {
       conversationId: activeConversation.value.id,
       text,
       replyToMessageId: replyingToMessageId.value,
-      announceOnAlice: sendOnAliceEnabled.value && canAnnounceOnAlice.value,
+      announceOnAlice: shouldAutoAnnounceOnAlice.value,
     }
 
     if (activeConversation.value.type === 'direct') {
@@ -3505,12 +3438,6 @@ onMounted(async () => {
 watch(groupModalOpen, (isOpen) => {
   if (!isOpen) {
     groupForm.value = { title: '', memberEmails: [] }
-  }
-})
-
-watch(canAnnounceOnAlice, (enabled) => {
-  if (!enabled) {
-    sendOnAliceEnabled.value = false
   }
 })
 

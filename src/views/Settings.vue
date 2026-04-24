@@ -265,6 +265,49 @@
             </button>
           </div>
 
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 lg:col-span-2">
+            <label class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-sm font-semibold text-slate-950">Тихие часы</div>
+                <div class="mt-1 text-xs text-slate-500">
+                  По Москве. В это время Alice не будет озвучивать входящие сообщения.
+                </div>
+              </div>
+              <input
+                v-model="profileForm.aliceQuietHoursEnabled"
+                type="checkbox"
+                class="h-5 w-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                :disabled="aliceSaving"
+              />
+            </label>
+
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+              <label class="block">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Начало
+                </span>
+                <input
+                  v-model="profileForm.aliceQuietHoursStart"
+                  type="time"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
+                  :disabled="aliceQuietHoursInputsDisabled"
+                />
+              </label>
+
+              <label class="block">
+                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Окончание
+                </span>
+                <input
+                  v-model="profileForm.aliceQuietHoursEnd"
+                  type="time"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
+                  :disabled="aliceQuietHoursInputsDisabled"
+                />
+              </label>
+            </div>
+          </div>
+
           <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2">
             <div>
               <div class="text-sm font-semibold text-slate-950">Не получать на Алису</div>
@@ -333,6 +376,9 @@ const profileForm = ref({
   aliceDeviceId: '',
   aliceScenarioId: '',
   aliceDisabled: false,
+  aliceQuietHoursEnabled: false,
+  aliceQuietHoursStart: '',
+  aliceQuietHoursEnd: '',
 })
 const notificationForm = ref({
   pushEnabled: false,
@@ -363,6 +409,9 @@ const fillForms = (user = authStore.user) => {
     aliceDeviceId: user?.aliceSettings?.deviceId || '',
     aliceScenarioId: user?.aliceSettings?.scenarioId || '',
     aliceDisabled: Boolean(user?.aliceSettings?.disabled),
+    aliceQuietHoursEnabled: Boolean(user?.aliceSettings?.quietHoursEnabled),
+    aliceQuietHoursStart: user?.aliceSettings?.quietHoursStart || '',
+    aliceQuietHoursEnd: user?.aliceSettings?.quietHoursEnd || '',
   }
   notificationForm.value = {
     pushEnabled: Boolean(user?.notificationSettings?.pushEnabled),
@@ -499,6 +548,10 @@ const canTestAliceSettings = computed(
     Boolean(profileForm.value.aliceDeviceId),
 )
 
+const aliceQuietHoursInputsDisabled = computed(
+  () => aliceSaving.value || !profileForm.value.aliceQuietHoursEnabled,
+)
+
 const saveAliceSettings = async () => {
   const payload = {}
   const nextAliceAccountId = profileForm.value.aliceAccountId.trim()
@@ -506,6 +559,9 @@ const saveAliceSettings = async () => {
   const nextAliceRoomId = profileForm.value.aliceRoomId.trim()
   const nextAliceDeviceId = profileForm.value.aliceDeviceId.trim()
   const nextAliceDisabled = Boolean(profileForm.value.aliceDisabled)
+  const nextAliceQuietHoursEnabled = Boolean(profileForm.value.aliceQuietHoursEnabled)
+  const nextAliceQuietHoursStart = profileForm.value.aliceQuietHoursStart.trim()
+  const nextAliceQuietHoursEnd = profileForm.value.aliceQuietHoursEnd.trim()
 
   if (nextAliceAccountId !== (authStore.user?.aliceSettings?.accountId || '')) {
     payload.alice_account_id = nextAliceAccountId
@@ -521,6 +577,15 @@ const saveAliceSettings = async () => {
   }
   if (nextAliceDisabled !== Boolean(authStore.user?.aliceSettings?.disabled)) {
     payload.alice_disabled = nextAliceDisabled
+  }
+  if (nextAliceQuietHoursEnabled !== Boolean(authStore.user?.aliceSettings?.quietHoursEnabled)) {
+    payload.alice_quiet_hours_enabled = nextAliceQuietHoursEnabled
+  }
+  if (nextAliceQuietHoursStart !== (authStore.user?.aliceSettings?.quietHoursStart || '')) {
+    payload.alice_quiet_hours_start = nextAliceQuietHoursStart
+  }
+  if (nextAliceQuietHoursEnd !== (authStore.user?.aliceSettings?.quietHoursEnd || '')) {
+    payload.alice_quiet_hours_end = nextAliceQuietHoursEnd
   }
   if (authStore.user?.aliceSettings?.voice) {
     payload.alice_voice = ''
