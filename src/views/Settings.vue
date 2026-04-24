@@ -81,86 +81,6 @@
               </select>
             </label>
 
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div class="mb-3">
-                <div class="text-sm font-semibold text-slate-950">Алиса</div>
-                <div class="mt-1 text-xs text-slate-500">
-                  Настрой аккаунт, комнату, колонку и сценарий для уведомлений на стороне получателя.
-                </div>
-              </div>
-
-              <div v-if="aliceSettingsHint" class="mb-3 rounded-2xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-800">
-                {{ aliceSettingsHint }}
-              </div>
-
-              <div class="space-y-3">
-                <label class="block">
-                  <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Яндекс-аккаунт
-                  </span>
-                  <select
-                    v-model="profileForm.aliceAccountId"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
-                    :disabled="aliceLoading"
-                    @change="onAliceAccountChange"
-                  >
-                    <option value="">Не выбран</option>
-                    <option v-for="account in aliceAccounts" :key="account.id" :value="account.id">
-                      {{ account.title }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Комната
-                  </span>
-                  <select
-                    v-model="profileForm.aliceRoomId"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
-                    :disabled="aliceLoading || !profileForm.aliceAccountId"
-                  >
-                    <option value="">Не выбрана</option>
-                    <option v-for="room in aliceRooms" :key="room.id" :value="room.id">
-                      {{ room.name }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Колонка
-                  </span>
-                  <select
-                    v-model="profileForm.aliceDeviceId"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
-                    :disabled="aliceLoading || !profileForm.aliceAccountId"
-                  >
-                    <option value="">Не выбрана</option>
-                    <option v-for="device in filteredAliceDevices" :key="device.id" :value="device.id">
-                      {{ device.name }}
-                    </option>
-                  </select>
-                </label>
-
-                <label class="block">
-                  <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Сценарий
-                  </span>
-                  <select
-                    v-model="profileForm.aliceScenarioId"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300"
-                    :disabled="aliceLoading || !profileForm.aliceAccountId"
-                  >
-                    <option value="">Не выбран</option>
-                    <option v-for="scenario in aliceScenarios" :key="scenario.id" :value="scenario.id">
-                      {{ scenario.name }}
-                    </option>
-                  </select>
-                </label>
-              </div>
-            </div>
-
             <button
               type="submit"
               class="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -246,6 +166,117 @@
           </form>
         </section>
       </div>
+
+      <section class="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div class="mb-5">
+          <h3 class="text-lg font-semibold text-slate-950">Алиса</h3>
+          <p class="mt-1 text-sm text-slate-500">
+            Настрой, в какой дом, комнату и колонку будут приходить озвученные сообщения.
+          </p>
+        </div>
+
+        <div v-if="aliceSettingsHint" class="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+          {{ aliceSettingsHint }}
+        </div>
+
+        <form class="grid gap-4 lg:grid-cols-2" @submit.prevent="saveAliceSettings">
+          <label class="block">
+            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Яндекс-аккаунт
+            </span>
+            <select
+              v-model="profileForm.aliceAccountId"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+              :disabled="aliceLoading"
+              @change="onAliceAccountChange"
+            >
+              <option value="">Не выбран</option>
+              <option v-for="account in aliceAccounts" :key="account.id" :value="account.id">
+                {{ account.title }}
+              </option>
+            </select>
+            <div v-if="selectedAliceAccount" class="mt-1 text-xs text-slate-500">
+              Режим: {{ selectedAliceAccount.transport === 'unofficial' ? 'прямая озвучка' : 'через сценарий' }}
+            </div>
+          </label>
+
+          <label class="block">
+            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Дом
+            </span>
+            <select
+              v-model="profileForm.aliceHouseholdId"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+              :disabled="aliceLoading || !profileForm.aliceAccountId"
+              @change="onAliceHouseholdChange"
+            >
+              <option value="">Не выбран</option>
+              <option v-for="household in aliceHouseholds" :key="household.id" :value="household.id">
+                {{ household.label }}
+              </option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Комната
+            </span>
+            <select
+              v-model="profileForm.aliceRoomId"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+              :disabled="aliceLoading || !profileForm.aliceAccountId || !aliceHouseholds.length"
+              @change="onAliceRoomChange"
+            >
+              <option value="">Не выбрана</option>
+              <option v-for="room in filteredAliceRooms" :key="room.id" :value="room.id">
+                {{ room.name }}
+              </option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Колонка
+            </span>
+            <select
+              v-model="profileForm.aliceDeviceId"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+              :disabled="aliceLoading || !profileForm.aliceAccountId || !aliceHouseholds.length"
+            >
+              <option value="">Не выбрана</option>
+              <option v-for="device in filteredAliceDevices" :key="device.id" :value="device.id">
+                {{ device.name }}
+              </option>
+            </select>
+          </label>
+
+          <label v-if="aliceUsesScenario" class="block lg:col-span-2">
+            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Сценарий
+            </span>
+            <select
+              v-model="profileForm.aliceScenarioId"
+              class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
+              :disabled="aliceLoading || !profileForm.aliceAccountId"
+            >
+              <option value="">Не выбран</option>
+              <option v-for="scenario in aliceScenarios" :key="scenario.id" :value="scenario.id">
+                {{ scenario.name }}
+              </option>
+            </select>
+          </label>
+
+          <div class="lg:col-span-2">
+            <button
+              type="submit"
+              class="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="aliceSaving"
+            >
+              {{ aliceSaving ? 'Сохраняем…' : 'Сохранить Алису' }}
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   </div>
 </template>
@@ -273,6 +304,7 @@ const notifications = useNotificationsStore()
 
 const profileSaving = ref(false)
 const notificationSaving = ref(false)
+const aliceSaving = ref(false)
 const pushHint = ref('')
 const profileForm = ref({
   login: '',
@@ -280,6 +312,7 @@ const profileForm = ref({
   password: '',
   defaultApp: 'chat',
   aliceAccountId: '',
+  aliceHouseholdId: '',
   aliceRoomId: '',
   aliceDeviceId: '',
   aliceScenarioId: '',
@@ -307,6 +340,7 @@ const fillForms = (user = authStore.user) => {
     password: '',
     defaultApp: resolveDefaultAppValue(user?.defaultApp),
     aliceAccountId: user?.aliceSettings?.accountId || '',
+    aliceHouseholdId: user?.aliceSettings?.householdId || '',
     aliceRoomId: user?.aliceSettings?.roomId || '',
     aliceDeviceId: user?.aliceSettings?.deviceId || '',
     aliceScenarioId: user?.aliceSettings?.scenarioId || '',
@@ -326,10 +360,6 @@ const saveProfile = async () => {
   const nextEmail = profileForm.value.email.trim()
   const nextPassword = profileForm.value.password.trim()
   const nextDefaultApp = resolveDefaultAppValue(profileForm.value.defaultApp)
-  const nextAliceAccountId = profileForm.value.aliceAccountId.trim()
-  const nextAliceRoomId = profileForm.value.aliceRoomId.trim()
-  const nextAliceDeviceId = profileForm.value.aliceDeviceId.trim()
-  const nextAliceScenarioId = profileForm.value.aliceScenarioId.trim()
 
   if (nextLogin && nextLogin !== authStore.user?.login) {
     payload.login = nextLogin
@@ -342,18 +372,6 @@ const saveProfile = async () => {
   }
   if (nextDefaultApp !== resolveDefaultAppValue(authStore.user?.defaultApp)) {
     payload.default_app = nextDefaultApp
-  }
-  if (nextAliceAccountId !== (authStore.user?.aliceSettings?.accountId || '')) {
-    payload.alice_account_id = nextAliceAccountId
-  }
-  if (nextAliceRoomId !== (authStore.user?.aliceSettings?.roomId || '')) {
-    payload.alice_room_id = nextAliceRoomId
-  }
-  if (nextAliceDeviceId !== (authStore.user?.aliceSettings?.deviceId || '')) {
-    payload.alice_device_id = nextAliceDeviceId
-  }
-  if (nextAliceScenarioId !== (authStore.user?.aliceSettings?.scenarioId || '')) {
-    payload.alice_scenario_id = nextAliceScenarioId
   }
 
   if (!Object.keys(payload).length) {
@@ -430,11 +448,99 @@ const goBack = () => {
   router.push('/chat')
 }
 
-const filteredAliceDevices = computed(() =>
-  aliceDevices.value.filter(
-    (device) => !profileForm.value.aliceRoomId || device.room_id === profileForm.value.aliceRoomId,
+const selectedAliceAccount = computed(() =>
+  aliceAccounts.value.find((account) => account.id === profileForm.value.aliceAccountId) || null,
+)
+
+const aliceUsesScenario = computed(
+  () => (selectedAliceAccount.value?.transport || 'official') === 'official',
+)
+
+const aliceHouseholds = computed(() => {
+  const labels = new Map()
+  let order = 0
+
+  for (const room of aliceRooms.value) {
+    if (!room?.household_id || labels.has(room.household_id)) {
+      continue
+    }
+    order += 1
+    labels.set(room.household_id, {
+      id: room.household_id,
+      label: `Дом ${order}`,
+    })
+  }
+
+  for (const device of aliceDevices.value) {
+    if (!device?.household_id || labels.has(device.household_id)) {
+      continue
+    }
+    order += 1
+    labels.set(device.household_id, {
+      id: device.household_id,
+      label: `Дом ${order}`,
+    })
+  }
+
+  return [...labels.values()]
+})
+
+const filteredAliceRooms = computed(() =>
+  aliceRooms.value.filter(
+    (room) =>
+      !profileForm.value.aliceHouseholdId || room.household_id === profileForm.value.aliceHouseholdId,
   ),
 )
+
+const filteredAliceDevices = computed(() =>
+  aliceDevices.value.filter(
+    (device) =>
+      (!profileForm.value.aliceHouseholdId ||
+        device.household_id === profileForm.value.aliceHouseholdId) &&
+      (!profileForm.value.aliceRoomId || device.room_id === profileForm.value.aliceRoomId),
+  ),
+)
+
+const saveAliceSettings = async () => {
+  const payload = {}
+  const nextAliceAccountId = profileForm.value.aliceAccountId.trim()
+  const nextAliceHouseholdId = profileForm.value.aliceHouseholdId.trim()
+  const nextAliceRoomId = profileForm.value.aliceRoomId.trim()
+  const nextAliceDeviceId = profileForm.value.aliceDeviceId.trim()
+  const nextAliceScenarioId = aliceUsesScenario.value ? profileForm.value.aliceScenarioId.trim() : ''
+
+  if (nextAliceAccountId !== (authStore.user?.aliceSettings?.accountId || '')) {
+    payload.alice_account_id = nextAliceAccountId
+  }
+  if (nextAliceHouseholdId !== (authStore.user?.aliceSettings?.householdId || '')) {
+    payload.alice_household_id = nextAliceHouseholdId
+  }
+  if (nextAliceRoomId !== (authStore.user?.aliceSettings?.roomId || '')) {
+    payload.alice_room_id = nextAliceRoomId
+  }
+  if (nextAliceDeviceId !== (authStore.user?.aliceSettings?.deviceId || '')) {
+    payload.alice_device_id = nextAliceDeviceId
+  }
+  if (nextAliceScenarioId !== (authStore.user?.aliceSettings?.scenarioId || '')) {
+    payload.alice_scenario_id = nextAliceScenarioId
+  }
+
+  if (!Object.keys(payload).length) {
+    notifications.info('В Алисе пока нечего сохранять')
+    return
+  }
+
+  aliceSaving.value = true
+  try {
+    await authStore.updateProfile(payload)
+    fillForms()
+    notifications.success('Настройки Алисы обновлены')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось сохранить Алису')
+  } finally {
+    aliceSaving.value = false
+  }
+}
 
 const loadAliceAccounts = async () => {
   aliceLoading.value = true
@@ -484,10 +590,20 @@ const loadAliceResources = async (accountId) => {
 }
 
 const onAliceAccountChange = async () => {
+  profileForm.value.aliceHouseholdId = ''
   profileForm.value.aliceRoomId = ''
   profileForm.value.aliceDeviceId = ''
   profileForm.value.aliceScenarioId = ''
   await loadAliceResources(profileForm.value.aliceAccountId)
+}
+
+const onAliceHouseholdChange = () => {
+  profileForm.value.aliceRoomId = ''
+  profileForm.value.aliceDeviceId = ''
+}
+
+const onAliceRoomChange = () => {
+  profileForm.value.aliceDeviceId = ''
 }
 
 onMounted(async () => {

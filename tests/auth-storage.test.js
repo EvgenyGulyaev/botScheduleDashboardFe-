@@ -116,12 +116,14 @@ test('normalizes profile notification and push metadata', () => {
     },
     alice_settings: {
       account_id: '',
+      household_id: '',
       room_id: '',
       device_id: '',
       scenario_id: '',
     },
     aliceSettings: {
       accountId: '',
+      householdId: '',
       roomId: '',
       deviceId: '',
       scenarioId: '',

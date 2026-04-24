@@ -95,12 +95,14 @@ test('updates stored session token from auth refresh response header', () => {
     },
     alice_settings: {
       account_id: '',
+      household_id: '',
       room_id: '',
       device_id: '',
       scenario_id: '',
     },
     aliceSettings: {
       accountId: '',
+      householdId: '',
       roomId: '',
       deviceId: '',
       scenarioId: '',
