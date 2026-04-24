@@ -907,11 +907,13 @@ test('chat store uploads and consumes one-time audio messages', async () => {
     conversationId: 'group-1',
     audioBlob: new Blob(['voice'], { type: 'audio/webm' }),
     durationSeconds: 4,
+    announceOnAlice: true,
   })
 
   assert.equal(calls[0][0], 'post')
   assert.equal(calls[0][1], '/chat/conversations/group-1/audio/token-123')
   assert.ok(calls[0][2] instanceof FormData)
+  assert.equal(calls[0][2].get('announce_on_alice'), 'true')
   assert.equal(calls[0][3].headers['X-Chat-Token'], 'token-123')
   assert.equal(message.type, 'audio')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.durationSeconds, 4)

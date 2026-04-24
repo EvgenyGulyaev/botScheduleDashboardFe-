@@ -1001,7 +1001,7 @@ export const useChatStore = defineStore('chat', {
       return this.highlightedMessageId
     },
 
-    async sendAudioMessage({ conversationId, audioBlob, durationSeconds }) {
+    async sendAudioMessage({ conversationId, audioBlob, durationSeconds, announceOnAlice = false }) {
       if (!conversationId || !audioBlob) {
         return null
       }
@@ -1016,6 +1016,7 @@ export const useChatStore = defineStore('chat', {
 
       const form = new FormData()
       form.append('duration_seconds', String(Math.max(1, Math.round(Number(durationSeconds) || 1))))
+      form.append('announce_on_alice', announceOnAlice ? 'true' : 'false')
       const file =
         typeof File !== 'undefined'
           ? new File([audioBlob], 'voice.webm', {

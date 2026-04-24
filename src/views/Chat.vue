@@ -3216,6 +3216,7 @@ const sendCurrentAudio = async () => {
       conversationId: activeConversation.value.id,
       audioBlob: recordedAudioBlob.value,
       durationSeconds: recordedAudioDuration.value,
+      announceOnAlice: sendOnAliceEnabled.value && canAnnounceOnAlice.value,
     })
     discardRecordedAudio()
   } catch (error) {
