@@ -314,7 +314,7 @@ const announce = async () => {
 
   sending.value = true
   try {
-    await authStore.announceOnAliceTest({
+    const response = await authStore.announceOnAliceTest({
       text,
       accountId: form.value.accountId,
       householdId: form.value.householdId,
@@ -323,7 +323,15 @@ const announce = async () => {
       voice: form.value.voice,
     })
     form.value.text = ''
-    notifications.success('Текст отправлен в Алису')
+    if (response?.voiceFallback) {
+      notifications.info(
+        form.value.voice
+          ? `Голос ${form.value.voice} не поддержался, Алиса озвучила дефолтным голосом`
+          : 'Алиса озвучила дефолтным голосом',
+      )
+    } else {
+      notifications.success('Текст отправлен в Алису')
+    }
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить текст в Алису')
   } finally {
@@ -339,7 +347,7 @@ const testVoice = async () => {
 
   sending.value = true
   try {
-    await authStore.announceOnAliceTest({
+    const response = await authStore.announceOnAliceTest({
       text: 'Тест',
       accountId: form.value.accountId,
       householdId: form.value.householdId,
@@ -347,7 +355,15 @@ const testVoice = async () => {
       deviceId: form.value.deviceId,
       voice: form.value.voice,
     })
-    notifications.success('Тестовая фраза отправлена в Алису')
+    if (response?.voiceFallback) {
+      notifications.info(
+        form.value.voice
+          ? `Голос ${form.value.voice} не поддержался, Алиса озвучила дефолтным голосом`
+          : 'Алиса озвучила дефолтным голосом',
+      )
+    } else {
+      notifications.success('Тестовая фраза отправлена в Алису')
+    }
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить тест в Алису')
   } finally {

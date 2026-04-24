@@ -584,7 +584,7 @@ const testAliceSettingsVoice = async () => {
 
   aliceTesting.value = true
   try {
-    await authStore.announceOnAliceTest({
+    const response = await authStore.announceOnAliceTest({
       text: 'Тест',
       accountId: profileForm.value.aliceAccountId,
       householdId: profileForm.value.aliceHouseholdId,
@@ -592,7 +592,15 @@ const testAliceSettingsVoice = async () => {
       deviceId: profileForm.value.aliceDeviceId,
       voice: profileForm.value.aliceVoice,
     })
-    notifications.success('Тестовая фраза отправлена в Алису')
+    if (response?.voiceFallback) {
+      notifications.info(
+        profileForm.value.aliceVoice
+          ? `Голос ${profileForm.value.aliceVoice} не поддержался, Алиса озвучила дефолтным голосом`
+          : 'Алиса озвучила дефолтным голосом',
+      )
+    } else {
+      notifications.success('Тестовая фраза отправлена в Алису')
+    }
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить тест в Алису')
   } finally {
