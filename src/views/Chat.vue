@@ -1190,22 +1190,41 @@
                     </div>
                   </div>
                   <label
-                    v-if="canAnnounceOnAlice"
+                    v-if="showAliceComposerToggle"
                     class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left"
+                    :class="canAnnounceOnAlice ? '' : 'opacity-60'"
                   >
                     <div class="min-w-0">
                       <div class="text-sm font-semibold text-slate-900">Отправлять и на Алису</div>
                       <div class="mt-1 text-xs text-slate-500">
-                        Сообщение уйдёт в чат и будет озвучено получателю.
+                        {{
+                          activeConversation?.type === 'group'
+                            ? 'Сообщение уйдёт в чат и будет озвучено на все доступные колонки участников без дублей.'
+                            : 'Сообщение уйдёт в чат и будет озвучено получателю.'
+                        }}
                       </div>
                     </div>
                     <button
                       type="button"
                       class="relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition"
-                      :class="sendOnAliceEnabled ? 'bg-slate-950' : 'bg-slate-300'"
+                      :class="
+                        !canAnnounceOnAlice
+                          ? 'cursor-not-allowed bg-slate-200'
+                          : sendOnAliceEnabled
+                            ? 'bg-slate-950'
+                            : 'bg-slate-300'
+                      "
                       role="switch"
                       :aria-checked="sendOnAliceEnabled"
-                      :title="sendOnAliceEnabled ? 'Алиса включена' : 'Алиса выключена'"
+                      :aria-disabled="!canAnnounceOnAlice"
+                      :title="
+                        !canAnnounceOnAlice
+                          ? 'Нет доступных настроек Алисы'
+                          : sendOnAliceEnabled
+                            ? 'Алиса включена'
+                            : 'Алиса выключена'
+                      "
+                      :disabled="!canAnnounceOnAlice"
                       @click="sendOnAliceEnabled = !sendOnAliceEnabled"
                     >
                       <span
@@ -1649,6 +1668,9 @@ const composerEmojis = [
 ]
 
 const currentUserEmail = computed(() => authStore.user?.email || '')
+const showAliceComposerToggle = computed(() =>
+  ['direct', 'group'].includes(activeConversation.value?.type || ''),
+)
 const directRecipient = computed(() => {
   if (activeConversation.value?.type !== 'direct') {
     return null
@@ -1671,12 +1693,43 @@ const directRecipient = computed(() => {
     }
   )
 })
+const groupAliceRecipients = computed(() => {
+  if (activeConversation.value?.type !== 'group') {
+    return []
+  }
+
+  return (activeConversation.value?.members || [])
+    .filter((member) => member.email && member.email !== currentUserEmail.value)
+    .map((member) => {
+      const matchedUser = chatStore.users.find((user) => user.email === member.email)
+      return (
+        matchedUser || {
+          email: member.email,
+          login: member.login || member.email,
+          aliceConfigured: false,
+          aliceEnabled: true,
+        }
+      )
+    })
+})
 const canAnnounceOnAlice = computed(
-  () =>
-    activeConversation.value?.type === 'direct' &&
-    Boolean(activeConversation.value?.id) &&
-    Boolean(directRecipient.value?.aliceConfigured) &&
-    Boolean(directRecipient.value?.aliceEnabled),
+  () => {
+    if (!Boolean(activeConversation.value?.id)) {
+      return false
+    }
+
+    if (activeConversation.value?.type === 'direct') {
+      return Boolean(directRecipient.value?.aliceConfigured) && Boolean(directRecipient.value?.aliceEnabled)
+    }
+
+    if (activeConversation.value?.type === 'group') {
+      return groupAliceRecipients.value.some(
+        (user) => Boolean(user?.aliceConfigured) && Boolean(user?.aliceEnabled),
+      )
+    }
+
+    return false
+  },
 )
 const currentUserLogin = computed(() => authStore.user?.login || authStore.user?.email || '')
 const chatErrorMessage = computed(
