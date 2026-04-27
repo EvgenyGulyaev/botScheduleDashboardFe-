@@ -1557,6 +1557,7 @@ import {
   insertEmojiIntoText,
   isChatMessageEditable,
   isChatSendShortcut,
+  shouldRefreshChatTyping,
 } from '../lib/chat-ui.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useChatStore } from '../stores/chat.js'
@@ -1644,6 +1645,7 @@ let mobileMediaQuery = null
 let unsubscribeSocketEnvelope = null
 let typingStopTimer = null
 let typingActiveConversationId = ''
+let typingStartedSentAt = 0
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -3418,6 +3420,7 @@ const stopComposerTyping = () => {
   }
   chatStore.sendTypingStopped(typingActiveConversationId)
   typingActiveConversationId = ''
+  typingStartedSentAt = 0
 }
 
 const scheduleComposerTypingStop = () => {
@@ -3564,6 +3567,11 @@ watch(
       stopComposerTyping()
       if (chatStore.sendTypingStarted(conversationId)) {
         typingActiveConversationId = conversationId
+        typingStartedSentAt = Date.now()
+      }
+    } else if (shouldRefreshChatTyping(typingStartedSentAt)) {
+      if (chatStore.sendTypingStarted(conversationId)) {
+        typingStartedSentAt = Date.now()
       }
     }
     scheduleComposerTypingStop()

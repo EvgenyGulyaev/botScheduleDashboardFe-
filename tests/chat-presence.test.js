@@ -7,6 +7,7 @@ import {
 } from '../src/lib/chat.js'
 import {
   getChatPresenceText,
+  shouldRefreshChatTyping,
   getTypingIndicatorLabel,
 } from '../src/lib/chat-ui.js'
 
@@ -157,4 +158,9 @@ test('prunes stale typing state when stop event is missed', () => {
   assert.equal(state.activeTypersByConversation['direct-1'].length, 1)
   pruneExpiredChatTypers(state, Date.parse('2026-04-27T10:00:07.000Z'))
   assert.deepEqual(state.activeTypersByConversation['direct-1'], [])
+})
+
+test('requests typing refresh before remote ttl expires during long typing sessions', () => {
+  assert.equal(shouldRefreshChatTyping(1000, 3999, 3000), false)
+  assert.equal(shouldRefreshChatTyping(1000, 4000, 3000), true)
 })

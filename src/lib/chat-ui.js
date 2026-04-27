@@ -87,6 +87,12 @@ export const getTypingIndicatorLabel = (typers = []) => {
   return `${labels[0]} и ещё ${labels.length - 1} печатают...`
 }
 
+export const shouldRefreshChatTyping = (
+  lastSentAt = 0,
+  now = Date.now(),
+  intervalMs = 3000,
+) => Number(now) - Number(lastSentAt || 0) >= Number(intervalMs)
+
 export const getChatMessageSenderLabel = (message = {}, currentUser = {}) => {
   if (message.senderEmail && message.senderEmail === currentUser.email) {
     return currentUser.login || currentUser.email || 'Вы'
