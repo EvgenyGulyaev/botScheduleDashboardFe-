@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeChatConversation } from '../src/lib/chat.js'
+import {
+  applyChatSocketEvent,
+  normalizeChatConversation,
+  pruneExpiredChatTypers,
+} from '../src/lib/chat.js'
 import {
   getChatPresenceText,
   getTypingIndicatorLabel,
@@ -77,4 +81,80 @@ test('builds typing indicator labels for one and multiple users', () => {
     ]),
     'bob и ещё 2 печатают...',
   )
+})
+
+test('applies realtime group presence without collapsing aggregate shape', () => {
+  const state = {
+    conversations: [
+      normalizeChatConversation(
+        {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          presence: {
+            online_count: 1,
+            last_active_at: '2026-04-27T10:00:00Z',
+          },
+        },
+        'alice@example.com',
+      ),
+    ],
+    messagesByConversation: {},
+    users: [],
+    activeCallsByConversation: {},
+    activeTypersByConversation: {},
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'presence_updated',
+      data: {
+        conversation_id: 'group-1',
+        presence: {
+          online_count: 2,
+          last_active_at: '2026-04-27T10:30:00Z',
+        },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.deepEqual(state.conversations[0].presence, {
+    online: false,
+    onlineCount: 2,
+    lastActiveAt: '2026-04-27T10:30:00Z',
+    lastSeenAt: null,
+  })
+  assert.equal(getChatPresenceText(state.conversations[0]), '2 в сети')
+})
+
+test('prunes stale typing state when stop event is missed', () => {
+  const state = {
+    conversations: [],
+    messagesByConversation: {},
+    users: [],
+    activeCallsByConversation: {},
+    activeTypersByConversation: {},
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'typing_started',
+      data: {
+        conversation_id: 'direct-1',
+        user: {
+          email: 'bob@example.com',
+          login: 'bob',
+          started_at: '2026-04-27T10:00:00.000Z',
+        },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.activeTypersByConversation['direct-1'].length, 1)
+  pruneExpiredChatTypers(state, Date.parse('2026-04-27T10:00:07.000Z'))
+  assert.deepEqual(state.activeTypersByConversation['direct-1'], [])
 })

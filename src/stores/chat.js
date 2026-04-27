@@ -9,6 +9,7 @@ import {
   normalizeChatMessage,
   normalizeChatMessages,
   normalizeChatUsers,
+  pruneExpiredChatTypers,
 } from '../lib/chat.js'
 import {
   buildIncomingChatNotice,
@@ -31,6 +32,7 @@ const createLoadingState = () => ({
 })
 
 const socketEnvelopeListeners = new Set()
+const typingExpiryTimers = new Map()
 
 const getApi = (authStore) => {
   if (!authStore.api && typeof authStore.init === 'function') {
@@ -195,6 +197,38 @@ const updateImageMessage = (state, conversationId, messageId, patch = {}) => {
   nextMessages[index] = nextMessage
   state.messagesByConversation[conversationId] = nextMessages
   return nextMessage
+}
+
+const typingTimerKey = (conversationId, email) => `${conversationId}::${email}`
+
+const clearTypingExpiryTimer = (conversationId, email) => {
+  const key = typingTimerKey(conversationId, email)
+  const timer = typingExpiryTimers.get(key)
+  if (timer) {
+    clearTimeout(timer)
+    typingExpiryTimers.delete(key)
+  }
+}
+
+const clearTypingExpiryTimers = () => {
+  for (const timer of typingExpiryTimers.values()) {
+    clearTimeout(timer)
+  }
+  typingExpiryTimers.clear()
+}
+
+const scheduleTypingExpiry = (state, conversationId, email, delayMs = 6100) => {
+  if (!conversationId || !email) {
+    return
+  }
+  clearTypingExpiryTimer(conversationId, email)
+  typingExpiryTimers.set(
+    typingTimerKey(conversationId, email),
+    setTimeout(() => {
+      typingExpiryTimers.delete(typingTimerKey(conversationId, email))
+      pruneExpiredChatTypers(state)
+    }, delayMs),
+  )
 }
 
 const replaceMessage = (state, conversationId, message) => {
@@ -748,6 +782,7 @@ export const useChatStore = defineStore('chat', {
 
       this.socket = null
       this.socketStatus = 'disconnected'
+      clearTypingExpiryTimers()
     },
 
     setSoundEnabled(enabled) {
@@ -1217,6 +1252,7 @@ export const useChatStore = defineStore('chat', {
       })
 
       applyChatSocketEvent(this, envelope, currentUserEmail)
+      this.scheduleTypingPrune(envelope)
 
       for (const listener of socketEnvelopeListeners) {
         try {
@@ -1236,6 +1272,21 @@ export const useChatStore = defineStore('chat', {
           playChatNotificationSound()
         }
       }
+    },
+
+    scheduleTypingPrune(envelope = {}) {
+      const event = envelope.event || envelope.type
+      if (event !== 'typing_started' && event !== 'typing_stopped') {
+        return
+      }
+      const data = envelope.data || {}
+      const conversationId = data.conversation_id ?? data.conversationId ?? ''
+      const email = data.user?.email ?? data.user_email ?? data.userEmail ?? ''
+      if (event === 'typing_stopped') {
+        clearTypingExpiryTimer(conversationId, email)
+        return
+      }
+      scheduleTypingExpiry(this, conversationId, email)
     },
 
     handleSocketEnvelope(envelope) {

@@ -4,6 +4,8 @@ const normalizeString = (value) => (value == null ? '' : String(value))
 
 const normalizeIso = (value) => (value ? String(value) : null)
 
+export const CHAT_TYPING_TTL_MS = 6000
+
 const sortByDateThenId = (left, right) => {
   const leftTime = left.lastMessageAt || left.updatedAt || left.createdAt || ''
   const rightTime = right.lastMessageAt || right.updatedAt || right.createdAt || ''
@@ -52,6 +54,7 @@ export const normalizeChatTypingUser = (user = {}) => ({
   email: normalizeString(user.email ?? user.user_email ?? user.userEmail),
   login: normalizeString(user.login ?? user.user_login ?? user.userLogin),
   startedAt: normalizeIso(user.started_at ?? user.startedAt),
+  expiresAt: normalizeIso(user.expires_at ?? user.expiresAt),
 })
 
 const normalizeChatAudio = (audio = null) => {
@@ -373,6 +376,37 @@ const clearReplyPreviewIfNeeded = (message = {}, removedIds = []) => {
   }
 }
 
+export const pruneExpiredChatTypers = (
+  state,
+  now = Date.now(),
+  ttlMs = CHAT_TYPING_TTL_MS,
+) => {
+  ensureConversationCollection(state)
+  const nowMs = Number(now) || Date.now()
+  for (const [conversationId, typers] of Object.entries(state.activeTypersByConversation)) {
+    state.activeTypersByConversation[conversationId] = toArray(typers).filter((typer) => {
+      const expiresAtMs = typer.expiresAt ? Date.parse(typer.expiresAt) : Number.NaN
+      if (Number.isFinite(expiresAtMs)) {
+        return expiresAtMs > nowMs
+      }
+      const startedAtMs = typer.startedAt ? Date.parse(typer.startedAt) : Number.NaN
+      return Number.isFinite(startedAtMs) && startedAtMs + ttlMs > nowMs
+    })
+  }
+  return state
+}
+
+const withTypingExpiry = (user, now = Date.now(), ttlMs = CHAT_TYPING_TTL_MS) => {
+  const startedAt = user.startedAt || new Date(now).toISOString()
+  const startedAtMs = Date.parse(startedAt)
+  const baseMs = Number.isFinite(startedAtMs) ? startedAtMs : now
+  return {
+    ...user,
+    startedAt,
+    expiresAt: new Date(baseMs + ttlMs).toISOString(),
+  }
+}
+
 export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => {
   ensureConversationCollection(state)
 
@@ -575,6 +609,7 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
   }
 
   if (event === 'typing_started' || event === 'typing_stopped') {
+    pruneExpiredChatTypers(state)
     const conversationId = normalizeString(data.conversation_id ?? data.conversationId)
     const user = normalizeChatTypingUser(data.user || data)
     if (!conversationId || !user.email || user.email === currentUserEmail) {
@@ -590,10 +625,7 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
     const next = current.filter((typer) => typer.email !== user.email)
     state.activeTypersByConversation[conversationId] = [
       ...next,
-      {
-        ...user,
-        startedAt: user.startedAt || new Date().toISOString(),
-      },
+      withTypingExpiry(user),
     ]
     return state
   }
