@@ -1582,6 +1582,7 @@ import {
   buildChatSearchExcerpt,
   buildChatTimelineItems,
   getChatAudioRecorderLabel,
+  getChatUnreadScrollAction,
   getChatPresenceText,
   getAudioMessageButtonLabel,
   getFirstUnreadMessageId,
@@ -1693,6 +1694,7 @@ let typingStopTimer = null
 let typingActiveConversationId = ''
 let typingStartedSentAt = 0
 let suppressDraftAutosave = false
+let pendingInitialUnreadScrollConversationId = ''
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -3434,8 +3436,25 @@ const scrollMessagesToBottom = async () => {
   scroller.scrollTop = scroller.scrollHeight
 }
 
-const scrollToFirstUnreadOrBottom = async () => {
-  if (activeFirstUnreadMessageId.value) {
+const isMessagesScrollerNearBottom = (threshold = 96) => {
+  const scroller = messagesScroller.value
+  if (!scroller) {
+    return true
+  }
+
+  return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= threshold
+}
+
+const hasFocusedChatViewport = () => {
+  if (typeof document === 'undefined') {
+    return true
+  }
+
+  return document.visibilityState !== 'hidden' && document.hasFocus()
+}
+
+const applyUnreadScrollAction = async (action = 'none') => {
+  if (action === 'first-unread' && activeFirstUnreadMessageId.value) {
     await scrollToMessage(activeFirstUnreadMessageId.value)
     setTimeout(() => {
       markVisibleFirstUnreadRead()
@@ -3443,7 +3462,10 @@ const scrollToFirstUnreadOrBottom = async () => {
     return
   }
 
-  await scrollMessagesToBottom()
+  if (action === 'bottom') {
+    await scrollMessagesToBottom()
+    markVisibleFirstUnreadRead()
+  }
 }
 
 const isMessageElementVisible = (messageId) => {
@@ -3704,6 +3726,11 @@ watch(searchQuery, (value) => {
 watch(
   () => chatStore.activeConversationId,
   (conversationId) => {
+    if (conversationId) {
+      pendingInitialUnreadScrollConversationId = conversationId
+    } else {
+      pendingInitialUnreadScrollConversationId = ''
+    }
     stopComposerTyping()
     cancelEditing()
     clearReplyState()
@@ -3763,10 +3790,31 @@ watch(
 
 watch(
   () => [chatStore.activeConversationId, activeMessages.value.length],
-  () => {
-    scrollToFirstUnreadOrBottom()
+  async ([conversationId, messageCount], [previousConversationId, previousMessageCount] = []) => {
+    const conversationChanged = Boolean(conversationId && conversationId !== previousConversationId)
+    if (conversationChanged) {
+      pendingInitialUnreadScrollConversationId = conversationId
+    }
+    const isInitialScroll =
+      Boolean(conversationId) && pendingInitialUnreadScrollConversationId === conversationId
+    const messageCountChanged =
+      Boolean(conversationId) &&
+      !conversationChanged &&
+      Number(messageCount || 0) !== Number(previousMessageCount || 0)
+    const wasNearBottom = isMessagesScrollerNearBottom()
+    await nextTick()
+    const action = getChatUnreadScrollAction({
+      conversationChanged: isInitialScroll,
+      messageCountChanged,
+      hasFirstUnread: Boolean(activeFirstUnreadMessageId.value),
+      wasNearBottom,
+      hasFocusedViewport: hasFocusedChatViewport(),
+    })
+    if (action !== 'none') {
+      pendingInitialUnreadScrollConversationId = ''
+    }
+    await applyUnreadScrollAction(action)
   },
-  { flush: 'post' },
 )
 
 watch(
@@ -3776,7 +3824,14 @@ watch(
       return
     }
 
-    scrollToFirstUnreadOrBottom()
+    void applyUnreadScrollAction(
+      getChatUnreadScrollAction({
+        conversationChanged: true,
+        hasFirstUnread: Boolean(activeFirstUnreadMessageId.value),
+        wasNearBottom: true,
+        hasFocusedViewport: hasFocusedChatViewport(),
+      }),
+    )
   },
   { flush: 'post' },
 )

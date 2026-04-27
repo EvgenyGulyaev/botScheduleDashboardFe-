@@ -530,6 +530,7 @@ test('applies message_read_updated into state without duplicating receipts', () 
         }),
       ],
     },
+    lastReadMessageIdByConversation: {},
     activeConversationId: null,
     loading: {},
     error: null,
@@ -575,6 +576,7 @@ test('applies message_read_updated into state without duplicating receipts', () 
 
   assert.equal(state.messagesByConversation['group-1'][0].readBy[0].email, 'bob@example.com')
   assert.equal(state.messagesByConversation['group-1'][1].readBy[0].email, 'bob@example.com')
+  assert.equal(state.lastReadMessageIdByConversation['group-1'], 'msg-2')
 })
 
 test('conversation_updated removes trimmed messages by ids', () => {

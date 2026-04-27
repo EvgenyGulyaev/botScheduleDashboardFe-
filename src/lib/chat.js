@@ -573,6 +573,19 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
         data.message?.conversation_id ??
         data.message?.conversationId,
     )
+    const currentMember = toArray(data.members ?? data.conversation?.members).find((member) => {
+      const email = normalizeString(member?.email)
+      return email && email === currentUserEmail
+    })
+    const currentReadMessageId = normalizeString(
+      currentMember?.last_read_message_id ?? currentMember?.lastReadMessageId,
+    )
+    if (conversationId && currentReadMessageId) {
+      state.lastReadMessageIdByConversation = {
+        ...(state.lastReadMessageIdByConversation || {}),
+        [conversationId]: currentReadMessageId,
+      }
+    }
     const messages = state.messagesByConversation[conversationId] || []
     const receipts = toArray(data.message?.read_by ?? data.message?.readBy).map(normalizeReceipt)
     const receipt = reader.email

@@ -280,6 +280,32 @@ export const shouldJumpToFirstUnread = (
   currentUserEmail = '',
 ) => Boolean(getFirstUnreadMessageId(messages, lastReadMessageId, currentUserEmail))
 
+export const getChatUnreadScrollAction = ({
+  conversationChanged = false,
+  messageCountChanged = false,
+  hasFirstUnread = false,
+  wasNearBottom = false,
+  hasFocusedViewport = true,
+} = {}) => {
+  if (!hasFocusedViewport) {
+    return 'none'
+  }
+
+  if (conversationChanged && hasFirstUnread) {
+    return 'first-unread'
+  }
+
+  if (conversationChanged) {
+    return 'bottom'
+  }
+
+  if (messageCountChanged && wasNearBottom) {
+    return 'bottom'
+  }
+
+  return 'none'
+}
+
 export const buildChatTimelineItems = (
   messages = [],
   lastReadMessageId = '',
