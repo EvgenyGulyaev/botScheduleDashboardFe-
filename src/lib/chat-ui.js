@@ -284,11 +284,16 @@ export const getChatUnreadScrollAction = ({
   conversationChanged = false,
   messageCountChanged = false,
   hasFirstUnread = false,
+  messagesLoaded = true,
   wasNearBottom = false,
   hasFocusedViewport = true,
 } = {}) => {
   if (!hasFocusedViewport) {
     return 'none'
+  }
+
+  if (conversationChanged && !messagesLoaded) {
+    return 'defer'
   }
 
   if (conversationChanged && hasFirstUnread) {

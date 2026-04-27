@@ -1789,6 +1789,14 @@ const mobileConversationMode = computed(
 )
 const activeConversation = computed(() => chatStore.activeConversation)
 const activeMessages = computed(() => chatStore.activeConversationMessages)
+const activeMessagesLoaded = computed(
+  () =>
+    Boolean(chatStore.activeConversationId) &&
+    Object.prototype.hasOwnProperty.call(
+      chatStore.messagesByConversation,
+      chatStore.activeConversationId,
+    ),
+)
 const activeLastReadMessageId = computed(
   () =>
     chatStore.lastReadMessageIdByConversation[chatStore.activeConversationId] ||
@@ -3789,8 +3797,11 @@ watch(
 )
 
 watch(
-  () => [chatStore.activeConversationId, activeMessages.value.length],
-  async ([conversationId, messageCount], [previousConversationId, previousMessageCount] = []) => {
+  () => [chatStore.activeConversationId, activeMessages.value.length, activeMessagesLoaded.value],
+  async (
+    [conversationId, messageCount, messagesLoaded],
+    [previousConversationId, previousMessageCount] = [],
+  ) => {
     const conversationChanged = Boolean(conversationId && conversationId !== previousConversationId)
     if (conversationChanged) {
       pendingInitialUnreadScrollConversationId = conversationId
@@ -3807,10 +3818,11 @@ watch(
       conversationChanged: isInitialScroll,
       messageCountChanged,
       hasFirstUnread: Boolean(activeFirstUnreadMessageId.value),
+      messagesLoaded: Boolean(messagesLoaded),
       wasNearBottom,
       hasFocusedViewport: hasFocusedChatViewport(),
     })
-    if (action !== 'none') {
+    if (action !== 'none' && action !== 'defer') {
       pendingInitialUnreadScrollConversationId = ''
     }
     await applyUnreadScrollAction(action)

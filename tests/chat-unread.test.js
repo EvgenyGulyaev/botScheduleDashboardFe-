@@ -84,3 +84,36 @@ test('initial open can jump to first unread but near-bottom append stays at bott
     'bottom',
   )
 })
+
+test('cold open defers initial scroll until messages are loaded', () => {
+  assert.equal(
+    getChatUnreadScrollAction({
+      conversationChanged: true,
+      hasFirstUnread: false,
+      messagesLoaded: false,
+      wasNearBottom: true,
+      hasFocusedViewport: true,
+    }),
+    'defer',
+  )
+  assert.equal(
+    getChatUnreadScrollAction({
+      conversationChanged: true,
+      hasFirstUnread: true,
+      messagesLoaded: true,
+      wasNearBottom: true,
+      hasFocusedViewport: true,
+    }),
+    'first-unread',
+  )
+  assert.equal(
+    getChatUnreadScrollAction({
+      conversationChanged: true,
+      hasFirstUnread: false,
+      messagesLoaded: true,
+      wasNearBottom: true,
+      hasFocusedViewport: true,
+    }),
+    'bottom',
+  )
+})
