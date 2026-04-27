@@ -383,6 +383,68 @@ test('applies message_persisted into conversations and messages', () => {
   assert.equal(state.messagesByConversation['direct-1'][0].text, 'hello')
 })
 
+test('message_persisted without unread metadata keeps and increments unread count', () => {
+  const state = {
+    users: [],
+    conversations: [
+      normalizeChatConversation(
+        {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          unread_count: 2,
+          last_read_message_id: 'msg-0',
+        },
+        'alice@example.com',
+      ),
+    ],
+    messagesByConversation: {
+      'group-1': [
+        normalizeChatMessage({
+          id: 'msg-0',
+          conversation_id: 'group-1',
+          sender_email: 'bob@example.com',
+          text: 'old',
+          created_at: '2026-04-16T10:00:00Z',
+        }),
+      ],
+    },
+    activeConversationId: null,
+    loading: {},
+    error: null,
+    socketStatus: 'disconnected',
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'message_persisted',
+      data: {
+        conversation: {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+        },
+        message: {
+          id: 'msg-1',
+          conversation_id: 'group-1',
+          sender_email: 'bob@example.com',
+          sender_login: 'bob',
+          text: 'new',
+          created_at: '2026-04-16T11:00:00Z',
+          delivered_to: [],
+          read_by: [],
+        },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.conversations[0].unreadCount, 3)
+  assert.equal(state.conversations[0].lastReadMessageId, 'msg-0')
+  assert.equal(state.messagesByConversation['group-1'].at(-1).text, 'new')
+})
+
 test('applies call lifecycle events into active call state', () => {
   const state = {
     users: [],
@@ -577,6 +639,120 @@ test('applies message_read_updated into state without duplicating receipts', () 
   assert.equal(state.messagesByConversation['group-1'][0].readBy[0].email, 'bob@example.com')
   assert.equal(state.messagesByConversation['group-1'][1].readBy[0].email, 'bob@example.com')
   assert.equal(state.lastReadMessageIdByConversation['group-1'], 'msg-2')
+})
+
+test('message_read_updated without unread metadata preserves unread count for another reader', () => {
+  const state = {
+    users: [],
+    conversations: [
+      normalizeChatConversation(
+        {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          unread_count: 4,
+          last_read_message_id: 'msg-0',
+        },
+        'alice@example.com',
+      ),
+    ],
+    messagesByConversation: {},
+    lastReadMessageIdByConversation: { 'group-1': 'msg-0' },
+    activeConversationId: null,
+    loading: {},
+    error: null,
+    socketStatus: 'disconnected',
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'message_read_updated',
+      data: {
+        conversation: {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+        },
+        message_id: 'msg-2',
+        reader: { email: 'bob@example.com', login: 'bob' },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.conversations[0].unreadCount, 4)
+  assert.equal(state.lastReadMessageIdByConversation['group-1'], 'msg-0')
+})
+
+test('message_read_updated from current user recalculates unread count locally', () => {
+  const state = {
+    users: [],
+    conversations: [
+      normalizeChatConversation(
+        {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          unread_count: 2,
+          last_read_message_id: 'msg-0',
+        },
+        'alice@example.com',
+      ),
+    ],
+    messagesByConversation: {
+      'group-1': [
+        normalizeChatMessage({
+          id: 'msg-1',
+          conversation_id: 'group-1',
+          sender_email: 'bob@example.com',
+          text: 'first',
+          created_at: '2026-04-16T11:00:00Z',
+        }),
+        normalizeChatMessage({
+          id: 'msg-2',
+          conversation_id: 'group-1',
+          sender_email: 'bob@example.com',
+          text: 'second',
+          created_at: '2026-04-16T11:01:00Z',
+        }),
+      ],
+    },
+    lastReadMessageIdByConversation: { 'group-1': 'msg-0' },
+    activeConversationId: null,
+    loading: {},
+    error: null,
+    socketStatus: 'disconnected',
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'message_read_updated',
+      data: {
+        conversation: {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+        },
+        members: [
+          {
+            conversation_id: 'group-1',
+            email: 'alice@example.com',
+            login: 'alice',
+            last_read_message_id: 'msg-1',
+          },
+        ],
+        message_id: 'msg-1',
+        reader: { email: 'alice@example.com', login: 'alice' },
+        affected_message_ids: ['msg-1'],
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.conversations[0].unreadCount, 1)
+  assert.equal(state.lastReadMessageIdByConversation['group-1'], 'msg-1')
 })
 
 test('conversation_updated removes trimmed messages by ids', () => {

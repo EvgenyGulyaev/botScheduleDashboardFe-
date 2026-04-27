@@ -237,6 +237,19 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
   }
 }
 
+const hasOwnField = (item = {}, fields = []) =>
+  Boolean(
+    item &&
+      typeof item === 'object' &&
+      fields.some((field) => Object.prototype.hasOwnProperty.call(item, field)),
+  )
+
+const hasConversationUnreadCount = (conversation = {}) =>
+  hasOwnField(conversation, ['unread_count', 'unreadCount'])
+
+const hasConversationLastReadMessageId = (conversation = {}) =>
+  hasOwnField(conversation, ['last_read_message_id', 'lastReadMessageId'])
+
 export const normalizeChatMessage = (message = {}) => ({
   id: normalizeString(message.id),
   conversationId: normalizeString(message.conversation_id ?? message.conversationId),
@@ -360,18 +373,67 @@ const upsertConversation = (state, conversation, currentUserEmail) => {
   if (index === -1) {
     state.conversations.push(normalized)
   } else {
-    const existingDraft = state.conversations[index].draft || {}
+    const existingConversation = state.conversations[index]
+    const existingDraft = existingConversation.draft || {}
     const nextDraft =
       normalized.draft?.text || normalized.draft?.updatedAt ? normalized.draft : existingDraft
     state.conversations[index] = {
-      ...state.conversations[index],
+      ...existingConversation,
       ...normalized,
+      lastReadMessageId: hasConversationLastReadMessageId(conversation)
+        ? normalized.lastReadMessageId
+        : existingConversation.lastReadMessageId,
+      unreadCount: hasConversationUnreadCount(conversation)
+        ? normalized.unreadCount
+        : existingConversation.unreadCount,
       draft: nextDraft,
     }
   }
 
   state.conversations.sort(sortByDateThenId)
   return normalized
+}
+
+const setConversationUnreadCount = (state, conversationId, unreadCount = 0) => {
+  const normalizedConversationId = normalizeString(conversationId)
+  const index = state.conversations.findIndex(
+    (conversation) => conversation.id === normalizedConversationId,
+  )
+  if (index === -1) {
+    return
+  }
+
+  state.conversations[index] = {
+    ...state.conversations[index],
+    unreadCount: Math.max(0, Number(unreadCount) || 0),
+  }
+}
+
+const incrementConversationUnreadCount = (state, conversationId) => {
+  const normalizedConversationId = normalizeString(conversationId)
+  const conversation = state.conversations.find(
+    (item) => item.id === normalizedConversationId,
+  )
+  setConversationUnreadCount(
+    state,
+    normalizedConversationId,
+    Number(conversation?.unreadCount || 0) + 1,
+  )
+}
+
+const countUnreadMessagesAfter = (
+  messages = [],
+  lastReadMessageId = '',
+  currentUserEmail = '',
+) => {
+  const items = Array.isArray(messages) ? messages : []
+  const readIndex = lastReadMessageId
+    ? items.findIndex((message) => message?.id === lastReadMessageId)
+    : -1
+
+  return items.slice(readIndex + 1).filter((message) => {
+    return message?.id && message.senderEmail !== currentUserEmail
+  }).length
 }
 
 const canReconcilePersistedMessage = (localMessage, persistedMessage) =>
@@ -533,10 +595,25 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
   }
 
   if (event === 'message_persisted') {
+    const conversationPayload = data.conversation
+      ? { ...data.conversation, members: data.members ?? data.conversation.members }
+      : null
+    const incomingMessage = normalizeChatMessage(data.message || {})
+    const previousMessages = incomingMessage.conversationId
+      ? state.messagesByConversation[incomingMessage.conversationId] || []
+      : []
+    const isNewIncomingMessage = Boolean(
+      incomingMessage.id &&
+        incomingMessage.conversationId &&
+        incomingMessage.senderEmail &&
+        incomingMessage.senderEmail !== currentUserEmail &&
+        !previousMessages.some((message) => message.id === incomingMessage.id),
+    )
+
     if (data.conversation) {
       upsertConversation(
         state,
-        { ...data.conversation, members: data.members ?? data.conversation.members },
+        conversationPayload,
         currentUserEmail,
       )
     }
@@ -545,14 +622,24 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
       upsertMessage(state, data.message)
     }
 
+    if (
+      isNewIncomingMessage &&
+      (!conversationPayload || !hasConversationUnreadCount(conversationPayload))
+    ) {
+      incrementConversationUnreadCount(state, incomingMessage.conversationId)
+    }
+
     return state
   }
 
   if (event === 'message_read_updated') {
+    const conversationPayload = data.conversation
+      ? { ...data.conversation, members: data.members ?? data.conversation.members }
+      : null
     if (data.conversation) {
       upsertConversation(
         state,
-        { ...data.conversation, members: data.members ?? data.conversation.members },
+        conversationPayload,
         currentUserEmail,
       )
     }
@@ -570,6 +657,7 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
     const conversationId = normalizeString(
       data.conversation_id ??
         data.conversationId ??
+        data.conversation?.id ??
         data.message?.conversation_id ??
         data.message?.conversationId,
     )
@@ -580,10 +668,13 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
     const currentReadMessageId = normalizeString(
       currentMember?.last_read_message_id ?? currentMember?.lastReadMessageId,
     )
-    if (conversationId && currentReadMessageId) {
+    const readerIsCurrentUser = Boolean(reader.email && reader.email === currentUserEmail)
+    const nextCurrentReadMessageId =
+      currentReadMessageId || (readerIsCurrentUser ? targetMessageId : '')
+    if (conversationId && nextCurrentReadMessageId) {
       state.lastReadMessageIdByConversation = {
         ...(state.lastReadMessageIdByConversation || {}),
-        [conversationId]: currentReadMessageId,
+        [conversationId]: nextCurrentReadMessageId,
       }
     }
     const messages = state.messagesByConversation[conversationId] || []
@@ -615,6 +706,22 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
 
         return upsertReadReceipt(message, receipt)
       })
+    }
+
+    if (
+      conversationId &&
+      readerIsCurrentUser &&
+      (!conversationPayload || !hasConversationUnreadCount(conversationPayload))
+    ) {
+      setConversationUnreadCount(
+        state,
+        conversationId,
+        countUnreadMessagesAfter(
+          state.messagesByConversation[conversationId] || [],
+          nextCurrentReadMessageId,
+          currentUserEmail,
+        ),
+      )
     }
 
     return state
