@@ -184,6 +184,68 @@ test('send clears draft', async () => {
   delete globalThis.WebSocket
 })
 
+test('stale in-flight draft save cannot resurrect a cleared sent draft', async () => {
+  let resolvePut
+  const calls = []
+  const chatStore = setupStore({
+    put(url, body) {
+      calls.push(['put', url, body])
+      return new Promise((resolve) => {
+        resolvePut = resolve
+      })
+    },
+    delete(url) {
+      calls.push(['delete', url])
+      return Promise.resolve({ data: {} })
+    },
+  })
+  chatStore.conversations = [
+    normalizeChatConversation({ id: 'group-1', type: 'group', title: 'Team' }, 'alice@example.com'),
+  ]
+
+  const savePromise = chatStore.saveDraft('group-1', 'sent text')
+  await chatStore.clearDraft('group-1')
+
+  resolvePut({
+    data: {
+      text: 'sent text',
+      updated_at: '2026-04-27T10:00:00Z',
+    },
+  })
+  await savePromise
+
+  assert.equal(chatStore.draftTextByConversation['group-1'], '')
+  assert.equal(chatStore.conversations[0].draft.text, '')
+  assert.deepEqual(calls, [
+    ['put', '/chat/drafts/group-1', { text: 'sent text' }],
+    ['delete', '/chat/drafts/group-1'],
+    ['delete', '/chat/drafts/group-1'],
+  ])
+
+  delete globalThis.localStorage
+})
+
+test('disconnect cancels pending draft autosave timers', async () => {
+  const calls = []
+  const chatStore = setupStore({
+    put(url, body) {
+      calls.push(['put', url, body])
+      return Promise.resolve({ data: body })
+    },
+  })
+  chatStore.conversations = [
+    normalizeChatConversation({ id: 'group-1', type: 'group', title: 'Team' }, 'alice@example.com'),
+  ]
+
+  chatStore.queueDraftSave('group-1', 'do not save after disconnect', 20)
+  chatStore.disconnect()
+  await wait(50)
+
+  assert.deepEqual(calls, [])
+
+  delete globalThis.localStorage
+})
+
 test('chat list draft preview prefers Черновик over last message preview', () => {
   const conversation = normalizeChatConversation(
     {

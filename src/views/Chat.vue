@@ -1535,9 +1535,9 @@ import {
   streamHasActiveVideo,
   streamHasVideo,
 } from '../lib/chat-call-ui.js'
+import { getChatDraftPreview } from '../lib/chat.js'
 import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
-  getChatDraftPreview,
   buildChatSearchExcerpt,
   getChatAudioRecorderLabel,
   getChatPresenceText,

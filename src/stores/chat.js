@@ -161,6 +161,59 @@ const clearDraftSaveTimer = (conversationId) => {
   }
 }
 
+const clearDraftSaveTimers = () => {
+  for (const timer of draftSaveTimers.values()) {
+    clearTimeout(timer)
+  }
+  draftSaveTimers.clear()
+}
+
+const draftSaveVersion = (state, conversationId) =>
+  Number(state.draftSaveVersionByConversation?.[conversationId] || 0)
+
+const bumpDraftSaveVersion = (state, conversationId) => {
+  if (!conversationId) {
+    return 0
+  }
+  const nextVersion = draftSaveVersion(state, conversationId) + 1
+  state.draftSaveVersionByConversation[conversationId] = nextVersion
+  return nextVersion
+}
+
+const knownDraftConversationIds = (state) =>
+  new Set([
+    ...Object.keys(state.draftSaveVersionByConversation || {}),
+    ...Object.keys(state.draftTextByConversation || {}),
+    ...draftSaveTimers.keys(),
+  ])
+
+const invalidateDraftSaveSession = (state) => {
+  state.draftSaveSession = Number(state.draftSaveSession || 0) + 1
+  for (const conversationId of knownDraftConversationIds(state)) {
+    bumpDraftSaveVersion(state, conversationId)
+  }
+}
+
+const currentDraft = (state, conversationId) =>
+  normalizeChatDraft({
+    text: state.draftTextByConversation[conversationId] || '',
+    updatedAt: state.draftUpdatedAtByConversation[conversationId] || null,
+  })
+
+const reconcileStaleDraftSave = async (state, api, conversationId) => {
+  const draft = currentDraft(state, conversationId)
+  try {
+    if (String(draft.text || '').trim()) {
+      await api.put(`/chat/drafts/${conversationId}`, { text: draft.text })
+    } else {
+      await api.delete(`/chat/drafts/${conversationId}`)
+    }
+  } catch {
+    // Best-effort repair: the important part is that stale responses cannot mutate local state.
+  }
+  return draft
+}
+
 const sendSocketEnvelope = (socket, event, data) => {
   const openState = typeof WebSocket !== 'undefined' && WebSocket.OPEN != null ? WebSocket.OPEN : 1
 
@@ -431,6 +484,8 @@ export const useChatStore = defineStore('chat', {
     lastReadMessageIdByConversation: {},
     draftTextByConversation: {},
     draftUpdatedAtByConversation: {},
+    draftSaveVersionByConversation: {},
+    draftSaveSession: 0,
   }),
 
   getters: {
@@ -576,11 +631,13 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    async saveDraft(conversationId, text = '') {
+    async saveDraft(conversationId, text = '', options = {}) {
       if (!conversationId) {
         return normalizeChatDraft()
       }
 
+      const saveSession = options.session ?? this.draftSaveSession
+      const saveVersion = options.version ?? bumpDraftSaveVersion(this, conversationId)
       const localDraft = updateConversationDraft(this, conversationId, {
         text,
         updatedAt: this.draftUpdatedAtByConversation[conversationId] || null,
@@ -593,8 +650,20 @@ export const useChatStore = defineStore('chat', {
       const api = getApi(authStore)
       try {
         const response = await api.put(`/chat/drafts/${conversationId}`, { text })
+        if (this.draftSaveSession !== saveSession) {
+          return currentDraft(this, conversationId)
+        }
+        if (draftSaveVersion(this, conversationId) !== saveVersion) {
+          return reconcileStaleDraftSave(this, api, conversationId)
+        }
         return updateConversationDraft(this, conversationId, response.data || { text })
       } catch {
+        if (
+          this.draftSaveSession !== saveSession ||
+          draftSaveVersion(this, conversationId) !== saveVersion
+        ) {
+          return currentDraft(this, conversationId)
+        }
         return localDraft
       }
     },
@@ -604,6 +673,8 @@ export const useChatStore = defineStore('chat', {
         return false
       }
 
+      const saveVersion = bumpDraftSaveVersion(this, conversationId)
+      const saveSession = this.draftSaveSession
       updateConversationDraft(this, conversationId, {
         text,
         updatedAt: this.draftUpdatedAtByConversation[conversationId] || null,
@@ -613,7 +684,16 @@ export const useChatStore = defineStore('chat', {
         conversationId,
         setTimeout(() => {
           draftSaveTimers.delete(conversationId)
-          void this.saveDraft(conversationId, text)
+          if (
+            this.draftSaveSession !== saveSession ||
+            draftSaveVersion(this, conversationId) !== saveVersion
+          ) {
+            return
+          }
+          void this.saveDraft(conversationId, text, {
+            session: saveSession,
+            version: saveVersion,
+          })
         }, delayMs),
       )
       return true
@@ -625,6 +705,7 @@ export const useChatStore = defineStore('chat', {
       }
 
       clearDraftSaveTimer(conversationId)
+      bumpDraftSaveVersion(this, conversationId)
       const cleared = updateConversationDraft(this, conversationId, {})
       const authStore = useAuthStore()
       const api = getApi(authStore)
@@ -978,6 +1059,8 @@ export const useChatStore = defineStore('chat', {
       this.socket = null
       this.socketStatus = 'disconnected'
       clearTypingExpiryTimers()
+      clearDraftSaveTimers()
+      invalidateDraftSaveSession(this)
     },
 
     setSoundEnabled(enabled) {
