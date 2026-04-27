@@ -1943,6 +1943,33 @@ test('chat store deletes group conversation and clears local state', async () =>
   delete globalThis.localStorage
 })
 
+test('chat store removes local group state when current user leaves', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const fakeApi = createFakeApi()
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+
+  const chatStore = useChatStore()
+  chatStore.conversations = [{ id: 'group-1', title: 'Team', type: 'group' }]
+  chatStore.messagesByConversation = { 'group-1': [{ id: 'msg-1' }] }
+  chatStore.activeConversationId = 'group-1'
+
+  await chatStore.leaveGroupConversation('group-1')
+
+  assert.equal(chatStore.conversations.some((conversation) => conversation.id === 'group-1'), false)
+  assert.equal(chatStore.messagesByConversation['group-1'], undefined)
+  assert.equal(chatStore.activeConversationId, null)
+
+  delete globalThis.localStorage
+})
+
 test('chat store edits messages, reacts, pins and searches through backend endpoints', async () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()

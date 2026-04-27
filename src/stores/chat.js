@@ -153,6 +153,19 @@ const updateConversationDraft = (state, conversationId, draft = {}) => {
   return normalized
 }
 
+const removeConversationState = (state, conversationId) => {
+  state.conversations = state.conversations.filter(
+    (conversation) => conversation.id !== conversationId,
+  )
+  delete state.messagesByConversation[conversationId]
+  delete state.lastReadMessageIdByConversation[conversationId]
+  delete state.draftTextByConversation[conversationId]
+  delete state.draftUpdatedAtByConversation[conversationId]
+  if (state.activeConversationId === conversationId) {
+    state.activeConversationId = null
+  }
+}
+
 const clearDraftSaveTimer = (conversationId) => {
   const timer = draftSaveTimers.get(conversationId)
   if (timer) {
@@ -905,6 +918,10 @@ export const useChatStore = defineStore('chat', {
           emails: memberEmails,
         },
       })
+      if (memberEmails.includes(currentUserEmail)) {
+        removeConversationState(this, conversationId)
+        return null
+      }
       const conversation = normalizeChatConversation(response.data, currentUserEmail)
       upsertConversation(this, conversation, currentUserEmail)
       return conversation
@@ -953,13 +970,7 @@ export const useChatStore = defineStore('chat', {
       const api = getApi(authStore)
       await api.delete(`/chat/conversations/group/${conversationId}`)
 
-      this.conversations = this.conversations.filter(
-        (conversation) => conversation.id !== conversationId,
-      )
-      delete this.messagesByConversation[conversationId]
-      if (this.activeConversationId === conversationId) {
-        this.activeConversationId = null
-      }
+      removeConversationState(this, conversationId)
 
       return true
     },
