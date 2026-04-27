@@ -284,6 +284,7 @@ export const useChatStore = defineStore('chat', {
     callConfig: null,
     activeCallsByConversation: {},
     activeCall: null,
+    activeTypersByConversation: {},
   }),
 
   getters: {
@@ -316,6 +317,14 @@ export const useChatStore = defineStore('chat', {
       }
 
       return state.activeCallsByConversation[state.activeConversationId] || null
+    },
+
+    activeConversationTypers(state) {
+      if (!state.activeConversationId) {
+        return []
+      }
+
+      return state.activeTypersByConversation[state.activeConversationId] || []
     },
   },
 
@@ -783,6 +792,26 @@ export const useChatStore = defineStore('chat', {
         text: text || '',
         reply_to_message_id: replyToMessageId || '',
         announce_on_alice: Boolean(announceOnAlice),
+      })
+    },
+
+    sendTypingStarted(conversationId) {
+      if (!conversationId) {
+        return false
+      }
+      const socket = this.socket || this.connect()
+      return sendSocketEnvelope(socket, 'typing_started', {
+        conversation_id: conversationId,
+      })
+    },
+
+    sendTypingStopped(conversationId) {
+      if (!conversationId) {
+        return false
+      }
+      const socket = this.socket || this.connect()
+      return sendSocketEnvelope(socket, 'typing_stopped', {
+        conversation_id: conversationId,
       })
     },
 

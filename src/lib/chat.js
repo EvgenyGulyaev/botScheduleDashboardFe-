@@ -41,6 +41,19 @@ const normalizeReceipt = (receipt = {}) => ({
   at: normalizeIso(receipt.at),
 })
 
+const normalizeChatPresence = (presence = {}) => ({
+  online: Boolean(presence.online),
+  onlineCount: Number(presence.online_count ?? presence.onlineCount ?? 0),
+  lastActiveAt: normalizeIso(presence.last_active_at ?? presence.lastActiveAt),
+  lastSeenAt: normalizeIso(presence.last_seen_at ?? presence.lastSeenAt),
+})
+
+export const normalizeChatTypingUser = (user = {}) => ({
+  email: normalizeString(user.email ?? user.user_email ?? user.userEmail),
+  login: normalizeString(user.login ?? user.user_login ?? user.userLogin),
+  startedAt: normalizeIso(user.started_at ?? user.startedAt),
+})
+
 const normalizeChatAudio = (audio = null) => {
   if (!audio) {
     return null
@@ -202,6 +215,7 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
       conversation.pinned_message ?? conversation.pinnedMessage,
     ),
     unreadCount: Number(conversation.unread_count ?? conversation.unreadCount ?? 0),
+    presence: normalizeChatPresence(conversation.presence ?? {}),
     members,
   }
 }
@@ -266,6 +280,10 @@ const ensureConversationCollection = (state) => {
 
   if (!state.activeCallsByConversation || typeof state.activeCallsByConversation !== 'object') {
     state.activeCallsByConversation = {}
+  }
+
+  if (!state.activeTypersByConversation || typeof state.activeTypersByConversation !== 'object') {
+    state.activeTypersByConversation = {}
   }
 
   if (state.activeCall === undefined) {
@@ -540,6 +558,43 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
       )
     }
 
+    return state
+  }
+
+  if (event === 'presence_updated') {
+    const conversationId = normalizeString(data.conversation_id ?? data.conversationId)
+    const presence = normalizeChatPresence(data.presence || {})
+    const index = state.conversations.findIndex((conversation) => conversation.id === conversationId)
+    if (index !== -1) {
+      state.conversations[index] = {
+        ...state.conversations[index],
+        presence,
+      }
+    }
+    return state
+  }
+
+  if (event === 'typing_started' || event === 'typing_stopped') {
+    const conversationId = normalizeString(data.conversation_id ?? data.conversationId)
+    const user = normalizeChatTypingUser(data.user || data)
+    if (!conversationId || !user.email || user.email === currentUserEmail) {
+      return state
+    }
+    const current = toArray(state.activeTypersByConversation[conversationId])
+    if (event === 'typing_stopped') {
+      state.activeTypersByConversation[conversationId] = current.filter(
+        (typer) => typer.email !== user.email,
+      )
+      return state
+    }
+    const next = current.filter((typer) => typer.email !== user.email)
+    state.activeTypersByConversation[conversationId] = [
+      ...next,
+      {
+        ...user,
+        startedAt: user.startedAt || new Date().toISOString(),
+      },
+    ]
     return state
   }
 

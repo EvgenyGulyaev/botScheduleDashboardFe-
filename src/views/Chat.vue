@@ -158,6 +158,16 @@
                     >
                       {{ conversationPreview(conversation) }}
                     </div>
+                    <div
+                      class="mt-0.5 truncate text-[11px]"
+                      :class="
+                        conversation.id === chatStore.activeConversationId
+                          ? 'text-slate-400'
+                          : 'text-slate-400'
+                      "
+                    >
+                      {{ conversationPresence(conversation) }}
+                    </div>
                   </div>
                   <span
                     v-if="conversation.unreadCount"
@@ -344,6 +354,9 @@
                     <h3 class="truncate text-lg font-bold text-slate-950">
                       {{ activeConversationTitle }}
                     </h3>
+                    <div v-if="activePresenceText" class="truncate text-xs text-slate-500">
+                      {{ activePresenceText }}
+                    </div>
                   </div>
                   <div class="flex shrink-0 items-center gap-1.5">
                     <button
@@ -394,6 +407,13 @@
                     <h3 class="truncate text-2xl font-bold text-slate-950">
                       {{ activeConversationTitle }}
                     </h3>
+
+                    <div
+                      v-if="activePresenceText"
+                      class="mt-1 text-sm text-slate-500"
+                    >
+                      {{ activePresenceText }}
+                    </div>
 
                     <div
                       v-if="activeConversation?.type === 'group'"
@@ -449,6 +469,12 @@
                   class="truncate text-xs text-slate-500"
                 >
                   {{ activeGroupMembersSummary }}
+                </div>
+                <div
+                  v-if="mobileConversationMode && activeTypingLabel"
+                  class="truncate text-xs font-medium text-sky-600"
+                >
+                  {{ activeTypingLabel }}
                 </div>
 
                 <div
@@ -1001,6 +1027,12 @@
               >
                 <form :class="mobileConversationMode ? 'space-y-2.5' : 'space-y-3'" @submit.prevent="sendCurrentMessage">
                   <div
+                    v-if="activeTypingLabel && !mobileConversationMode"
+                    class="rounded-2xl bg-sky-50 px-3 py-2 text-xs font-medium text-sky-700"
+                  >
+                    {{ activeTypingLabel }}
+                  </div>
+                  <div
                     v-if="replyingToMessage"
                     :class="
                       mobileConversationMode
@@ -1051,6 +1083,7 @@
                       class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-28 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white sm:pr-36"
                       placeholder="Напиши сообщение"
                       @keydown="handleComposerKeydown"
+                      @blur="stopComposerTyping"
                     ></textarea>
                     <div
                       v-if="composerDropActive"
@@ -1505,6 +1538,7 @@ import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
   buildChatSearchExcerpt,
   getChatAudioRecorderLabel,
+  getChatPresenceText,
   getAudioMessageButtonLabel,
   getChatSwipeReplyState,
   getImageMessageButtonLabel,
@@ -1518,6 +1552,7 @@ import {
   getDroppedImageFile,
   getCurrentUserReactionEmoji,
   getRecentChatItems,
+  getTypingIndicatorLabel,
   groupChatReactions,
   insertEmojiIntoText,
   isChatMessageEditable,
@@ -1607,6 +1642,8 @@ const peerConnections = new Map()
 let highlightTimerId = null
 let mobileMediaQuery = null
 let unsubscribeSocketEnvelope = null
+let typingStopTimer = null
+let typingActiveConversationId = ''
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -1713,6 +1750,12 @@ const activeConversationTitle = computed(() => activeConversation.value?.title |
 const activePinnedMessage = computed(() => activeConversation.value?.pinnedMessage || null)
 const audioRecorderLabel = computed(() => getChatAudioRecorderLabel(isRecordingAudio.value))
 const activeSearchResults = computed(() => chatStore.searchResults)
+const activePresenceText = computed(() =>
+  activeConversation.value ? getChatPresenceText(activeConversation.value) : '',
+)
+const activeTypingLabel = computed(() =>
+  getTypingIndicatorLabel(chatStore.activeConversationTypers),
+)
 const displayedCall = computed(() => chatStore.activeCall || chatStore.activeConversationCall || null)
 const displayedCallConversation = computed(
   () =>
@@ -1892,6 +1935,11 @@ const formatAudioDuration = (value) => {
 }
 
 const conversationPreview = (conversation) => {
+  const typingLabel = getTypingIndicatorLabel(chatStore.activeTypersByConversation[conversation.id] || [])
+  if (typingLabel) {
+    return typingLabel
+  }
+
   if (conversation.type === 'group') {
     return getConversationMembersSummary(conversation, currentUserEmail.value)
   }
@@ -1902,6 +1950,8 @@ const conversationPreview = (conversation) => {
 
   return 'Direct-диалог'
 }
+
+const conversationPresence = (conversation) => getChatPresenceText(conversation)
 
 const messageSenderLabel = (message) =>
   getChatMessageSenderLabel(message, {
@@ -3354,6 +3404,29 @@ const deleteActiveGroup = async () => {
   }
 }
 
+const clearTypingStopTimer = () => {
+  if (typingStopTimer) {
+    clearTimeout(typingStopTimer)
+    typingStopTimer = null
+  }
+}
+
+const stopComposerTyping = () => {
+  clearTypingStopTimer()
+  if (!typingActiveConversationId) {
+    return
+  }
+  chatStore.sendTypingStopped(typingActiveConversationId)
+  typingActiveConversationId = ''
+}
+
+const scheduleComposerTypingStop = () => {
+  clearTypingStopTimer()
+  typingStopTimer = setTimeout(() => {
+    stopComposerTyping()
+  }, 1800)
+}
+
 const sendCurrentMessage = async () => {
   const text = composerText.value.trim()
   if (!text || !activeConversation.value) {
@@ -3381,6 +3454,7 @@ const sendCurrentMessage = async () => {
       throw new Error('Не удалось отправить сообщение')
     }
 
+    stopComposerTyping()
     composerText.value = ''
     clearReplyState()
   } catch (error) {
@@ -3467,12 +3541,32 @@ watch(searchQuery, (value) => {
 watch(
   () => chatStore.activeConversationId,
   () => {
+    stopComposerTyping()
     cancelEditing()
     clearReplyState()
     reactionPickerMessageId.value = ''
     if (isMobileLayout.value && !chatStore.activeConversationId) {
       mobileView.value = 'list'
     }
+  },
+)
+
+watch(
+  () => composerText.value,
+  (value) => {
+    const conversationId = activeConversation.value?.id || ''
+    if (!conversationId || !String(value || '').trim()) {
+      stopComposerTyping()
+      return
+    }
+
+    if (typingActiveConversationId !== conversationId) {
+      stopComposerTyping()
+      if (chatStore.sendTypingStarted(conversationId)) {
+        typingActiveConversationId = conversationId
+      }
+    }
+    scheduleComposerTypingStop()
   },
 )
 
@@ -3576,6 +3670,7 @@ watch(
 )
 
 onUnmounted(() => {
+  stopComposerTyping()
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateMobileLayout)

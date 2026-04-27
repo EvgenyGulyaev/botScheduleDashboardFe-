@@ -49,6 +49,44 @@ export const getConversationMembersSummary = (conversation = {}, currentUserEmai
   return `${members.length} - ${labels.join(', ')}`
 }
 
+export const getChatPresenceText = (conversation = {}) => {
+  const presence = conversation?.presence || {}
+  if (conversation?.type === 'group') {
+    const onlineCount = Number(presence.onlineCount ?? presence.online_count ?? 0)
+    return onlineCount > 0 ? `${onlineCount} в сети` : 'никого нет в сети'
+  }
+
+  if (presence.online) {
+    return 'в сети'
+  }
+
+  if (presence.lastSeenAt || presence.last_seen_at) {
+    return 'был(а) недавно'
+  }
+
+  return 'не в сети'
+}
+
+export const getTypingIndicatorLabel = (typers = []) => {
+  const labels = (Array.isArray(typers) ? typers : [])
+    .map((user) => user?.login || user?.email || '')
+    .filter(Boolean)
+
+  if (labels.length === 0) {
+    return ''
+  }
+
+  if (labels.length === 1) {
+    return `${labels[0]} печатает...`
+  }
+
+  if (labels.length === 2) {
+    return `${labels[0]} и ${labels[1]} печатают...`
+  }
+
+  return `${labels[0]} и ещё ${labels.length - 1} печатают...`
+}
+
 export const getChatMessageSenderLabel = (message = {}, currentUser = {}) => {
   if (message.senderEmail && message.senderEmail === currentUser.email) {
     return currentUser.login || currentUser.email || 'Вы'
