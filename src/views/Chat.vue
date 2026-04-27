@@ -4104,13 +4104,18 @@ const forwardSelectedMessages = async (targetConversationId) => {
   if (!activeConversation.value || !targetConversationId || selectedMessageIds.value.length === 0) {
     return
   }
+  const messageIds = selectedMessages.value.map((message) => message.id)
+  if (messageIds.length === 0) {
+    clearSelectedMessages()
+    return
+  }
 
   forwardingMessages.value = true
   try {
     await chatStore.forwardMessages({
       sourceConversationId: activeConversation.value.id,
       targetConversationId,
-      messageIds: selectedMessageIds.value,
+      messageIds,
     })
     clearSelectedMessages()
     notifications.success('Сообщения пересланы')
@@ -4271,6 +4276,7 @@ watch(
     stopComposerTyping()
     cancelEditing()
     clearReplyState()
+    clearSelectedMessages()
     reactionPickerMessageId.value = ''
     void applyComposerDraft(conversationId)
     if (isMobileLayout.value && !chatStore.activeConversationId) {
