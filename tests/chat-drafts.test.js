@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { createPinia, setActivePinia } from 'pinia'
 import {
   getChatDraftPreview,
@@ -29,6 +30,9 @@ const createStorageMock = () => {
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const chatVueSource = () =>
+  readFileSync(new URL('../src/views/Chat.vue', import.meta.url), 'utf8')
 
 const setupStore = (api) => {
   setActivePinia(createPinia())
@@ -193,4 +197,13 @@ test('chat list draft preview prefers Черновик over last message preview
   )
 
   assert.equal(getChatDraftPreview(conversation), 'Черновик: unfinished answer')
+})
+
+test('chat view reapplies active conversation draft after remount reload', () => {
+  const source = chatVueSource()
+
+  assert.match(
+    source,
+    /await chatStore\.setActiveConversation\(chatStore\.activeConversationId\)\s+await applyComposerDraft\(chatStore\.activeConversationId\)/,
+  )
 })

@@ -3537,6 +3537,7 @@ onMounted(async () => {
       await selectConversation(chatStore.conversations[0].id)
     } else if (chatStore.activeConversationId) {
       await chatStore.setActiveConversation(chatStore.activeConversationId)
+      await applyComposerDraft(chatStore.activeConversationId)
       if (!isMobileLayout.value) {
         mobileView.value = 'conversation'
       } else {
