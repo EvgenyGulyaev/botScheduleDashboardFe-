@@ -898,6 +898,35 @@ test('late success after retry does not duplicate optimistic bubble', async () =
   delete globalThis.WebSocket
 })
 
+test('chat store does not leave pending text bubble when websocket is still connecting', () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const authStore = useAuthStore()
+  authStore.api = createFakeApi()
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  chatStore.socket = {
+    readyState: 0,
+    send() {
+      throw new Error('should not send while connecting')
+    },
+  }
+
+  const sent = chatStore.sendMessage({
+    conversationId: 'group-1',
+    text: 'hello',
+    clientMessageId: 'client-connecting',
+  })
+
+  assert.equal(sent, false)
+  assert.deepEqual(chatStore.messagesByConversation['group-1'] || [], [])
+
+  delete globalThis.localStorage
+})
+
 test('reconciliation requires persisted id created at client id and sender identity', () => {
   const state = {
     conversations: [],
@@ -1009,6 +1038,39 @@ test('chat store loadMessages accepts object response shape with last read id', 
   const messages = await chatStore.loadMessages('group-1')
   assert.equal(messages.length, 1)
   assert.equal(chatStore.lastReadMessageIdByConversation['group-1'], 'msg-1')
+
+  delete globalThis.localStorage
+})
+
+test('chat store loadMessages keeps compatibility with legacy bare array response', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const authStore = useAuthStore()
+  authStore.api = {
+    get(url) {
+      assert.equal(url, '/chat/conversations/group-1/messages')
+      return Promise.resolve({
+        data: [
+          {
+            id: 'msg-legacy',
+            conversation_id: 'group-1',
+            sender_email: 'bob@example.com',
+            sender_login: 'bob',
+            text: 'legacy',
+            created_at: '2026-04-27T10:00:00Z',
+          },
+        ],
+      })
+    },
+  }
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  const messages = await chatStore.loadMessages('group-1')
+  assert.equal(messages.length, 1)
+  assert.equal(messages[0].id, 'msg-legacy')
+  assert.equal(chatStore.lastReadMessageIdByConversation['group-1'], '')
 
   delete globalThis.localStorage
 })
@@ -1177,12 +1239,14 @@ test('chat store uploads and consumes one-time audio messages', async () => {
     audioBlob: new Blob(['voice'], { type: 'audio/webm' }),
     durationSeconds: 4,
     announceOnAlice: true,
+    clientMessageId: 'audio-client-1',
   })
 
   assert.equal(calls[0][0], 'post')
   assert.equal(calls[0][1], '/chat/conversations/group-1/audio/token-123')
   assert.ok(calls[0][2] instanceof FormData)
   assert.equal(calls[0][2].get('announce_on_alice'), 'true')
+  assert.equal(calls[0][2].get('client_message_id'), 'audio-client-1')
   assert.equal(calls[0][3].headers['X-Chat-Token'], 'token-123')
   assert.equal(message.type, 'audio')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.durationSeconds, 4)
@@ -1254,11 +1318,13 @@ test('chat store uploads and consumes one-time image messages', async () => {
     conversationId: 'group-1',
     imageBlob: new Blob(['img'], { type: 'image/png' }),
     filename: 'photo.png',
+    clientMessageId: 'image-client-1',
   })
 
   assert.equal(calls[0][0], 'post')
   assert.equal(calls[0][1], '/chat/conversations/group-1/image/token-123')
   assert.ok(calls[0][2] instanceof FormData)
+  assert.equal(calls[0][2].get('client_message_id'), 'image-client-1')
   assert.equal(calls[0][3].headers['X-Chat-Token'], 'token-123')
   assert.equal(message.type, 'image')
   assert.equal(chatStore.messagesByConversation['group-1'][0].image.mimeType, 'image/png')

@@ -902,15 +902,7 @@ export const useChatStore = defineStore('chat', {
 
       markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
       const messageClientId = clientMessageId || createClientMessageId()
-      upsertOptimisticTextMessage(this, {
-        conversationId,
-        clientMessageId: messageClientId,
-        text,
-        replyToMessageId,
-        currentUser,
-      })
-
-      return sendSocketEnvelope(socket, 'send_message', {
+      const sent = sendSocketEnvelope(socket, 'send_message', {
         conversation_id: conversationId || '',
         recipient_email: recipientEmail || '',
         client_message_id: messageClientId,
@@ -920,6 +912,19 @@ export const useChatStore = defineStore('chat', {
         reply_to_message_id: replyToMessageId || '',
         announce_on_alice: Boolean(announceOnAlice),
       })
+      if (!sent) {
+        return false
+      }
+
+      upsertOptimisticTextMessage(this, {
+        conversationId,
+        clientMessageId: messageClientId,
+        text,
+        replyToMessageId,
+        currentUser,
+      })
+
+      return true
     },
 
     sendTypingStarted(conversationId) {
@@ -1157,7 +1162,13 @@ export const useChatStore = defineStore('chat', {
       return this.highlightedMessageId
     },
 
-    async sendAudioMessage({ conversationId, audioBlob, durationSeconds, announceOnAlice = false }) {
+    async sendAudioMessage({
+      conversationId,
+      audioBlob,
+      durationSeconds,
+      announceOnAlice = false,
+      clientMessageId,
+    }) {
       if (!conversationId || !audioBlob) {
         return null
       }
@@ -1173,6 +1184,7 @@ export const useChatStore = defineStore('chat', {
       const form = new FormData()
       form.append('duration_seconds', String(Math.max(1, Math.round(Number(durationSeconds) || 1))))
       form.append('announce_on_alice', announceOnAlice ? 'true' : 'false')
+      form.append('client_message_id', clientMessageId || createClientMessageId())
       const file =
         typeof File !== 'undefined'
           ? new File([audioBlob], 'voice.webm', {
@@ -1225,7 +1237,7 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    async sendImageMessage({ conversationId, imageBlob, filename = 'image.png' }) {
+    async sendImageMessage({ conversationId, imageBlob, filename = 'image.png', clientMessageId }) {
       if (!conversationId || !imageBlob) {
         return null
       }
@@ -1239,6 +1251,7 @@ export const useChatStore = defineStore('chat', {
       }
 
       const form = new FormData()
+      form.append('client_message_id', clientMessageId || createClientMessageId())
       const file =
         typeof File !== 'undefined'
           ? new File([imageBlob], filename, {
