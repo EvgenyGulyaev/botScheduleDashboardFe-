@@ -4,6 +4,7 @@ import {
   buildChatWebSocketUrl,
   normalizeChatCall,
   getChatReconnectDelayMs,
+  normalizeChatDraft,
   normalizeChatConversation,
   normalizeChatConversations,
   normalizeChatMessage,
@@ -34,6 +35,7 @@ const createLoadingState = () => ({
 
 const socketEnvelopeListeners = new Set()
 const typingExpiryTimers = new Map()
+const draftSaveTimers = new Map()
 
 const createClientMessageId = () => {
   if (globalThis.crypto?.randomUUID) {
@@ -115,14 +117,48 @@ const upsertConversation = (state, conversation, currentUserEmail) => {
   if (index === -1) {
     state.conversations.push(normalized)
   } else {
+    const existingDraft = state.conversations[index].draft || {}
+    const nextDraft =
+      normalized.draft?.text || normalized.draft?.updatedAt ? normalized.draft : existingDraft
     state.conversations[index] = {
       ...state.conversations[index],
       ...normalized,
+      draft: nextDraft,
     }
   }
 
   state.conversations = sortConversations(state.conversations)
   return normalized
+}
+
+const updateConversationDraft = (state, conversationId, draft = {}) => {
+  if (!conversationId) {
+    return normalizeChatDraft(draft)
+  }
+
+  const normalized = normalizeChatDraft(draft)
+  const index = state.conversations.findIndex((conversation) => conversation.id === conversationId)
+  if (index !== -1) {
+    state.conversations[index] = {
+      ...state.conversations[index],
+      draft: normalized,
+    }
+  }
+  state.draftTextByConversation[conversationId] = normalized.text
+  if (normalized.updatedAt) {
+    state.draftUpdatedAtByConversation[conversationId] = normalized.updatedAt
+  } else {
+    delete state.draftUpdatedAtByConversation[conversationId]
+  }
+  return normalized
+}
+
+const clearDraftSaveTimer = (conversationId) => {
+  const timer = draftSaveTimers.get(conversationId)
+  if (timer) {
+    clearTimeout(timer)
+    draftSaveTimers.delete(conversationId)
+  }
 }
 
 const sendSocketEnvelope = (socket, event, data) => {
@@ -393,6 +429,8 @@ export const useChatStore = defineStore('chat', {
     activeCall: null,
     activeTypersByConversation: {},
     lastReadMessageIdByConversation: {},
+    draftTextByConversation: {},
+    draftUpdatedAtByConversation: {},
   }),
 
   getters: {
@@ -516,6 +554,86 @@ export const useChatStore = defineStore('chat', {
       } finally {
         this.loading = { ...this.loading, messages: false }
       }
+    },
+
+    async loadDraft(conversationId) {
+      if (!conversationId) {
+        return normalizeChatDraft()
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      try {
+        const response = await api.get(`/chat/drafts/${conversationId}`)
+        return updateConversationDraft(this, conversationId, response.data || {})
+      } catch (error) {
+        const fallback = normalizeChatDraft({
+          text: this.draftTextByConversation[conversationId] || '',
+          updatedAt: this.draftUpdatedAtByConversation[conversationId] || null,
+        })
+        updateConversationDraft(this, conversationId, fallback)
+        return fallback
+      }
+    },
+
+    async saveDraft(conversationId, text = '') {
+      if (!conversationId) {
+        return normalizeChatDraft()
+      }
+
+      const localDraft = updateConversationDraft(this, conversationId, {
+        text,
+        updatedAt: this.draftUpdatedAtByConversation[conversationId] || null,
+      })
+      if (!String(text || '').trim()) {
+        return this.clearDraft(conversationId)
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      try {
+        const response = await api.put(`/chat/drafts/${conversationId}`, { text })
+        return updateConversationDraft(this, conversationId, response.data || { text })
+      } catch {
+        return localDraft
+      }
+    },
+
+    queueDraftSave(conversationId, text = '', delayMs = 600) {
+      if (!conversationId) {
+        return false
+      }
+
+      updateConversationDraft(this, conversationId, {
+        text,
+        updatedAt: this.draftUpdatedAtByConversation[conversationId] || null,
+      })
+      clearDraftSaveTimer(conversationId)
+      draftSaveTimers.set(
+        conversationId,
+        setTimeout(() => {
+          draftSaveTimers.delete(conversationId)
+          void this.saveDraft(conversationId, text)
+        }, delayMs),
+      )
+      return true
+    },
+
+    async clearDraft(conversationId) {
+      if (!conversationId) {
+        return normalizeChatDraft()
+      }
+
+      clearDraftSaveTimer(conversationId)
+      const cleared = updateConversationDraft(this, conversationId, {})
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      try {
+        await api.delete(`/chat/drafts/${conversationId}`)
+      } catch {
+        // Draft deletion failures should not interrupt sending or erase the composer UX.
+      }
+      return cleared
     },
 
     async loadCallConfig(force = false) {
@@ -740,6 +858,7 @@ export const useChatStore = defineStore('chat', {
       if (!this.messagesByConversation[conversationId]) {
         await this.loadMessages(conversationId)
       }
+      await this.loadDraft(conversationId)
 
       const messages = this.messagesByConversation[conversationId] || []
       const latestMessage = messages[messages.length - 1]
@@ -923,6 +1042,7 @@ export const useChatStore = defineStore('chat', {
         replyToMessageId,
         currentUser,
       })
+      void this.clearDraft(conversationId)
 
       return true
     },

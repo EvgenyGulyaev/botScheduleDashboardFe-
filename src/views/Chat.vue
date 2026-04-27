@@ -1537,6 +1537,7 @@ import {
 } from '../lib/chat-call-ui.js'
 import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
+  getChatDraftPreview,
   buildChatSearchExcerpt,
   getChatAudioRecorderLabel,
   getChatPresenceText,
@@ -1648,6 +1649,7 @@ let unsubscribeSocketEnvelope = null
 let typingStopTimer = null
 let typingActiveConversationId = ''
 let typingStartedSentAt = 0
+let suppressDraftAutosave = false
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -1942,6 +1944,11 @@ const conversationPreview = (conversation) => {
   const typingLabel = getTypingIndicatorLabel(chatStore.activeTypersByConversation[conversation.id] || [])
   if (typingLabel) {
     return typingLabel
+  }
+
+  const draftPreview = getChatDraftPreview(conversation)
+  if (draftPreview) {
+    return draftPreview
   }
 
   if (conversation.type === 'group') {
@@ -3344,9 +3351,17 @@ const scrollMessagesToBottom = async () => {
   scroller.scrollTop = scroller.scrollHeight
 }
 
+const applyComposerDraft = async (conversationId = chatStore.activeConversationId) => {
+  suppressDraftAutosave = true
+  composerText.value = conversationId ? chatStore.draftTextByConversation[conversationId] || '' : ''
+  await nextTick()
+  suppressDraftAutosave = false
+}
+
 const selectConversation = async (conversationId) => {
   try {
     await chatStore.setActiveConversation(conversationId)
+    await applyComposerDraft(conversationId)
     openConversationScreen()
   } catch {
     // notifications already handled in the store
@@ -3361,6 +3376,7 @@ const openDirectConversation = async (user) => {
   try {
     const conversation = await chatStore.ensureDirectConversation(user.email)
     await chatStore.setActiveConversation(conversation.id)
+    await applyComposerDraft(conversation.id)
     chatSearch.value = ''
     openConversationScreen()
   } catch {
@@ -3390,6 +3406,7 @@ const createGroup = async () => {
     groupForm.value = { title: '', memberEmails: [] }
     closeGroupModal()
     await chatStore.setActiveConversation(conversation.id)
+    await applyComposerDraft(conversation.id)
     openConversationScreen()
     notifications.success('Группа создана')
   } catch {
@@ -3474,7 +3491,10 @@ const sendCurrentMessage = async () => {
     }
 
     stopComposerTyping()
+    suppressDraftAutosave = true
     composerText.value = ''
+    await nextTick()
+    suppressDraftAutosave = false
     clearReplyState()
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось отправить сообщение')
@@ -3559,11 +3579,12 @@ watch(searchQuery, (value) => {
 
 watch(
   () => chatStore.activeConversationId,
-  () => {
+  (conversationId) => {
     stopComposerTyping()
     cancelEditing()
     clearReplyState()
     reactionPickerMessageId.value = ''
+    void applyComposerDraft(conversationId)
     if (isMobileLayout.value && !chatStore.activeConversationId) {
       mobileView.value = 'list'
     }
@@ -3574,6 +3595,9 @@ watch(
   () => composerText.value,
   (value) => {
     const conversationId = activeConversation.value?.id || ''
+    if (!suppressDraftAutosave && conversationId) {
+      chatStore.queueDraftSave(conversationId, value)
+    }
     if (!conversationId || !String(value || '').trim()) {
       stopComposerTyping()
       return

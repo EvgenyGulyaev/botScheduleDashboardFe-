@@ -50,6 +50,16 @@ const normalizeChatPresence = (presence = {}) => ({
   lastSeenAt: normalizeIso(presence.last_seen_at ?? presence.lastSeenAt),
 })
 
+export const normalizeChatDraft = (draft = {}) => ({
+  text: normalizeString(draft.text),
+  updatedAt: normalizeIso(draft.updated_at ?? draft.updatedAt),
+})
+
+export const getChatDraftPreview = (conversation = {}) => {
+  const text = normalizeString(conversation.draft?.text).trim()
+  return text ? `Черновик: ${text}` : ''
+}
+
 export const normalizeChatTypingUser = (user = {}) => ({
   email: normalizeString(user.email ?? user.user_email ?? user.userEmail),
   login: normalizeString(user.login ?? user.user_login ?? user.userLogin),
@@ -219,6 +229,7 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
     ),
     unreadCount: Number(conversation.unread_count ?? conversation.unreadCount ?? 0),
     presence: normalizeChatPresence(conversation.presence ?? {}),
+    draft: normalizeChatDraft(conversation.draft ?? {}),
     members,
   }
 }
@@ -345,9 +356,13 @@ const upsertConversation = (state, conversation, currentUserEmail) => {
   if (index === -1) {
     state.conversations.push(normalized)
   } else {
+    const existingDraft = state.conversations[index].draft || {}
+    const nextDraft =
+      normalized.draft?.text || normalized.draft?.updatedAt ? normalized.draft : existingDraft
     state.conversations[index] = {
       ...state.conversations[index],
       ...normalized,
+      draft: nextDraft,
     }
   }
 
