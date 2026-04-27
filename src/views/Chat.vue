@@ -751,7 +751,7 @@
                   >
                     <span class="h-px flex-1 bg-sky-100"></span>
                     <span class="rounded-full border border-sky-100 bg-sky-50 px-3 py-1">
-                      Новые сообщения
+                      Непрочитанные сообщения
                     </span>
                     <span class="h-px flex-1 bg-sky-100"></span>
                   </div>
