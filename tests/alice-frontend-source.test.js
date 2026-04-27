@@ -39,7 +39,7 @@ test('alice admin page includes cleanup action for service scenarios', () => {
   const source = readSource('../src/views/Alice.vue')
   const authStoreSource = readSource('../src/stores/auth.js')
 
-  assert.match(source, /Очистить служебные сценарии/)
+  assert.match(source, /Очистить сценарии/)
   assert.match(source, /const cleanupScenarios = async \(\) =>/)
   assert.match(source, /await authStore\.cleanupAliceScenarios\(\{/)
   assert.match(source, /accountId:\s*form\.value\.accountId/)

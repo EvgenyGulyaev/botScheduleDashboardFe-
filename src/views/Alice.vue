@@ -121,10 +121,10 @@
                 type="button"
                 class="inline-flex items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="!canCleanupAliceScenarios"
-                title="Удалить служебные Codex-сценарии для выбранного аккаунта или текущей колонки"
+                title="Удалить Codex-сценарии для выбранного аккаунта или текущей колонки"
                 @click="cleanupScenarios"
               >
-                {{ cleaning ? 'Чистим…' : 'Очистить служебные сценарии' }}
+                {{ cleaning ? 'Чистим…' : 'Очистить сценарии' }}
               </button>
             </div>
             <div class="mt-2 text-xs text-slate-500">
