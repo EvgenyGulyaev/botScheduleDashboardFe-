@@ -707,6 +707,7 @@
               >
               <div
                 ref="messagesScroller"
+                @scroll="handleMessagesScroll"
                 :class="
                   showCallFocusLayout
                     ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3'
@@ -740,37 +741,52 @@
                 </div>
 
                 <div :class="mobileConversationMode ? 'space-y-2.5' : 'space-y-3'">
+                  <template
+                    v-for="item in activeTimelineItems"
+                    :key="`${item.type}-${item.id}`"
+                  >
+                  <div
+                    v-if="item.type === 'unread-separator'"
+                    class="flex items-center gap-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-600"
+                  >
+                    <span class="h-px flex-1 bg-sky-100"></span>
+                    <span class="rounded-full border border-sky-100 bg-sky-50 px-3 py-1">
+                      Новые сообщения
+                    </span>
+                    <span class="h-px flex-1 bg-sky-100"></span>
+                  </div>
                   <article
-                    v-for="message in activeMessages"
-                    :key="message.id"
+                    v-else
                     class="flex"
                     :class="
-                      message.senderEmail === currentUserEmail ? 'justify-end' : 'justify-start'
+                      item.message.senderEmail === currentUserEmail ? 'justify-end' : 'justify-start'
                     "
                   >
+                    <template v-if="item.message">
                     <div
-                      :ref="setMessageElement(message.id)"
+                      :ref="setMessageElement(item.message.id)"
                       class="relative min-w-0 max-w-[88vw] rounded-3xl border px-3 py-2.5 transition sm:max-w-[82%] sm:px-4 sm:py-3"
                       :class="
                         [
-                          message.senderEmail === currentUserEmail
+                          item.message.senderEmail === currentUserEmail
                             ? 'border-emerald-100 bg-emerald-50/80'
                             : 'border-slate-200 bg-slate-50',
-                          chatStore.highlightedMessageId === message.id
+                          chatStore.highlightedMessageId === item.message.id
                             ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-white'
                             : '',
                         ]
                       "
                       :style="{
-                        transform: swipeOffsetForMessage(message.id)
-                          ? `translateX(${swipeOffsetForMessage(message.id)}px)`
+                        transform: swipeOffsetForMessage(item.message.id)
+                          ? `translateX(${swipeOffsetForMessage(item.message.id)}px)`
                           : '',
                       }"
-                      @touchstart="startSwipeReplyGesture(message, $event)"
-                      @touchmove="moveSwipeReplyGesture(message, $event)"
-                      @touchend="endSwipeReplyGesture(message, $event)"
+                      @touchstart="startSwipeReplyGesture(item.message, $event)"
+                      @touchmove="moveSwipeReplyGesture(item.message, $event)"
+                      @touchend="endSwipeReplyGesture(item.message, $event)"
                       @touchcancel="resetSwipeReply"
                     >
+                      <template v-for="message in [item.message]" :key="message.id">
                       <div
                         v-if="isMobileLayout && swipeOffsetForMessage(message.id)"
                         class="pointer-events-none absolute -left-2 top-1/2 -translate-y-1/2 text-lg text-sky-600"
@@ -937,6 +953,21 @@
                           {{ reaction.emoji }} {{ reaction.count }}
                         </button>
                       </div>
+                      <div
+                        v-if="messageCanRetryText(message)"
+                        class="mt-2.5 rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2"
+                      >
+                        <div class="text-xs font-semibold text-rose-700">
+                          {{ message.errorMessage || 'Сообщение не отправилось' }}
+                        </div>
+                        <button
+                          type="button"
+                          class="mt-2 rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
+                          @click="retryTextMessage(message)"
+                        >
+                          Повторить отправку
+                        </button>
+                      </div>
                       <div class="mt-2.5 flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-500 sm:gap-2 sm:text-[11px]">
                         <button
                           type="button"
@@ -1012,8 +1043,11 @@
                           {{ messageStatusIcon(message) }}
                         </span>
                       </div>
+                      </template>
                     </div>
+                    </template>
                   </article>
+                  </template>
                 </div>
               </div>
 
@@ -1215,6 +1249,13 @@
                         </button>
                       </div>
                     </div>
+                  </div>
+
+                  <div
+                    v-if="activeMediaSendError"
+                    class="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-3 text-xs text-rose-700"
+                  >
+                    {{ activeMediaSendError }}
                   </div>
 
                   <div
@@ -1539,9 +1580,11 @@ import { getChatDraftPreview } from '../lib/chat.js'
 import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
   buildChatSearchExcerpt,
+  buildChatTimelineItems,
   getChatAudioRecorderLabel,
   getChatPresenceText,
   getAudioMessageButtonLabel,
+  getFirstUnreadMessageId,
   getChatSwipeReplyState,
   getImageMessageButtonLabel,
   filterChatUsersForSearch,
@@ -1744,6 +1787,29 @@ const mobileConversationMode = computed(
 )
 const activeConversation = computed(() => chatStore.activeConversation)
 const activeMessages = computed(() => chatStore.activeConversationMessages)
+const activeLastReadMessageId = computed(
+  () =>
+    chatStore.lastReadMessageIdByConversation[chatStore.activeConversationId] ||
+    activeConversation.value?.lastReadMessageId ||
+    '',
+)
+const activeFirstUnreadMessageId = computed(() =>
+  getFirstUnreadMessageId(
+    activeMessages.value,
+    activeLastReadMessageId.value,
+    currentUserEmail.value,
+  ),
+)
+const activeTimelineItems = computed(() =>
+  buildChatTimelineItems(
+    activeMessages.value,
+    activeLastReadMessageId.value,
+    currentUserEmail.value,
+  ),
+)
+const activeMediaSendError = computed(
+  () => chatStore.mediaSendErrorByConversation[chatStore.activeConversationId] || '',
+)
 const otherUsers = computed(() =>
   chatStore.users.filter((user) => user.email && user.email !== currentUserEmail.value),
 )
@@ -1986,6 +2052,23 @@ const messageStatusClass = (message) => {
     return 'text-slate-400'
   }
   return 'text-slate-500'
+}
+
+const messageCanRetryText = (message) =>
+  message?.type === 'text' &&
+  message?.senderEmail === currentUserEmail.value &&
+  message?.deliveryStatus === 'failed' &&
+  Boolean(message.clientMessageId)
+
+const retryTextMessage = (message) => {
+  const retried = chatStore.retryFailedTextMessage({
+    conversationId: message.conversationId || activeConversation.value?.id,
+    clientMessageId: message.clientMessageId,
+    messageId: message.id,
+  })
+  if (!retried) {
+    notifications.error('Не удалось повторить отправку')
+  }
 }
 
 const renderMessageText = (text) => renderChatMarkdown(text)
@@ -3351,6 +3434,46 @@ const scrollMessagesToBottom = async () => {
   scroller.scrollTop = scroller.scrollHeight
 }
 
+const scrollToFirstUnreadOrBottom = async () => {
+  if (activeFirstUnreadMessageId.value) {
+    await scrollToMessage(activeFirstUnreadMessageId.value)
+    setTimeout(() => {
+      markVisibleFirstUnreadRead()
+    }, 120)
+    return
+  }
+
+  await scrollMessagesToBottom()
+}
+
+const isMessageElementVisible = (messageId) => {
+  const scroller = messagesScroller.value
+  const element = messageElements.get(messageId)
+  if (!scroller || !element) {
+    return false
+  }
+
+  const scrollerRect = scroller.getBoundingClientRect()
+  const elementRect = element.getBoundingClientRect()
+  return elementRect.bottom >= scrollerRect.top && elementRect.top <= scrollerRect.bottom
+}
+
+const markVisibleFirstUnreadRead = () => {
+  const messageId = activeFirstUnreadMessageId.value
+  if (!messageId || !isMessageElementVisible(messageId)) {
+    return false
+  }
+
+  return chatStore.markRead({
+    conversationId: chatStore.activeConversationId,
+    messageId,
+  })
+}
+
+const handleMessagesScroll = () => {
+  markVisibleFirstUnreadRead()
+}
+
 const applyComposerDraft = async (conversationId = chatStore.activeConversationId) => {
   suppressDraftAutosave = true
   composerText.value = conversationId ? chatStore.draftTextByConversation[conversationId] || '' : ''
@@ -3641,7 +3764,7 @@ watch(
 watch(
   () => [chatStore.activeConversationId, activeMessages.value.length],
   () => {
-    scrollMessagesToBottom()
+    scrollToFirstUnreadOrBottom()
   },
   { flush: 'post' },
 )
@@ -3653,7 +3776,7 @@ watch(
       return
     }
 
-    scrollMessagesToBottom()
+    scrollToFirstUnreadOrBottom()
   },
   { flush: 'post' },
 )

@@ -898,7 +898,7 @@ test('late success after retry does not duplicate optimistic bubble', async () =
   delete globalThis.WebSocket
 })
 
-test('chat store does not leave pending text bubble when websocket is still connecting', () => {
+test('failed optimistic text message remains visible when websocket send is unavailable', () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()
 
@@ -922,9 +922,73 @@ test('chat store does not leave pending text bubble when websocket is still conn
   })
 
   assert.equal(sent, false)
-  assert.deepEqual(chatStore.messagesByConversation['group-1'] || [], [])
+  assert.equal(chatStore.messagesByConversation['group-1'].length, 1)
+  assert.equal(chatStore.messagesByConversation['group-1'][0].clientMessageId, 'client-connecting')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].deliveryStatus, 'failed')
 
   delete globalThis.localStorage
+})
+
+test('failed text retry reuses same client message id and reconciles on success', () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+
+  const authStore = useAuthStore()
+  authStore.api = createFakeApi()
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const chatStore = useChatStore()
+  chatStore.socket = {
+    readyState: 0,
+    send() {
+      throw new Error('should not send while connecting')
+    },
+  }
+  chatStore.sendMessage({
+    conversationId: 'group-1',
+    text: 'hello',
+    clientMessageId: 'client-retry-1',
+  })
+
+  chatStore.socket = null
+  chatStore.connect()
+  const retried = chatStore.retryFailedTextMessage({
+    conversationId: 'group-1',
+    clientMessageId: 'client-retry-1',
+  })
+
+  assert.equal(retried, true)
+  assert.equal(JSON.parse(FakeWebSocket.instances[0].sent[0]).data.client_message_id, 'client-retry-1')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].deliveryStatus, 'pending')
+
+  chatStore.handleSocketEvent({
+    event: 'message_persisted',
+    data: {
+      message: {
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        client_message_id: 'client-retry-1',
+        sender_email: 'alice@example.com',
+        sender_login: 'alice',
+        text: 'hello',
+        created_at: '2026-04-27T10:00:00Z',
+      },
+    },
+  })
+
+  const messages = chatStore.messagesByConversation['group-1']
+  assert.equal(messages.length, 1)
+  assert.equal(messages[0].id, 'msg-1')
+  assert.equal(messages[0].clientMessageId, 'client-retry-1')
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
 })
 
 test('reconciliation requires persisted id created at client id and sender identity', () => {
@@ -1261,6 +1325,48 @@ test('chat store uploads and consumes one-time audio messages', async () => {
   assert.equal(blob.type, 'audio/webm')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumed, true)
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumedByEmail, 'alice@example.com')
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
+test('audio and image failed sends expose clear media error state without retry promise', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+  globalThis.WebSocket = createSocketMock()
+
+  const authStore = useAuthStore()
+  authStore.api = {
+    post() {
+      return Promise.reject(new Error('upload failed'))
+    },
+  }
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  await assert.rejects(
+    () =>
+      chatStore.sendAudioMessage({
+        conversationId: 'group-1',
+        audioBlob: new Blob(['voice'], { type: 'audio/webm' }),
+        durationSeconds: 4,
+      }),
+    /upload failed/,
+  )
+  assert.match(chatStore.mediaSendErrorByConversation['group-1'], /аудио/i)
+
+  await assert.rejects(
+    () =>
+      chatStore.sendImageMessage({
+        conversationId: 'group-1',
+        imageBlob: new Blob(['img'], { type: 'image/png' }),
+      }),
+    /upload failed/,
+  )
+  assert.match(chatStore.mediaSendErrorByConversation['group-1'], /изображение/i)
 
   delete globalThis.localStorage
   delete globalThis.window

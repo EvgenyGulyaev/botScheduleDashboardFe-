@@ -254,6 +254,58 @@ export const getCurrentUserReactionEmoji = (reactions = [], currentUserEmail = '
 export const isChatMessageEditable = (message = {}, currentUserEmail = '') =>
   message?.type === 'text' && message?.senderEmail === currentUserEmail
 
+export const getFirstUnreadMessageId = (
+  messages = [],
+  lastReadMessageId = '',
+  currentUserEmail = '',
+) => {
+  const items = Array.isArray(messages) ? messages : []
+  const readIndex = lastReadMessageId
+    ? items.findIndex((message) => message?.id === lastReadMessageId)
+    : -1
+
+  for (let index = readIndex + 1; index < items.length; index += 1) {
+    const message = items[index]
+    if (message?.id && message.senderEmail !== currentUserEmail) {
+      return message.id
+    }
+  }
+
+  return ''
+}
+
+export const shouldJumpToFirstUnread = (
+  messages = [],
+  lastReadMessageId = '',
+  currentUserEmail = '',
+) => Boolean(getFirstUnreadMessageId(messages, lastReadMessageId, currentUserEmail))
+
+export const buildChatTimelineItems = (
+  messages = [],
+  lastReadMessageId = '',
+  currentUserEmail = '',
+) => {
+  const firstUnreadId = getFirstUnreadMessageId(messages, lastReadMessageId, currentUserEmail)
+  const result = []
+
+  for (const message of Array.isArray(messages) ? messages : []) {
+    if (message?.id && message.id === firstUnreadId) {
+      result.push({
+        type: 'unread-separator',
+        id: `unread-${message.id}`,
+        messageId: message.id,
+      })
+    }
+    result.push({
+      type: 'message',
+      id: message?.id || '',
+      message,
+    })
+  }
+
+  return result
+}
+
 export const getChatReplyPreviewText = (message = {}) => {
   if (!message) {
     return ''

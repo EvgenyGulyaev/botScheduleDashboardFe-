@@ -227,6 +227,9 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
     pinnedMessage: normalizeReplyPreview(
       conversation.pinned_message ?? conversation.pinnedMessage,
     ),
+    lastReadMessageId: normalizeString(
+      conversation.last_read_message_id ?? conversation.lastReadMessageId,
+    ),
     unreadCount: Number(conversation.unread_count ?? conversation.unreadCount ?? 0),
     presence: normalizeChatPresence(conversation.presence ?? {}),
     draft: normalizeChatDraft(conversation.draft ?? {}),
@@ -253,6 +256,7 @@ export const normalizeChatMessage = (message = {}) => ({
   deliveryStatus: normalizeMessageDeliveryStatus(message),
   deliveredToCount: normalizeMessageReceiptCount(message, 'delivered'),
   readByCount: normalizeMessageReceiptCount(message, 'read'),
+  errorMessage: normalizeString(message.error_message ?? message.errorMessage),
   reactions: toArray(message.reactions).map(normalizeReaction),
   audio: normalizeChatAudio(message.audio),
   image: normalizeChatImage(message.image),

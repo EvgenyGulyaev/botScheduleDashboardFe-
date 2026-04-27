@@ -242,6 +242,21 @@ const latestPeerMessage = (messages = [], currentUserEmail = '') => {
   return null
 }
 
+const firstUnreadMessage = (messages = [], lastReadMessageId = '', currentUserEmail = '') => {
+  const readIndex = lastReadMessageId
+    ? messages.findIndex((message) => message?.id === lastReadMessageId)
+    : -1
+
+  for (let index = readIndex + 1; index < messages.length; index += 1) {
+    const message = messages[index]
+    if (message?.id && message.senderEmail !== currentUserEmail) {
+      return message
+    }
+  }
+
+  return null
+}
+
 const markLatestPeerMessageRead = (state, socket, conversationId, currentUserEmail = '') => {
   const messageToRead = latestPeerMessage(
     state.messagesByConversation[conversationId] || [],
@@ -398,6 +413,7 @@ const upsertOptimisticTextMessage = (
     ...nextMessages[existingIndex],
     text: optimistic.text,
     deliveryStatus: 'pending',
+    errorMessage: '',
   }
   state.messagesByConversation[normalizedConversationId] = nextMessages
   return nextMessages[existingIndex]
@@ -459,6 +475,28 @@ const removeMessageLocally = (state, conversationId, messageId) => {
   return true
 }
 
+const markOptimisticTextMessageFailed = (
+  state,
+  conversationId,
+  clientMessageId,
+  errorMessage = 'Не удалось отправить сообщение',
+) => {
+  const messages = ensureMessagesCollection(state, conversationId)
+  const index = messages.findIndex((message) => message.clientMessageId === clientMessageId)
+  if (index === -1) {
+    return null
+  }
+
+  const nextMessages = [...messages]
+  nextMessages[index] = {
+    ...nextMessages[index],
+    deliveryStatus: 'failed',
+    errorMessage,
+  }
+  state.messagesByConversation[conversationId] = nextMessages
+  return nextMessages[index]
+}
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     users: [],
@@ -486,6 +524,7 @@ export const useChatStore = defineStore('chat', {
     draftUpdatedAtByConversation: {},
     draftSaveVersionByConversation: {},
     draftSaveSession: 0,
+    mediaSendErrorByConversation: {},
   }),
 
   getters: {
@@ -942,9 +981,17 @@ export const useChatStore = defineStore('chat', {
       await this.loadDraft(conversationId)
 
       const messages = this.messagesByConversation[conversationId] || []
-      const latestMessage = messages[messages.length - 1]
-      if (latestMessage) {
-        this.markRead({ conversationId, messageId: latestMessage.id })
+      const currentUserEmail = getCurrentUser(useAuthStore()).email || ''
+      const unread = firstUnreadMessage(
+        messages,
+        this.lastReadMessageIdByConversation[conversationId] || '',
+        currentUserEmail,
+      )
+      if (!unread) {
+        const latestPeer = latestPeerMessage(messages, currentUserEmail)
+        if (latestPeer) {
+          this.markRead({ conversationId, messageId: latestPeer.id })
+        }
       }
 
       return this.activeConversation
@@ -1096,14 +1143,22 @@ export const useChatStore = defineStore('chat', {
     }) {
       const authStore = useAuthStore()
       const currentUser = getCurrentUser(authStore)
-      const socket = this.socket || this.connect()
+      const messageClientId = clientMessageId || createClientMessageId()
+      upsertOptimisticTextMessage(this, {
+        conversationId,
+        clientMessageId: messageClientId,
+        text,
+        replyToMessageId,
+        currentUser,
+      })
 
+      const socket = this.socket || this.connect()
       if (!socket) {
+        markOptimisticTextMessageFailed(this, conversationId, messageClientId)
         return false
       }
 
       markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
-      const messageClientId = clientMessageId || createClientMessageId()
       const sent = sendSocketEnvelope(socket, 'send_message', {
         conversation_id: conversationId || '',
         recipient_email: recipientEmail || '',
@@ -1115,19 +1170,42 @@ export const useChatStore = defineStore('chat', {
         announce_on_alice: Boolean(announceOnAlice),
       })
       if (!sent) {
+        markOptimisticTextMessageFailed(this, conversationId, messageClientId)
         return false
       }
 
-      upsertOptimisticTextMessage(this, {
-        conversationId,
-        clientMessageId: messageClientId,
-        text,
-        replyToMessageId,
-        currentUser,
-      })
       void this.clearDraft(conversationId)
 
       return true
+    },
+
+    retryFailedTextMessage({ conversationId, clientMessageId, messageId } = {}) {
+      const targetConversationId = conversationId || this.activeConversationId
+      if (!targetConversationId) {
+        return false
+      }
+
+      const messages = this.messagesByConversation[targetConversationId] || []
+      const message = messages.find((item) =>
+        clientMessageId
+          ? item.clientMessageId === clientMessageId
+          : item.id === messageId,
+      )
+      if (!message || message.type !== 'text' || message.deliveryStatus !== 'failed') {
+        return false
+      }
+
+      const conversation = this.conversations.find((item) => item.id === targetConversationId)
+      const currentUserEmail = getCurrentUser(useAuthStore()).email || ''
+      const peer = conversation?.members?.find((member) => member.email !== currentUserEmail)
+
+      return this.sendMessage({
+        conversationId: targetConversationId,
+        recipientEmail: conversation?.type === 'direct' ? peer?.email || '' : '',
+        text: message.text,
+        replyToMessageId: message.replyToMessageId,
+        clientMessageId: message.clientMessageId,
+      })
     },
 
     sendTypingStarted(conversationId) {
@@ -1383,6 +1461,7 @@ export const useChatStore = defineStore('chat', {
       if (socket) {
         markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
       }
+      delete this.mediaSendErrorByConversation[conversationId]
 
       const form = new FormData()
       form.append('duration_seconds', String(Math.max(1, Math.round(Number(durationSeconds) || 1))))
@@ -1396,19 +1475,25 @@ export const useChatStore = defineStore('chat', {
           : audioBlob
       form.append('audio', file, 'voice.webm')
 
-      const response = await api.post(withTokenPath(`/chat/conversations/${conversationId}/audio`, authStore.token), form, {
-        headers: authStore.token
-          ? {
-              'X-Chat-Token': authStore.token,
-            }
-          : undefined,
-      })
-      const message = normalizeChatMessage(response.data)
-      const messages = ensureMessagesCollection(this, conversationId)
-      if (!messages.some((item) => item.id === message.id)) {
-        this.messagesByConversation[conversationId] = [...messages, message]
+      try {
+        const response = await api.post(withTokenPath(`/chat/conversations/${conversationId}/audio`, authStore.token), form, {
+          headers: authStore.token
+            ? {
+                'X-Chat-Token': authStore.token,
+              }
+            : undefined,
+        })
+        const message = normalizeChatMessage(response.data)
+        const messages = ensureMessagesCollection(this, conversationId)
+        if (!messages.some((item) => item.id === message.id)) {
+          this.messagesByConversation[conversationId] = [...messages, message]
+        }
+        return message
+      } catch (error) {
+        this.mediaSendErrorByConversation[conversationId] =
+          'Не удалось отправить аудио. Попробуйте записать или выбрать файл ещё раз.'
+        throw error
       }
-      return message
     },
 
     async consumeAudioMessage({ conversationId, messageId }) {
@@ -1452,6 +1537,7 @@ export const useChatStore = defineStore('chat', {
       if (socket) {
         markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
       }
+      delete this.mediaSendErrorByConversation[conversationId]
 
       const form = new FormData()
       form.append('client_message_id', clientMessageId || createClientMessageId())
@@ -1463,19 +1549,25 @@ export const useChatStore = defineStore('chat', {
           : imageBlob
       form.append('image', file, filename)
 
-      const response = await api.post(withTokenPath(`/chat/conversations/${conversationId}/image`, authStore.token), form, {
-        headers: authStore.token
-          ? {
-              'X-Chat-Token': authStore.token,
-            }
-          : undefined,
-      })
-      const message = normalizeChatMessage(response.data)
-      const messages = ensureMessagesCollection(this, conversationId)
-      if (!messages.some((item) => item.id === message.id)) {
-        this.messagesByConversation[conversationId] = [...messages, message]
+      try {
+        const response = await api.post(withTokenPath(`/chat/conversations/${conversationId}/image`, authStore.token), form, {
+          headers: authStore.token
+            ? {
+                'X-Chat-Token': authStore.token,
+              }
+            : undefined,
+        })
+        const message = normalizeChatMessage(response.data)
+        const messages = ensureMessagesCollection(this, conversationId)
+        if (!messages.some((item) => item.id === message.id)) {
+          this.messagesByConversation[conversationId] = [...messages, message]
+        }
+        return message
+      } catch (error) {
+        this.mediaSendErrorByConversation[conversationId] =
+          'Не удалось отправить изображение. Выберите файл и попробуйте ещё раз.'
+        throw error
       }
-      return message
     },
 
     async consumeImageMessage({ conversationId, messageId }) {
