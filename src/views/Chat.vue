@@ -1604,6 +1604,7 @@ import {
   insertEmojiIntoText,
   isChatMessageEditable,
   isChatSendShortcut,
+  shouldMarkReadAfterUnreadScrollAction,
   shouldRefreshChatTyping,
 } from '../lib/chat-ui.js'
 import { useAuthStore } from '../stores/auth.js'
@@ -3464,14 +3465,14 @@ const hasFocusedChatViewport = () => {
 const applyUnreadScrollAction = async (action = 'none') => {
   if (action === 'first-unread' && activeFirstUnreadMessageId.value) {
     await scrollToMessage(activeFirstUnreadMessageId.value)
-    setTimeout(() => {
-      markVisibleFirstUnreadRead()
-    }, 120)
     return
   }
 
   if (action === 'bottom') {
     await scrollMessagesToBottom()
+  }
+
+  if (shouldMarkReadAfterUnreadScrollAction(action)) {
     markVisibleFirstUnreadRead()
   }
 }

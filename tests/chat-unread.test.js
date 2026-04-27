@@ -4,6 +4,7 @@ import {
   buildChatTimelineItems,
   getChatUnreadScrollAction,
   getFirstUnreadMessageId,
+  shouldMarkReadAfterUnreadScrollAction,
   shouldJumpToFirstUnread,
 } from '../src/lib/chat-ui.js'
 
@@ -116,4 +117,10 @@ test('cold open defers initial scroll until messages are loaded', () => {
     }),
     'bottom',
   )
+})
+
+test('initial unread jump does not immediately mark read', () => {
+  assert.equal(shouldMarkReadAfterUnreadScrollAction('first-unread'), false)
+  assert.equal(shouldMarkReadAfterUnreadScrollAction('bottom'), true)
+  assert.equal(shouldMarkReadAfterUnreadScrollAction('none'), false)
 })
