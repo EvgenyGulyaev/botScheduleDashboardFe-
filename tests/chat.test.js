@@ -8,6 +8,7 @@ import {
   getChatReconnectDelayMs,
   normalizeChatConversation,
   normalizeChatMessage,
+  normalizeChatMessagesResponse,
   normalizeChatUsers,
 } from '../src/lib/chat.js'
 import { useAuthStore } from '../src/stores/auth.js'
@@ -206,6 +207,10 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(message.audio.consumedByEmail, '')
   assert.equal(message.aliceAnnounced, true)
   assert.equal(message.deliveredTo[0].login, 'bob')
+  assert.equal(message.clientMessageId, '')
+  assert.equal(message.deliveryStatus, 'delivered')
+  assert.equal(message.deliveredToCount, 1)
+  assert.equal(message.readByCount, 0)
 
   const imageMessage = normalizeChatMessage({
     id: 'msg-image',
@@ -300,6 +305,33 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(callMessage.call.id, 'call-1')
   assert.equal(callMessage.call.participantCount, 2)
   assert.equal(callMessage.call.participants[1].muted, true)
+})
+
+test('normalizes message reconciliation and delivery metadata', () => {
+  const message = normalizeChatMessage({
+    id: 'msg-1',
+    conversation_id: 'group-1',
+    client_message_id: 'client-1',
+    sender_email: 'alice@example.com',
+    sender_login: 'alice',
+    text: 'hello',
+    created_at: '2026-04-27T10:00:00Z',
+    delivery_status: 'delivered',
+    delivered_to_count: 2,
+    read_by_count: 1,
+  })
+
+  assert.equal(message.clientMessageId, 'client-1')
+  assert.equal(message.deliveryStatus, 'delivered')
+  assert.equal(message.deliveredToCount, 2)
+  assert.equal(message.readByCount, 1)
+
+  const response = normalizeChatMessagesResponse({
+    messages: [message],
+    last_read_message_id: 'msg-1',
+  })
+  assert.equal(response.lastReadMessageId, 'msg-1')
+  assert.equal(response.messages[0].id, 'msg-1')
 })
 
 test('applies message_persisted into conversations and messages', () => {
@@ -756,11 +788,13 @@ test('chat store sends websocket commands with auth user context', async () => {
   chatStore.sendMessage({
     conversationId: 'group-1',
     text: 'hello',
+    clientMessageId: 'client-1',
     replyToMessageId: 'msg-1',
     announceOnAlice: true,
   })
   const sent = JSON.parse(FakeWebSocket.instances[0].sent[0])
   assert.equal(sent.event, 'send_message')
+  assert.equal(sent.data.client_message_id, 'client-1')
   assert.equal(sent.data.sender_email, 'alice@example.com')
   assert.equal(sent.data.sender_login, 'alice')
   assert.equal(sent.data.conversation_id, 'group-1')
@@ -770,6 +804,213 @@ test('chat store sends websocket commands with auth user context', async () => {
   delete globalThis.localStorage
   delete globalThis.window
   delete globalThis.WebSocket
+})
+
+test('chat store reconciles optimistic text bubble by client message id', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+
+  const authStore = useAuthStore()
+  authStore.api = createFakeApi()
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const chatStore = useChatStore()
+  chatStore.connect()
+  chatStore.sendMessage({
+    conversationId: 'group-1',
+    text: 'hello',
+    clientMessageId: 'client-1',
+  })
+
+  assert.equal(chatStore.messagesByConversation['group-1'].length, 1)
+  assert.equal(chatStore.messagesByConversation['group-1'][0].clientMessageId, 'client-1')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].deliveryStatus, 'pending')
+
+  chatStore.handleSocketEvent({
+    event: 'message_persisted',
+    data: {
+      message: {
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        client_message_id: 'client-1',
+        sender_email: 'alice@example.com',
+        sender_login: 'alice',
+        text: 'hello',
+        created_at: '2026-04-27T10:00:00Z',
+        delivery_status: 'sent',
+      },
+    },
+  })
+
+  const messages = chatStore.messagesByConversation['group-1']
+  assert.equal(messages.length, 1)
+  assert.equal(messages[0].id, 'msg-1')
+  assert.equal(messages[0].createdAt, '2026-04-27T10:00:00Z')
+  assert.equal(messages[0].deliveryStatus, 'sent')
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
+test('late success after retry does not duplicate optimistic bubble', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+
+  const authStore = useAuthStore()
+  authStore.api = createFakeApi()
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const chatStore = useChatStore()
+  chatStore.connect()
+  chatStore.sendMessage({ conversationId: 'group-1', text: 'hello', clientMessageId: 'client-1' })
+  chatStore.sendMessage({ conversationId: 'group-1', text: 'hello', clientMessageId: 'client-1' })
+  chatStore.handleSocketEvent({
+    event: 'message_persisted',
+    data: {
+      message: {
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        client_message_id: 'client-1',
+        sender_email: 'alice@example.com',
+        sender_login: 'alice',
+        text: 'hello',
+        created_at: '2026-04-27T10:00:00Z',
+      },
+    },
+  })
+
+  assert.equal(chatStore.messagesByConversation['group-1'].length, 1)
+  assert.equal(FakeWebSocket.instances[0].sent.length, 2)
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
+test('reconciliation requires persisted id created at client id and sender identity', () => {
+  const state = {
+    conversations: [],
+    messagesByConversation: {
+      'group-1': [
+        normalizeChatMessage({
+          id: 'local-client-1',
+          conversation_id: 'group-1',
+          client_message_id: 'client-1',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'hello',
+          created_at: '2026-04-27T09:59:59Z',
+          delivery_status: 'pending',
+        }),
+      ],
+    },
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'message_persisted',
+      data: {
+        message: {
+          id: 'msg-1',
+          conversation_id: 'group-1',
+          client_message_id: 'client-1',
+          sender_email: 'bob@example.com',
+          sender_login: 'bob',
+          text: 'hello',
+          created_at: '2026-04-27T10:00:00Z',
+        },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.messagesByConversation['group-1'].length, 2)
+})
+
+test('chat store sends message received ack for new incoming persisted messages', () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+
+  const authStore = useAuthStore()
+  authStore.api = createFakeApi()
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const chatStore = useChatStore()
+  chatStore.connect()
+  chatStore.handleSocketEvent({
+    event: 'message_persisted',
+    data: {
+      message: {
+        id: 'msg-1',
+        conversation_id: 'group-1',
+        sender_email: 'bob@example.com',
+        sender_login: 'bob',
+        text: 'hello',
+        created_at: '2026-04-27T10:00:00Z',
+      },
+    },
+  })
+
+  const ack = JSON.parse(FakeWebSocket.instances[0].sent[0])
+  assert.equal(ack.event, 'message_received')
+  assert.equal(ack.data.conversation_id, 'group-1')
+  assert.equal(ack.data.message_id, 'msg-1')
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
+test('chat store loadMessages accepts object response shape with last read id', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const authStore = useAuthStore()
+  authStore.api = {
+    get(url) {
+      assert.equal(url, '/chat/conversations/group-1/messages')
+      return Promise.resolve({
+        data: {
+          messages: [
+            {
+              id: 'msg-1',
+              conversation_id: 'group-1',
+              sender_email: 'bob@example.com',
+              sender_login: 'bob',
+              text: 'hello',
+              created_at: '2026-04-27T10:00:00Z',
+            },
+          ],
+          last_read_message_id: 'msg-1',
+        },
+      })
+    },
+  }
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  const messages = await chatStore.loadMessages('group-1')
+  assert.equal(messages.length, 1)
+  assert.equal(chatStore.lastReadMessageIdByConversation['group-1'], 'msg-1')
+
+  delete globalThis.localStorage
 })
 
 test('chat store sends alice announce requests with optional location and voice overrides', async () => {

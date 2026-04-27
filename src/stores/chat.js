@@ -7,6 +7,7 @@ import {
   normalizeChatConversation,
   normalizeChatConversations,
   normalizeChatMessage,
+  normalizeChatMessagesResponse,
   normalizeChatMessages,
   normalizeChatUsers,
   pruneExpiredChatTypers,
@@ -33,6 +34,14 @@ const createLoadingState = () => ({
 
 const socketEnvelopeListeners = new Set()
 const typingExpiryTimers = new Map()
+
+const createClientMessageId = () => {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID()
+  }
+
+  return `client-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 const getApi = (authStore) => {
   if (!authStore.api && typeof authStore.init === 'function') {
@@ -266,6 +275,70 @@ const replaceMessage = (state, conversationId, message) => {
   return normalized
 }
 
+const upsertOptimisticTextMessage = (
+  state,
+  { conversationId, clientMessageId, text, replyToMessageId, currentUser },
+) => {
+  const normalizedConversationId = conversationId || ''
+  if (!normalizedConversationId || !clientMessageId) {
+    return null
+  }
+
+  const messages = ensureMessagesCollection(state, normalizedConversationId)
+  const existingIndex = messages.findIndex((message) => message.clientMessageId === clientMessageId)
+  const optimistic = normalizeChatMessage({
+    id: `local-${clientMessageId}`,
+    conversation_id: normalizedConversationId,
+    client_message_id: clientMessageId,
+    type: 'text',
+    sender_email: currentUser.email || '',
+    sender_login: currentUser.login || currentUser.email || '',
+    text: text || '',
+    created_at: new Date().toISOString(),
+    reply_to_message_id: replyToMessageId || '',
+    delivery_status: 'pending',
+  })
+
+  if (existingIndex === -1) {
+    state.messagesByConversation[normalizedConversationId] = [...messages, optimistic]
+    return optimistic
+  }
+
+  const nextMessages = [...messages]
+  nextMessages[existingIndex] = {
+    ...nextMessages[existingIndex],
+    text: optimistic.text,
+    deliveryStatus: 'pending',
+  }
+  state.messagesByConversation[normalizedConversationId] = nextMessages
+  return nextMessages[existingIndex]
+}
+
+const shouldAckIncomingMessage = (state, envelope = {}, currentUserEmail = '') => {
+  const event = envelope.event || envelope.type
+  if (event !== 'message_persisted') {
+    return null
+  }
+
+  const message = normalizeChatMessage(envelope.data?.message || {})
+  if (!message.id || !message.conversationId || !message.senderEmail) {
+    return null
+  }
+  if (message.senderEmail === currentUserEmail) {
+    return null
+  }
+
+  const alreadySeen = (state.messagesByConversation[message.conversationId] || []).some(
+    (item) => item.id === message.id,
+  )
+  return alreadySeen
+    ? null
+    : {
+        conversation_id: message.conversationId,
+        message_id: message.id,
+      }
+}
+
 const removeMessageLocally = (state, conversationId, messageId) => {
   const messages = ensureMessagesCollection(state, conversationId)
   const nextMessages = messages
@@ -319,6 +392,7 @@ export const useChatStore = defineStore('chat', {
     activeCallsByConversation: {},
     activeCall: null,
     activeTypersByConversation: {},
+    lastReadMessageIdByConversation: {},
   }),
 
   getters: {
@@ -431,7 +505,9 @@ export const useChatStore = defineStore('chat', {
         const authStore = useAuthStore()
         const api = getApi(authStore)
         const response = await api.get(`/chat/conversations/${conversationId}/messages`)
-        this.messagesByConversation[conversationId] = normalizeChatMessages(response.data)
+        const payload = normalizeChatMessagesResponse(response.data)
+        this.messagesByConversation[conversationId] = payload.messages
+        this.lastReadMessageIdByConversation[conversationId] = payload.lastReadMessageId
         return this.messagesByConversation[conversationId]
       } catch (error) {
         this.error = error
@@ -808,7 +884,14 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    sendMessage({ conversationId, recipientEmail, text, replyToMessageId, announceOnAlice = false }) {
+    sendMessage({
+      conversationId,
+      recipientEmail,
+      text,
+      replyToMessageId,
+      announceOnAlice = false,
+      clientMessageId,
+    }) {
       const authStore = useAuthStore()
       const currentUser = getCurrentUser(authStore)
       const socket = this.socket || this.connect()
@@ -818,10 +901,19 @@ export const useChatStore = defineStore('chat', {
       }
 
       markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
+      const messageClientId = clientMessageId || createClientMessageId()
+      upsertOptimisticTextMessage(this, {
+        conversationId,
+        clientMessageId: messageClientId,
+        text,
+        replyToMessageId,
+        currentUser,
+      })
 
       return sendSocketEnvelope(socket, 'send_message', {
         conversation_id: conversationId || '',
         recipient_email: recipientEmail || '',
+        client_message_id: messageClientId,
         sender_email: currentUser.email || '',
         sender_login: currentUser.login || '',
         text: text || '',
@@ -1246,12 +1338,16 @@ export const useChatStore = defineStore('chat', {
         return
       }
 
+      const deliveryAck = shouldAckIncomingMessage(this, envelope, currentUserEmail)
       const shouldNotify = shouldNotifyIncomingChatMessage(envelope, {
         currentUserEmail,
         activeConversationId: this.activeConversationId,
       })
 
       applyChatSocketEvent(this, envelope, currentUserEmail)
+      if (deliveryAck) {
+        sendSocketEnvelope(this.socket, 'message_received', deliveryAck)
+      }
       this.scheduleTypingPrune(envelope)
 
       for (const listener of socketEnvelopeListeners) {

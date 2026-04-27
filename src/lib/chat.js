@@ -226,6 +226,7 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
 export const normalizeChatMessage = (message = {}) => ({
   id: normalizeString(message.id),
   conversationId: normalizeString(message.conversation_id ?? message.conversationId),
+  clientMessageId: normalizeString(message.client_message_id ?? message.clientMessageId),
   type: normalizeString(message.type || (message.audio ? 'audio' : message.image ? 'image' : 'text')),
   senderEmail: normalizeString(message.sender_email ?? message.senderEmail),
   senderLogin: normalizeString(message.sender_login ?? message.senderLogin),
@@ -238,11 +239,38 @@ export const normalizeChatMessage = (message = {}) => ({
   replyPreview: normalizeReplyPreview(message.reply_preview ?? message.replyPreview),
   deliveredTo: toArray(message.delivered_to ?? message.deliveredTo).map(normalizeReceipt),
   readBy: toArray(message.read_by ?? message.readBy).map(normalizeReceipt),
+  deliveryStatus: normalizeMessageDeliveryStatus(message),
+  deliveredToCount: normalizeMessageReceiptCount(message, 'delivered'),
+  readByCount: normalizeMessageReceiptCount(message, 'read'),
   reactions: toArray(message.reactions).map(normalizeReaction),
   audio: normalizeChatAudio(message.audio),
   image: normalizeChatImage(message.image),
   call: normalizeChatCall(message.call),
 })
+
+const normalizeMessageReceiptCount = (message = {}, kind = 'delivered') => {
+  const snakeKey = kind === 'read' ? 'read_by_count' : 'delivered_to_count'
+  const camelKey = kind === 'read' ? 'readByCount' : 'deliveredToCount'
+  const fallback = kind === 'read' ? message.read_by ?? message.readBy : message.delivered_to ?? message.deliveredTo
+  return Number(message[snakeKey] ?? message[camelKey] ?? toArray(fallback).length)
+}
+
+const normalizeMessageDeliveryStatus = (message = {}) => {
+  const explicit = normalizeString(message.delivery_status ?? message.deliveryStatus)
+  if (explicit) {
+    return explicit
+  }
+
+  if (normalizeMessageReceiptCount(message, 'read') > 0) {
+    return 'read'
+  }
+
+  if (normalizeMessageReceiptCount(message, 'delivered') > 0) {
+    return 'delivered'
+  }
+
+  return 'sent'
+}
 
 export const normalizeChatUsers = (users = []) => toArray(users).map(normalizeChatUser)
 
@@ -255,6 +283,20 @@ export const normalizeChatMessages = (messages = []) =>
   toArray(messages)
     .map((message) => normalizeChatMessage(message))
     .sort(sortMessages)
+
+export const normalizeChatMessagesResponse = (response = []) => {
+  if (Array.isArray(response)) {
+    return {
+      messages: normalizeChatMessages(response),
+      lastReadMessageId: '',
+    }
+  }
+
+  return {
+    messages: normalizeChatMessages(response.messages),
+    lastReadMessageId: normalizeString(response.last_read_message_id ?? response.lastReadMessageId),
+  }
+}
 
 export const buildChatWebSocketUrl = (origin, token) => {
   const url = new URL('/chat/ws', origin)
@@ -313,6 +355,17 @@ const upsertConversation = (state, conversation, currentUserEmail) => {
   return normalized
 }
 
+const canReconcilePersistedMessage = (localMessage, persistedMessage) =>
+  Boolean(
+    localMessage?.clientMessageId &&
+      persistedMessage?.clientMessageId &&
+      localMessage.clientMessageId === persistedMessage.clientMessageId &&
+      persistedMessage.id &&
+      persistedMessage.createdAt &&
+      persistedMessage.senderEmail &&
+      localMessage.senderEmail === persistedMessage.senderEmail,
+  )
+
 const upsertMessage = (state, message) => {
   ensureConversationCollection(state)
 
@@ -325,11 +378,23 @@ const upsertMessage = (state, message) => {
 
   const currentMessages = state.messagesByConversation[conversationId] || []
   const index = currentMessages.findIndex((item) => item.id === normalized.id)
+  const clientIndex = currentMessages.findIndex((item) =>
+    canReconcilePersistedMessage(item, normalized),
+  )
 
   if (index === -1) {
-    state.messagesByConversation[conversationId] = [...currentMessages, normalized].sort(
-      sortMessages,
-    )
+    if (clientIndex === -1) {
+      state.messagesByConversation[conversationId] = [...currentMessages, normalized].sort(
+        sortMessages,
+      )
+    } else {
+      const nextMessages = [...currentMessages]
+      nextMessages[clientIndex] = {
+        ...nextMessages[clientIndex],
+        ...normalized,
+      }
+      state.messagesByConversation[conversationId] = nextMessages.sort(sortMessages)
+    }
   } else {
     const nextMessages = [...currentMessages]
     nextMessages[index] = {
@@ -518,6 +583,22 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
 
         return upsertReadReceipt(message, receipt)
       })
+    }
+
+    return state
+  }
+
+  if (event === 'message_delivered') {
+    if (data.conversation) {
+      upsertConversation(
+        state,
+        { ...data.conversation, members: data.members ?? data.conversation.members },
+        currentUserEmail,
+      )
+    }
+
+    if (data.message) {
+      upsertMessage(state, data.message)
     }
 
     return state

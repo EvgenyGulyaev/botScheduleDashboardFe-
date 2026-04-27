@@ -1005,7 +1005,8 @@
                         </span>
                         <span
                           v-if="message.senderEmail === currentUserEmail"
-                          class="ml-auto text-sm font-semibold tracking-tight text-slate-500"
+                          class="ml-auto text-sm font-semibold tracking-tight"
+                          :class="messageStatusClass(message)"
                           :title="messageStatusTitle(message)"
                         >
                           {{ messageStatusIcon(message) }}
@@ -1545,6 +1546,7 @@ import {
   filterChatUsersForSearch,
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
+  getChatMessageStatusTone,
   getChatMessageStatusTitle,
   getChatMicrophoneErrorMessage,
   getChatReplyPreviewText,
@@ -1964,6 +1966,20 @@ const messageSenderLabel = (message) =>
 const messageStatusIcon = (message) => getChatMessageStatusIcon(message, currentUserEmail.value)
 
 const messageStatusTitle = (message) => getChatMessageStatusTitle(message, currentUserEmail.value)
+
+const messageStatusClass = (message) => {
+  const tone = getChatMessageStatusTone(message, currentUserEmail.value)
+  if (tone === 'read') {
+    return 'text-sky-500'
+  }
+  if (tone === 'failed') {
+    return 'text-rose-500'
+  }
+  if (tone === 'pending') {
+    return 'text-slate-400'
+  }
+  return 'text-slate-500'
+}
 
 const renderMessageText = (text) => renderChatMarkdown(text)
 

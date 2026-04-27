@@ -94,6 +94,35 @@ test('message read status ignores current user receipt', () => {
   assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Отправлено')
 })
 
+test('status icon maps sent delivered and read lifecycle states', () => {
+  assert.equal(getChatMessageStatusIcon({ deliveryStatus: 'sent' }, 'me@example.com'), '✓')
+  assert.equal(
+    getChatMessageStatusTitle({ deliveryStatus: 'sent' }, 'me@example.com'),
+    'Отправлено',
+  )
+  assert.equal(getChatMessageStatusIcon({ deliveryStatus: 'delivered' }, 'me@example.com'), '✓✓')
+  assert.equal(
+    getChatMessageStatusTitle({ deliveryStatus: 'delivered' }, 'me@example.com'),
+    'Доставлено',
+  )
+  assert.equal(getChatMessageStatusIcon({ deliveryStatus: 'read' }, 'me@example.com'), '✓✓')
+  assert.equal(
+    getChatMessageStatusTitle({ deliveryStatus: 'read' }, 'me@example.com'),
+    'Прочитано собеседником',
+  )
+})
+
+test('group aggregate read status uses any non-sender reader', () => {
+  const message = {
+    deliveryStatus: 'read',
+    readByCount: 1,
+    readBy: [{ email: 'carol@example.com', login: 'carol' }],
+  }
+
+  assert.equal(isChatMessageReadByPeer(message, 'alice@example.com'), true)
+  assert.equal(getChatMessageStatusIcon(message, 'alice@example.com'), '✓✓')
+})
+
 test('audio message status does not switch to peer-read until voice is listened to', () => {
   const message = {
     type: 'audio',

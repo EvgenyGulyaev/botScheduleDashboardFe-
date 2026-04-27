@@ -126,20 +126,74 @@ export const isChatMessageReadByPeer = (message = {}, currentUserEmail = '') => 
     return isOneTimeMediaConsumedByPeer(message.image, currentUserEmail)
   }
 
+  if (message.deliveryStatus === 'read' || Number(message.readByCount || 0) > 0) {
+    return true
+  }
+
   return (message.readBy || []).some((receipt) => receipt.email && receipt.email !== currentUserEmail)
 }
 
-export const getChatMessageStatusIcon = (message = {}, currentUserEmail = '') =>
-  isChatMessageReadByPeer(message, currentUserEmail) ? '✓✓' : '✓'
+export const getChatMessageLifecycleStatus = (message = {}, currentUserEmail = '') => {
+  if (message.deliveryStatus === 'pending' || message.deliveryStatus === 'failed') {
+    return message.deliveryStatus
+  }
 
-export const getChatMessageStatusTitle = (message = {}, currentUserEmail = '') =>
-  isChatMessageReadByPeer(message, currentUserEmail)
-    ? message?.type === 'audio'
-      ? 'Голосовое прослушано'
-      : message?.type === 'image'
-        ? 'Изображение просмотрено'
-        : 'Прочитано собеседником'
-    : 'Отправлено'
+  if (isChatMessageReadByPeer(message, currentUserEmail)) {
+    return 'read'
+  }
+
+  if (message.deliveryStatus === 'delivered' || Number(message.deliveredToCount || 0) > 0) {
+    return 'delivered'
+  }
+
+  return 'sent'
+}
+
+export const getChatMessageStatusIcon = (message = {}, currentUserEmail = '') => {
+  switch (getChatMessageLifecycleStatus(message, currentUserEmail)) {
+    case 'pending':
+      return '…'
+    case 'failed':
+      return '!'
+    case 'delivered':
+    case 'read':
+      return '✓✓'
+    default:
+      return '✓'
+  }
+}
+
+export const getChatMessageStatusTitle = (message = {}, currentUserEmail = '') => {
+  switch (getChatMessageLifecycleStatus(message, currentUserEmail)) {
+    case 'pending':
+      return 'Отправляем'
+    case 'failed':
+      return 'Не удалось отправить'
+    case 'delivered':
+      return 'Доставлено'
+    case 'read':
+      return message?.type === 'audio'
+        ? 'Голосовое прослушано'
+        : message?.type === 'image'
+          ? 'Изображение просмотрено'
+          : 'Прочитано собеседником'
+    default:
+      return 'Отправлено'
+  }
+}
+
+export const getChatMessageStatusTone = (message = {}, currentUserEmail = '') => {
+  switch (getChatMessageLifecycleStatus(message, currentUserEmail)) {
+    case 'read':
+      return 'read'
+    case 'failed':
+      return 'failed'
+    case 'pending':
+      return 'pending'
+    default:
+      return 'neutral'
+  }
+}
 
 export const getAudioMessageButtonLabel = (
   message = {},
