@@ -1604,6 +1604,7 @@ import {
   insertEmojiIntoText,
   isChatMessageEditable,
   isChatSendShortcut,
+  shouldHandleUnreadScrollRead,
   shouldMarkReadAfterUnreadScrollAction,
   shouldRefreshChatTyping,
 } from '../lib/chat-ui.js'
@@ -1696,6 +1697,8 @@ let typingActiveConversationId = ''
 let typingStartedSentAt = 0
 let suppressDraftAutosave = false
 let pendingInitialUnreadScrollConversationId = ''
+let programmaticUnreadScrollGuardTimer = null
+let programmaticUnreadScrollActive = false
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -2146,7 +2149,7 @@ const setMessageElement = (messageId) => (element) => {
   messageElements.delete(messageId)
 }
 
-const scrollToMessage = async (messageId) => {
+const scrollToMessage = async (messageId, options = {}) => {
   if (!messageId) {
     return
   }
@@ -2159,7 +2162,7 @@ const scrollToMessage = async (messageId) => {
 
   element.scrollIntoView({
     block: 'center',
-    behavior: 'smooth',
+    behavior: options.behavior || 'smooth',
   })
   chatStore.setHighlightedMessage(messageId)
   clearHighlightLater()
@@ -3462,9 +3465,27 @@ const hasFocusedChatViewport = () => {
   return document.visibilityState !== 'hidden' && document.hasFocus()
 }
 
+const clearProgrammaticUnreadScrollGuard = () => {
+  if (programmaticUnreadScrollGuardTimer) {
+    clearTimeout(programmaticUnreadScrollGuardTimer)
+    programmaticUnreadScrollGuardTimer = null
+  }
+  programmaticUnreadScrollActive = false
+}
+
+const startProgrammaticUnreadScrollGuard = (durationMs = 1200) => {
+  clearProgrammaticUnreadScrollGuard()
+  programmaticUnreadScrollActive = true
+  programmaticUnreadScrollGuardTimer = setTimeout(() => {
+    programmaticUnreadScrollGuardTimer = null
+    programmaticUnreadScrollActive = false
+  }, durationMs)
+}
+
 const applyUnreadScrollAction = async (action = 'none') => {
   if (action === 'first-unread' && activeFirstUnreadMessageId.value) {
-    await scrollToMessage(activeFirstUnreadMessageId.value)
+    startProgrammaticUnreadScrollGuard()
+    await scrollToMessage(activeFirstUnreadMessageId.value, { behavior: 'auto' })
     return
   }
 
@@ -3491,7 +3512,13 @@ const isMessageElementVisible = (messageId) => {
 
 const markVisibleFirstUnreadRead = () => {
   const messageId = activeFirstUnreadMessageId.value
-  if (!messageId || !isMessageElementVisible(messageId)) {
+  const firstUnreadVisible = Boolean(messageId) && isMessageElementVisible(messageId)
+  if (
+    !shouldHandleUnreadScrollRead({
+      firstUnreadVisible,
+      programmaticUnreadScrollActive,
+    })
+  ) {
     return false
   }
 
@@ -3934,6 +3961,7 @@ onUnmounted(() => {
     clearTimeout(highlightTimerId)
     highlightTimerId = null
   }
+  clearProgrammaticUnreadScrollGuard()
   stopRecordingTracks()
   discardRecordedAudio()
   discardSelectedImage()

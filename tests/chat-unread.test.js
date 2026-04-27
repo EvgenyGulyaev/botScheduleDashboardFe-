@@ -4,6 +4,7 @@ import {
   buildChatTimelineItems,
   getChatUnreadScrollAction,
   getFirstUnreadMessageId,
+  shouldHandleUnreadScrollRead,
   shouldMarkReadAfterUnreadScrollAction,
   shouldJumpToFirstUnread,
 } from '../src/lib/chat-ui.js'
@@ -123,4 +124,21 @@ test('initial unread jump does not immediately mark read', () => {
   assert.equal(shouldMarkReadAfterUnreadScrollAction('first-unread'), false)
   assert.equal(shouldMarkReadAfterUnreadScrollAction('bottom'), true)
   assert.equal(shouldMarkReadAfterUnreadScrollAction('none'), false)
+})
+
+test('programmatic unread jump scroll events do not mark read until guard clears', () => {
+  assert.equal(
+    shouldHandleUnreadScrollRead({
+      firstUnreadVisible: true,
+      programmaticUnreadScrollActive: true,
+    }),
+    false,
+  )
+  assert.equal(
+    shouldHandleUnreadScrollRead({
+      firstUnreadVisible: true,
+      programmaticUnreadScrollActive: false,
+    }),
+    true,
+  )
 })

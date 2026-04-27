@@ -313,6 +313,11 @@ export const getChatUnreadScrollAction = ({
 
 export const shouldMarkReadAfterUnreadScrollAction = (action = 'none') => action === 'bottom'
 
+export const shouldHandleUnreadScrollRead = ({
+  firstUnreadVisible = false,
+  programmaticUnreadScrollActive = false,
+} = {}) => Boolean(firstUnreadVisible && !programmaticUnreadScrollActive)
+
 export const buildChatTimelineItems = (
   messages = [],
   lastReadMessageId = '',
