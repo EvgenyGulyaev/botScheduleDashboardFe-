@@ -222,6 +222,12 @@ export const useAuthStore = defineStore('auth', {
       return response.data || null
     },
 
+    async cleanupAliceScenarios(payload = {}) {
+      const api = this.api
+      const response = await api.post('/alice/cleanup-scenarios', buildAliceAnnouncementPayload(payload))
+      return response.data || null
+    },
+
     async deletePushSubscription(endpoint = '') {
       const api = this.api
       return api.delete('/profile/push-subscriptions', {

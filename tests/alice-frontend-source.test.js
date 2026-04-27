@@ -34,3 +34,16 @@ test('settings view includes alice quiet hours controls and save payload fields'
   assert.match(source, /payload\.alice_quiet_hours_start = nextAliceQuietHoursStart/)
   assert.match(source, /payload\.alice_quiet_hours_end = nextAliceQuietHoursEnd/)
 })
+
+test('alice admin page includes cleanup action for service scenarios', () => {
+  const source = readSource('../src/views/Alice.vue')
+  const authStoreSource = readSource('../src/stores/auth.js')
+
+  assert.match(source, /Очистить служебные сценарии/)
+  assert.match(source, /const cleanupScenarios = async \(\) =>/)
+  assert.match(source, /await authStore\.cleanupAliceScenarios\(\{/)
+  assert.match(source, /accountId:\s*form\.value\.accountId/)
+  assert.match(source, /deviceId:\s*form\.value\.deviceId/)
+  assert.match(authStoreSource, /async cleanupAliceScenarios\(payload = \{\}\) \{/)
+  assert.match(authStoreSource, /api\.post\('\/alice\/cleanup-scenarios'/)
+})

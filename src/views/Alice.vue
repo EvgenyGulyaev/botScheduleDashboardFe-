@@ -105,17 +105,31 @@
 
           <div class="block lg:col-span-2">
             <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Проверка колонки
+              Сервисные действия
             </span>
-            <button
-              type="button"
-              class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="sending || !canTestAliceSelection"
-              title="Озвучить тестовую фразу"
-              @click="testVoice"
-            >
-              {{ sending ? '…' : '🔊 Тест' }}
-            </button>
+            <div class="flex flex-wrap gap-3">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="sending || !canTestAliceSelection"
+                title="Озвучить тестовую фразу"
+                @click="testVoice"
+              >
+                {{ sending ? '…' : '🔊 Тест' }}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-semibold text-amber-900 shadow-sm transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="!canCleanupAliceScenarios"
+                title="Удалить служебные Codex-сценарии для выбранного аккаунта или текущей колонки"
+                @click="cleanupScenarios"
+              >
+                {{ cleaning ? 'Чистим…' : 'Очистить служебные сценарии' }}
+              </button>
+            </div>
+            <div class="mt-2 text-xs text-slate-500">
+              Если колонка выбрана, очистим только её сценарии. Если нет, почистим все `Codex ...` сценарии аккаунта.
+            </div>
           </div>
 
           <label class="block lg:col-span-2">
@@ -158,6 +172,7 @@ const notifications = useNotificationsStore()
 
 const aliceLoading = ref(false)
 const sending = ref(false)
+const cleaning = ref(false)
 const aliceHint = ref('')
 const aliceAccounts = ref([])
 const aliceHouseholds = ref([])
@@ -207,6 +222,10 @@ const canTestAliceSelection = computed(
     Boolean(form.value.householdId) &&
     Boolean(form.value.roomId) &&
     Boolean(form.value.deviceId),
+)
+
+const canCleanupAliceScenarios = computed(
+  () => Boolean(form.value.accountId) && !aliceLoading.value && !cleaning.value,
 )
 
 const loadAliceAccounts = async () => {
@@ -315,6 +334,32 @@ const testVoice = async () => {
     notifications.errorFrom(error, 'Не удалось отправить тест в Алису')
   } finally {
     sending.value = false
+  }
+}
+
+const cleanupScenarios = async () => {
+  if (!form.value.accountId) {
+    notifications.info('Сначала выбери Alice-аккаунт')
+    return
+  }
+
+  cleaning.value = true
+  try {
+    const response = await authStore.cleanupAliceScenarios({
+      accountId: form.value.accountId,
+      deviceId: form.value.deviceId,
+    })
+    const deleted = Number(response?.deleted || 0)
+    const scope = form.value.deviceId ? 'для выбранной колонки' : 'для аккаунта'
+    notifications.success(
+      deleted > 0
+        ? `Служебные сценарии ${scope} очищены: ${deleted}`
+        : `Служебные сценарии ${scope} не найдены`,
+    )
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось очистить служебные сценарии Алисы')
+  } finally {
+    cleaning.value = false
   }
 }
 
