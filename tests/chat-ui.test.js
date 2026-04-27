@@ -12,6 +12,7 @@ import {
   getChatAudioRecorderLabel,
   getChatMicrophoneErrorMessage,
   getChatReplyPreviewText,
+  getGroupMemberActionState,
   getCurrentUserReactionEmoji,
   getConversationMembersSummary,
   groupChatReactions,
@@ -65,6 +66,44 @@ test('formats conversation members summary with current user as you', () => {
       'warder@example.com',
     ),
     '2 - nika, Вы',
+  )
+})
+
+test('builds group member action state from roles and permissions', () => {
+  const conversation = {
+    currentUserRole: 'owner',
+    permissions: {
+      canManageRoles: true,
+      canRemoveMembers: true,
+    },
+  }
+
+  assert.deepEqual(
+    getGroupMemberActionState({
+      conversation,
+      member: { email: 'bob@example.com', role: 'member' },
+      currentUserEmail: 'alice@example.com',
+    }),
+    {
+      canChangeRole: true,
+      canRemove: true,
+      canLeave: false,
+      roleOptions: ['admin', 'member'],
+    },
+  )
+
+  assert.deepEqual(
+    getGroupMemberActionState({
+      conversation,
+      member: { email: 'alice@example.com', role: 'owner' },
+      currentUserEmail: 'alice@example.com',
+    }),
+    {
+      canChangeRole: false,
+      canRemove: false,
+      canLeave: false,
+      roleOptions: [],
+    },
   )
 })
 

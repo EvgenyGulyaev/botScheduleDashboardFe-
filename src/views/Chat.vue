@@ -456,11 +456,12 @@
                     <button
                       v-if="activeConversation?.type === 'group'"
                       type="button"
-                      class="inline-flex items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:border-rose-200 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      :disabled="deletingGroup"
-                      @click="deleteActiveGroup"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
+                      title="Настройки группы"
+                      aria-label="Настройки группы"
+                      @click="openGroupSettings"
                     >
-                      {{ deletingGroup ? 'Удаляем…' : 'Удалить группу' }}
+                      👥
                     </button>
                   </div>
                 </div>
@@ -1517,6 +1518,165 @@
     </div>
 
     <div
+      v-if="groupSettingsOpen && activeConversation?.type === 'group'"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm"
+      @click.self="closeGroupSettings"
+    >
+      <section class="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white p-6 shadow-2xl">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-slate-950">Настройки группы</h3>
+            <p class="mt-1 text-sm text-slate-500">
+              Роли и участники управляются серверными правами.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            @click="closeGroupSettings"
+          >
+            Закрыть
+          </button>
+        </div>
+
+        <div class="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
+          <div class="space-y-4">
+            <section class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Название
+              </label>
+              <div class="flex gap-2">
+                <input
+                  v-model="groupSettingsForm.title"
+                  type="text"
+                  class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-sky-300"
+                  :disabled="!activeConversation.permissions?.canRename || savingGroupSettings"
+                />
+                <button
+                  type="button"
+                  class="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  :disabled="!activeConversation.permissions?.canRename || savingGroupSettings || !groupSettingsForm.title.trim()"
+                  @click="saveGroupTitle"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </section>
+
+            <section
+              v-if="activeConversation.permissions?.canAddMembers"
+              class="rounded-3xl border border-slate-200 bg-slate-50 p-4"
+            >
+              <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Добавить участников
+              </div>
+              <div class="max-h-52 overflow-auto rounded-2xl border border-slate-200 bg-white p-2">
+                <label
+                  v-for="user in groupInviteUsers"
+                  :key="`invite-${user.email}`"
+                  class="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-2 hover:bg-slate-50"
+                >
+                  <span class="truncate text-sm font-medium text-slate-900">
+                    {{ user.login || user.email }}
+                  </span>
+                  <input
+                    v-model="groupSettingsForm.memberEmails"
+                    type="checkbox"
+                    :value="user.email"
+                    class="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  />
+                </label>
+                <div
+                  v-if="!groupInviteUsers.length"
+                  class="px-2 py-3 text-sm text-slate-500"
+                >
+                  Все доступные пользователи уже в группе.
+                </div>
+              </div>
+              <button
+                type="button"
+                class="mt-3 w-full rounded-2xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="savingGroupSettings || groupSettingsForm.memberEmails.length === 0"
+                @click="addSelectedGroupMembers"
+              >
+                Добавить выбранных
+              </button>
+            </section>
+          </div>
+
+          <section class="rounded-3xl border border-slate-200 bg-white p-4">
+            <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Участники
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="member in activeConversation.members"
+                :key="`settings-member-${member.email}`"
+                class="rounded-2xl border border-slate-100 bg-slate-50 p-3"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="truncate text-sm font-semibold text-slate-950">
+                      {{ member.login || member.email }}
+                    </div>
+                    <div class="mt-1 text-xs text-slate-500">
+                      {{ groupRoleLabel(member.role) }}
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap justify-end gap-2">
+                    <select
+                      v-if="groupMemberActionState(member).canChangeRole"
+                      class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700"
+                      :value="member.role"
+                      :disabled="savingGroupSettings"
+                      @change="updateGroupMemberRole(member, $event.target.value)"
+                    >
+                      <option
+                        v-for="role in groupMemberActionState(member).roleOptions"
+                        :key="`${member.email}-${role}`"
+                        :value="role"
+                      >
+                        {{ groupRoleLabel(role) }}
+                      </option>
+                    </select>
+                    <button
+                      v-if="groupMemberActionState(member).canRemove"
+                      type="button"
+                      class="rounded-xl border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="savingGroupSettings"
+                      @click="removeGroupMember(member)"
+                    >
+                      Удалить
+                    </button>
+                    <button
+                      v-if="groupMemberActionState(member).canLeave"
+                      type="button"
+                      class="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="savingGroupSettings"
+                      @click="removeGroupMember(member)"
+                    >
+                      Выйти
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              v-if="activeConversation.permissions?.canDelete"
+              type="button"
+              class="mt-4 w-full rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="deletingGroup"
+              @click="deleteActiveGroup"
+            >
+              {{ deletingGroup ? 'Удаляем…' : 'Удалить группу' }}
+            </button>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <div
       v-if="microphoneHelpOpen"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm"
       @click.self="microphoneHelpOpen = false"
@@ -1595,6 +1755,7 @@ import {
   getChatMessageStatusTitle,
   getChatMicrophoneErrorMessage,
   getChatReplyPreviewText,
+  getGroupMemberActionState,
   getConversationMembersSummary,
   getDroppedImageFile,
   getCurrentUserReactionEmoji,
@@ -1626,10 +1787,12 @@ const emojiPickerRoot = ref(null)
 const emojiPickerOpen = ref(false)
 const creatingGroup = ref(false)
 const deletingGroup = ref(false)
+const savingGroupSettings = ref(false)
 const sendingMessage = ref(false)
 const sendingAudio = ref(false)
 const sendingImage = ref(false)
 const groupModalOpen = ref(false)
+const groupSettingsOpen = ref(false)
 const messagesScroller = ref(null)
 const isRecordingAudio = ref(false)
 const recordingSeconds = ref(0)
@@ -1683,6 +1846,10 @@ const swipeReplyState = ref({
   offsetX: 0,
 })
 const groupForm = ref({
+  title: '',
+  memberEmails: [],
+})
+const groupSettingsForm = ref({
   title: '',
   memberEmails: [],
 })
@@ -1827,6 +1994,12 @@ const activeMediaSendError = computed(
 const otherUsers = computed(() =>
   chatStore.users.filter((user) => user.email && user.email !== currentUserEmail.value),
 )
+const activeGroupMemberEmails = computed(
+  () => new Set((activeConversation.value?.members || []).map((member) => member.email)),
+)
+const groupInviteUsers = computed(() =>
+  otherUsers.value.filter((user) => !activeGroupMemberEmails.value.has(user.email)),
+)
 const isSearchingChats = computed(() => chatSearch.value.trim().length > 0)
 const searchedUsers = computed(() =>
   filterChatUsersForSearch(chatStore.users, chatSearch.value, currentUserEmail.value),
@@ -1954,6 +2127,22 @@ const activeGroupMembersSummary = computed(() => {
 
   return getConversationMembersSummary(activeConversation.value, currentUserEmail.value)
 })
+const groupRoleLabel = (role = 'member') => {
+  switch (role) {
+    case 'owner':
+      return 'Владелец'
+    case 'admin':
+      return 'Админ'
+    default:
+      return 'Участник'
+  }
+}
+const groupMemberActionState = (member) =>
+  getGroupMemberActionState({
+    conversation: activeConversation.value || {},
+    member,
+    currentUserEmail: currentUserEmail.value,
+  })
 
 const openConversationScreen = () => {
   if (isMobileLayout.value) {
@@ -3573,6 +3762,23 @@ const closeGroupModal = () => {
   groupModalOpen.value = false
 }
 
+const openGroupSettings = () => {
+  if (!activeConversation.value || activeConversation.value.type !== 'group') {
+    return
+  }
+
+  groupSettingsForm.value = {
+    title: activeConversation.value.title || '',
+    memberEmails: [],
+  }
+  groupSettingsOpen.value = true
+}
+
+const closeGroupSettings = () => {
+  groupSettingsOpen.value = false
+  groupSettingsForm.value = { title: '', memberEmails: [] }
+}
+
 const createGroup = async () => {
   if (!groupForm.value.title.trim()) {
     return
@@ -3612,11 +3818,93 @@ const deleteActiveGroup = async () => {
   deletingGroup.value = true
   try {
     await chatStore.deleteGroupConversation(activeConversation.value.id)
+    closeGroupSettings()
     notifications.success('Группа удалена')
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось удалить группу')
   } finally {
     deletingGroup.value = false
+  }
+}
+
+const saveGroupTitle = async () => {
+  if (!activeConversation.value || !groupSettingsForm.value.title.trim()) {
+    return
+  }
+
+  savingGroupSettings.value = true
+  try {
+    await chatStore.renameGroupConversation({
+      conversationId: activeConversation.value.id,
+      title: groupSettingsForm.value.title.trim(),
+    })
+    notifications.success('Название группы обновлено')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось обновить группу')
+  } finally {
+    savingGroupSettings.value = false
+  }
+}
+
+const addSelectedGroupMembers = async () => {
+  if (!activeConversation.value || groupSettingsForm.value.memberEmails.length === 0) {
+    return
+  }
+
+  savingGroupSettings.value = true
+  try {
+    await chatStore.addGroupMembers({
+      conversationId: activeConversation.value.id,
+      memberEmails: groupSettingsForm.value.memberEmails,
+    })
+    groupSettingsForm.value.memberEmails = []
+    notifications.success('Участники добавлены')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось добавить участников')
+  } finally {
+    savingGroupSettings.value = false
+  }
+}
+
+const removeGroupMember = async (member) => {
+  if (!activeConversation.value || !member?.email) {
+    return
+  }
+
+  savingGroupSettings.value = true
+  try {
+    await chatStore.removeGroupMembers({
+      conversationId: activeConversation.value.id,
+      memberEmails: [member.email],
+    })
+    notifications.success(member.email === currentUserEmail.value ? 'Вы вышли из группы' : 'Участник удалён')
+    if (member.email === currentUserEmail.value) {
+      closeGroupSettings()
+    }
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось обновить участников')
+  } finally {
+    savingGroupSettings.value = false
+  }
+}
+
+const updateGroupMemberRole = async (member, role) => {
+  if (!activeConversation.value || !member?.email || !role || role === member.role) {
+    return
+  }
+
+  savingGroupSettings.value = true
+  try {
+    await chatStore.updateGroupMemberRole({
+      conversationId: activeConversation.value.id,
+      memberEmail: member.email,
+      role,
+    })
+    notifications.success('Роль участника обновлена')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось обновить роль')
+  } finally {
+    savingGroupSettings.value = false
   }
 }
 

@@ -49,6 +49,29 @@ export const getConversationMembersSummary = (conversation = {}, currentUserEmai
   return `${members.length} - ${labels.join(', ')}`
 }
 
+export const getGroupMemberActionState = ({
+  conversation = {},
+  member = {},
+  currentUserEmail = '',
+} = {}) => {
+  const permissions = conversation.permissions || {}
+  const memberEmail = String(member?.email || '')
+  const ownEmail = String(currentUserEmail || '')
+  const isSelf = Boolean(memberEmail && memberEmail === ownEmail)
+  const role = String(member?.role || 'member')
+  const canManageRoles = Boolean(permissions.canManageRoles)
+  const canRemoveMembers = Boolean(permissions.canRemoveMembers)
+
+  return {
+    canChangeRole: Boolean(canManageRoles && !isSelf && role !== 'owner'),
+    canRemove: Boolean(
+      canRemoveMembers && !isSelf && role !== 'owner' && (canManageRoles || role === 'member'),
+    ),
+    canLeave: Boolean(isSelf && permissions.canLeave),
+    roleOptions: canManageRoles && !isSelf && role !== 'owner' ? ['admin', 'member'] : [],
+  }
+}
+
 export const getChatPresenceText = (conversation = {}) => {
   const presence = conversation?.presence || {}
   if (conversation?.type === 'group') {

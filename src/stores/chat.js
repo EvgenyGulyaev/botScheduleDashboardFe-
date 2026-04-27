@@ -910,6 +910,40 @@ export const useChatStore = defineStore('chat', {
       return conversation
     },
 
+    async updateGroupMemberRole({ conversationId, memberEmail, role }) {
+      if (!conversationId || !memberEmail || !role) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const currentUserEmail = getCurrentUser(authStore).email || ''
+      const response = await api.patch(
+        `/chat/conversations/group/${conversationId}/members/${encodeURIComponent(memberEmail)}`,
+        { role },
+      )
+      const conversation = normalizeChatConversation(response.data, currentUserEmail)
+      upsertConversation(this, conversation, currentUserEmail)
+      return conversation
+    },
+
+    async leaveGroupConversation(conversationId) {
+      if (!conversationId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const currentUserEmail = getCurrentUser(authStore).email || ''
+      if (!currentUserEmail) {
+        return null
+      }
+
+      return this.removeGroupMembers({
+        conversationId,
+        memberEmails: [currentUserEmail],
+      })
+    },
+
     async deleteGroupConversation(conversationId) {
       if (!conversationId) {
         return false

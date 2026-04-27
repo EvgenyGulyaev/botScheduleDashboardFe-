@@ -158,6 +158,13 @@ test('normalizes conversation and message payloads', () => {
       last_message_id: 'msg-2',
       last_message_text: 'hello',
       last_message_at: '2026-04-16T11:00:00Z',
+      current_user_role: 'owner',
+      can_rename: true,
+      can_add_members: true,
+      can_remove_members: true,
+      can_manage_roles: true,
+      can_delete: true,
+      can_leave: false,
       pinned_message_id: 'msg-1',
       pinned_message: {
         id: 'msg-1',
@@ -165,7 +172,7 @@ test('normalizes conversation and message payloads', () => {
         text: 'pinned',
         sender_login: 'alice',
       },
-      members: [{ email: 'alice@example.com', login: 'alice' }],
+      members: [{ email: 'alice@example.com', login: 'alice', role: 'owner' }],
     },
     'alice@example.com',
   )
@@ -173,6 +180,9 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(conversation.title, 'Team')
   assert.equal(conversation.createdByLogin, 'alice')
   assert.equal(conversation.members[0].login, 'alice')
+  assert.equal(conversation.members[0].role, 'owner')
+  assert.equal(conversation.currentUserRole, 'owner')
+  assert.equal(conversation.permissions.canManageRoles, true)
   assert.equal(conversation.pinnedMessageId, 'msg-1')
   assert.equal(conversation.pinnedMessage.text, 'pinned')
 
@@ -1874,6 +1884,12 @@ test('chat store uses backend group-member payload contract', async () => {
     conversationId: 'group-1',
     memberEmails: ['bob@example.com'],
   })
+  await chatStore.updateGroupMemberRole({
+    conversationId: 'group-1',
+    memberEmail: 'bob@example.com',
+    role: 'admin',
+  })
+  await chatStore.leaveGroupConversation('group-1')
 
   assert.deepEqual(fakeApi.calls[0], [
     'post',
@@ -1884,6 +1900,16 @@ test('chat store uses backend group-member payload contract', async () => {
     'delete',
     '/chat/conversations/group/group-1/members',
     { emails: ['bob@example.com'] },
+  ])
+  assert.deepEqual(fakeApi.calls[2], [
+    'patch',
+    '/chat/conversations/group/group-1/members/bob%40example.com',
+    { role: 'admin' },
+  ])
+  assert.deepEqual(fakeApi.calls[3], [
+    'delete',
+    '/chat/conversations/group/group-1/members',
+    { emails: ['alice@example.com'] },
   ])
 
   delete globalThis.localStorage

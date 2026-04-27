@@ -185,8 +185,18 @@ export const normalizeChatUser = (user = {}) => ({
 export const normalizeChatMember = (member = {}) => ({
   email: normalizeString(member.email),
   login: normalizeString(member.login),
+  role: normalizeString(member.role || 'member'),
   lastReadMessageId: normalizeString(member.last_read_message_id ?? member.lastReadMessageId),
   joinedAt: normalizeIso(member.joined_at ?? member.joinedAt),
+})
+
+const normalizeChatPermissions = (permissions = {}) => ({
+  canRename: Boolean(permissions.can_rename ?? permissions.canRename),
+  canAddMembers: Boolean(permissions.can_add_members ?? permissions.canAddMembers),
+  canRemoveMembers: Boolean(permissions.can_remove_members ?? permissions.canRemoveMembers),
+  canManageRoles: Boolean(permissions.can_manage_roles ?? permissions.canManageRoles),
+  canDelete: Boolean(permissions.can_delete ?? permissions.canDelete),
+  canLeave: Boolean(permissions.can_leave ?? permissions.canLeave),
 })
 
 export const getChatConversationTitle = (conversation = {}, currentUserEmail = '') => {
@@ -231,6 +241,10 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
       conversation.last_read_message_id ?? conversation.lastReadMessageId,
     ),
     unreadCount: Number(conversation.unread_count ?? conversation.unreadCount ?? 0),
+    currentUserRole: normalizeString(
+      conversation.current_user_role ?? conversation.currentUserRole,
+    ),
+    permissions: normalizeChatPermissions(conversation.permissions ?? conversation),
     presence: normalizeChatPresence(conversation.presence ?? {}),
     draft: normalizeChatDraft(conversation.draft ?? {}),
     members,
