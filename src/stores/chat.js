@@ -392,6 +392,22 @@ const replaceMessage = (state, conversationId, message) => {
   return normalized
 }
 
+const updateMessageLocally = (state, conversationId, messageId, patch = {}) => {
+  const messages = ensureMessagesCollection(state, conversationId)
+  const index = messages.findIndex((message) => message.id === messageId)
+  if (index === -1) {
+    return null
+  }
+
+  const nextMessages = [...messages]
+  nextMessages[index] = {
+    ...nextMessages[index],
+    ...patch,
+  }
+  state.messagesByConversation[conversationId] = nextMessages
+  return nextMessages[index]
+}
+
 const upsertOptimisticTextMessage = (
   state,
   { conversationId, clientMessageId, text, replyToMessageId, currentUser },
@@ -973,6 +989,63 @@ export const useChatStore = defineStore('chat', {
       removeConversationState(this, conversationId)
 
       return true
+    },
+
+    async favoriteMessage({ conversationId, messageId }) {
+      if (!conversationId || !messageId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.put(
+        `/chat/conversations/${conversationId}/messages/${messageId}/favorite`,
+      )
+      if (response.data?.id) {
+        return replaceMessage(this, conversationId, response.data)
+      }
+      updateMessageLocally(this, conversationId, messageId, { favorite: true })
+      return this.messagesByConversation[conversationId]?.find((message) => message.id === messageId) || null
+    },
+
+    async unfavoriteMessage({ conversationId, messageId }) {
+      if (!conversationId || !messageId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.delete(
+        `/chat/conversations/${conversationId}/messages/${messageId}/favorite`,
+      )
+      if (response.data?.id) {
+        return replaceMessage(this, conversationId, response.data)
+      }
+      updateMessageLocally(this, conversationId, messageId, { favorite: false })
+      return this.messagesByConversation[conversationId]?.find((message) => message.id === messageId) || null
+    },
+
+    async forwardMessages({ sourceConversationId, targetConversationId, messageIds = [] }) {
+      if (!sourceConversationId || !targetConversationId || messageIds.length === 0) {
+        return []
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.post(`/chat/conversations/${targetConversationId}/forward`, {
+        source_conversation_id: sourceConversationId,
+        message_ids: messageIds,
+      })
+      const messages = normalizeChatMessages(response.data?.messages ?? response.data ?? [])
+      if (messages.length) {
+        const existing = ensureMessagesCollection(this, targetConversationId)
+        const existingIds = new Set(existing.map((message) => message.id))
+        this.messagesByConversation[targetConversationId] = [
+          ...existing,
+          ...messages.filter((message) => !existingIds.has(message.id)),
+        ]
+      }
+      return messages
     },
 
     async announceOnAlice({

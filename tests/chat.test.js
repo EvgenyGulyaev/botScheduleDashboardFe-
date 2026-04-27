@@ -194,6 +194,13 @@ test('normalizes conversation and message payloads', () => {
     sender_login: 'alice',
     text: 'Голосовое сообщение',
     alice_announced: true,
+    favorite: true,
+    forwarded_from: {
+      original_conversation_id: 'direct-1',
+      original_message_id: 'msg-original',
+      original_sender_email: 'bob@example.com',
+      original_sender_login: 'bob',
+    },
     created_at: '2026-04-16T11:00:00Z',
     delivered_to: [{ email: 'bob@example.com', login: 'bob', at: '2026-04-16T11:00:00Z' }],
     read_by: [],
@@ -216,6 +223,8 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(message.audio.expiresAt, '2026-04-17T11:00:00Z')
   assert.equal(message.audio.consumedByEmail, '')
   assert.equal(message.aliceAnnounced, true)
+  assert.equal(message.favorite, true)
+  assert.equal(message.forwardedFrom.messageId, 'msg-original')
   assert.equal(message.deliveredTo[0].login, 'bob')
   assert.equal(message.clientMessageId, '')
   assert.equal(message.deliveryStatus, 'delivered')
@@ -1910,6 +1919,50 @@ test('chat store uses backend group-member payload contract', async () => {
     'delete',
     '/chat/conversations/group/group-1/members',
     { emails: ['alice@example.com'] },
+  ])
+
+  delete globalThis.localStorage
+})
+
+test('chat store uses backend favorite and forward payload contracts', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const fakeApi = createFakeApi()
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+
+  const chatStore = useChatStore()
+  await chatStore.favoriteMessage({ conversationId: 'source-1', messageId: 'msg-1' })
+  await chatStore.unfavoriteMessage({ conversationId: 'source-1', messageId: 'msg-1' })
+  await chatStore.forwardMessages({
+    sourceConversationId: 'source-1',
+    targetConversationId: 'target-1',
+    messageIds: ['msg-1', 'msg-2'],
+  })
+
+  assert.deepEqual(fakeApi.calls[0], [
+    'put',
+    '/chat/conversations/source-1/messages/msg-1/favorite',
+    undefined,
+  ])
+  assert.deepEqual(fakeApi.calls[1], [
+    'delete',
+    '/chat/conversations/source-1/messages/msg-1/favorite',
+    undefined,
+  ])
+  assert.deepEqual(fakeApi.calls[2], [
+    'post',
+    '/chat/conversations/target-1/forward',
+    {
+      source_conversation_id: 'source-1',
+      message_ids: ['msg-1', 'msg-2'],
+    },
   ])
 
   delete globalThis.localStorage

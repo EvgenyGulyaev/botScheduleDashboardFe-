@@ -13,6 +13,7 @@ import {
   getChatMicrophoneErrorMessage,
   getChatReplyPreviewText,
   getGroupMemberActionState,
+  getSelectedChatMessagesActionState,
   getCurrentUserReactionEmoji,
   getConversationMembersSummary,
   groupChatReactions,
@@ -104,6 +105,36 @@ test('builds group member action state from roles and permissions', () => {
       canLeave: false,
       roleOptions: [],
     },
+  )
+})
+
+test('builds selected message action state for power tools', () => {
+  const messages = [
+    { id: 'msg-1', type: 'text', senderEmail: 'alice@example.com' },
+    { id: 'msg-2', type: 'text', senderEmail: 'alice@example.com' },
+  ]
+
+  assert.deepEqual(
+    getSelectedChatMessagesActionState({
+      selectedMessageIds: ['msg-1', 'msg-2'],
+      messages,
+      currentUserEmail: 'alice@example.com',
+    }),
+    {
+      selectedCount: 2,
+      canFavorite: true,
+      canForward: true,
+      canDelete: true,
+    },
+  )
+
+  assert.equal(
+    getSelectedChatMessagesActionState({
+      selectedMessageIds: ['msg-1', 'missing'],
+      messages,
+      currentUserEmail: 'alice@example.com',
+    }).selectedCount,
+    1,
   )
 })
 

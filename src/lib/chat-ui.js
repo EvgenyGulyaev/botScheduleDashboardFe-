@@ -72,6 +72,26 @@ export const getGroupMemberActionState = ({
   }
 }
 
+export const getSelectedChatMessagesActionState = ({
+  selectedMessageIds = [],
+  messages = [],
+  currentUserEmail = '',
+} = {}) => {
+  const selectedIds = new Set(Array.isArray(selectedMessageIds) ? selectedMessageIds : [])
+  const selectedMessages = (Array.isArray(messages) ? messages : []).filter((message) =>
+    selectedIds.has(message?.id),
+  )
+  const selectedCount = selectedMessages.length
+  const hasSelection = selectedCount > 0
+
+  return {
+    selectedCount,
+    canFavorite: hasSelection,
+    canForward: hasSelection,
+    canDelete: hasSelection && selectedMessages.every((message) => isChatMessageEditable(message, currentUserEmail)),
+  }
+}
+
 export const getChatPresenceText = (conversation = {}) => {
   const presence = conversation?.presence || {}
   if (conversation?.type === 'group') {

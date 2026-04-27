@@ -815,6 +815,33 @@
                         <div class="flex shrink-0 items-center gap-1.5">
                           <button
                             type="button"
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-full border text-sm transition"
+                            :class="
+                              isMessageSelected(message)
+                                ? 'border-sky-300 bg-sky-100 text-sky-700'
+                                : 'border-slate-200 bg-white/80 hover:bg-slate-100'
+                            "
+                            aria-label="Выбрать сообщение"
+                            title="Выбрать"
+                            @click="toggleMessageSelected(message)"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            type="button"
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-amber-200 bg-white/80 text-sm transition hover:bg-amber-50"
+                            :aria-label="message.favorite ? 'Убрать из избранного' : 'Добавить в избранное'"
+                            :title="message.favorite ? 'Убрать из избранного' : 'В избранное'"
+                            @click="
+                              message.favorite
+                                ? chatStore.unfavoriteMessage({ conversationId: activeConversation.id, messageId: message.id })
+                                : chatStore.favoriteMessage({ conversationId: activeConversation.id, messageId: message.id })
+                            "
+                          >
+                            {{ message.favorite ? '★' : '☆' }}
+                          </button>
+                          <button
+                            type="button"
                             class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
                             :aria-label="isPinnedMessage(message) ? 'Открепить сообщение' : 'Закрепить сообщение'"
                             :title="isPinnedMessage(message) ? 'Открепить' : 'Закрепить'"
@@ -1061,6 +1088,45 @@
                       : 'border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
                 "
               >
+                <div
+                  v-if="selectedMessageActionState.selectedCount"
+                  class="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-900"
+                >
+                  <span class="font-semibold">
+                    Выбрано: {{ selectedMessageActionState.selectedCount }}
+                  </span>
+                  <button
+                    type="button"
+                    class="rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-sm transition hover:bg-sky-100"
+                    :disabled="!selectedMessageActionState.canFavorite"
+                    @click="favoriteSelectedMessages"
+                  >
+                    ★ Избранное
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 shadow-sm transition hover:bg-sky-100"
+                    :disabled="!selectedMessageActionState.canForward"
+                    @click="forwardPickerOpen = true"
+                  >
+                    Переслать
+                  </button>
+                  <button
+                    v-if="selectedMessageActionState.canDelete"
+                    type="button"
+                    class="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                    @click="deleteSelectedMessages"
+                  >
+                    Удалить
+                  </button>
+                  <button
+                    type="button"
+                    class="ml-auto rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white"
+                    @click="clearSelectedMessages"
+                  >
+                    Отмена
+                  </button>
+                </div>
                 <form :class="mobileConversationMode ? 'space-y-2.5' : 'space-y-3'" @submit.prevent="sendCurrentMessage">
                   <div
                     v-if="activeTypingLabel && !mobileConversationMode"
@@ -1677,6 +1743,56 @@
     </div>
 
     <div
+      v-if="forwardPickerOpen"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm"
+      @click.self="forwardPickerOpen = false"
+    >
+      <section class="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+        <div class="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-xl font-bold text-slate-950">Переслать сообщения</h3>
+            <p class="mt-1 text-sm text-slate-500">
+              Выбрано: {{ selectedMessageActionState.selectedCount }}.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            @click="forwardPickerOpen = false"
+          >
+            Закрыть
+          </button>
+        </div>
+        <div class="max-h-80 space-y-2 overflow-auto">
+          <button
+            v-for="conversation in forwardTargetConversations"
+            :key="`forward-${conversation.id}`"
+            type="button"
+            class="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-sky-200 hover:bg-sky-50 disabled:cursor-wait disabled:opacity-60"
+            :disabled="forwardingMessages"
+            @click="forwardSelectedMessages(conversation.id)"
+          >
+            <span class="min-w-0">
+              <span class="block truncate text-sm font-semibold text-slate-950">
+                {{ conversation.title }}
+              </span>
+              <span class="mt-0.5 block truncate text-xs text-slate-500">
+                {{ conversationPreview(conversation) }}
+              </span>
+            </span>
+            <span class="text-sky-600">→</span>
+          </button>
+          <div
+            v-if="!forwardTargetConversations.length"
+            class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500"
+          >
+            Нет другого чата для пересылки.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div
       v-if="microphoneHelpOpen"
       class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm"
       @click.self="microphoneHelpOpen = false"
@@ -1756,6 +1872,7 @@ import {
   getChatMicrophoneErrorMessage,
   getChatReplyPreviewText,
   getGroupMemberActionState,
+  getSelectedChatMessagesActionState,
   getConversationMembersSummary,
   getDroppedImageFile,
   getCurrentUserReactionEmoji,
@@ -1788,11 +1905,13 @@ const emojiPickerOpen = ref(false)
 const creatingGroup = ref(false)
 const deletingGroup = ref(false)
 const savingGroupSettings = ref(false)
+const forwardingMessages = ref(false)
 const sendingMessage = ref(false)
 const sendingAudio = ref(false)
 const sendingImage = ref(false)
 const groupModalOpen = ref(false)
 const groupSettingsOpen = ref(false)
+const forwardPickerOpen = ref(false)
 const messagesScroller = ref(null)
 const isRecordingAudio = ref(false)
 const recordingSeconds = ref(0)
@@ -1853,6 +1972,7 @@ const groupSettingsForm = ref({
   title: '',
   memberEmails: [],
 })
+const selectedMessageIds = ref([])
 const messageElements = new Map()
 const remoteMediaElements = new Map()
 const peerConnections = new Map()
@@ -1987,6 +2107,20 @@ const activeTimelineItems = computed(() =>
     activeLastReadMessageId.value,
     currentUserEmail.value,
   ),
+)
+const selectedMessageActionState = computed(() =>
+  getSelectedChatMessagesActionState({
+    selectedMessageIds: selectedMessageIds.value,
+    messages: activeMessages.value,
+    currentUserEmail: currentUserEmail.value,
+  }),
+)
+const selectedMessages = computed(() => {
+  const selectedIds = new Set(selectedMessageIds.value)
+  return activeMessages.value.filter((message) => selectedIds.has(message.id))
+})
+const forwardTargetConversations = computed(() =>
+  chatStore.conversations.filter((conversation) => conversation.id !== activeConversation.value?.id),
 )
 const activeMediaSendError = computed(
   () => chatStore.mediaSendErrorByConversation[chatStore.activeConversationId] || '',
@@ -2143,6 +2277,20 @@ const groupMemberActionState = (member) =>
     member,
     currentUserEmail: currentUserEmail.value,
   })
+const isMessageSelected = (message) => selectedMessageIds.value.includes(message?.id)
+const toggleMessageSelected = (message) => {
+  if (!message?.id) {
+    return
+  }
+
+  selectedMessageIds.value = isMessageSelected(message)
+    ? selectedMessageIds.value.filter((id) => id !== message.id)
+    : [...selectedMessageIds.value, message.id]
+}
+const clearSelectedMessages = () => {
+  selectedMessageIds.value = []
+  forwardPickerOpen.value = false
+}
 
 const openConversationScreen = () => {
   if (isMobileLayout.value) {
@@ -3905,6 +4053,71 @@ const updateGroupMemberRole = async (member, role) => {
     notifications.errorFrom(error, 'Не удалось обновить роль')
   } finally {
     savingGroupSettings.value = false
+  }
+}
+
+const favoriteSelectedMessages = async () => {
+  if (!activeConversation.value || selectedMessages.value.length === 0) {
+    return
+  }
+
+  try {
+    await Promise.all(
+      selectedMessages.value.map((message) =>
+        message.favorite
+          ? chatStore.unfavoriteMessage({
+              conversationId: activeConversation.value.id,
+              messageId: message.id,
+            })
+          : chatStore.favoriteMessage({
+              conversationId: activeConversation.value.id,
+              messageId: message.id,
+            }),
+      ),
+    )
+    notifications.success('Избранное обновлено')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось обновить избранное')
+  }
+}
+
+const deleteSelectedMessages = async () => {
+  if (!activeConversation.value || !selectedMessageActionState.value.canDelete) {
+    return
+  }
+
+  try {
+    for (const message of selectedMessages.value) {
+      await chatStore.deleteMessage({
+        conversationId: activeConversation.value.id,
+        messageId: message.id,
+      })
+    }
+    clearSelectedMessages()
+    notifications.success('Сообщения удалены')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось удалить сообщения')
+  }
+}
+
+const forwardSelectedMessages = async (targetConversationId) => {
+  if (!activeConversation.value || !targetConversationId || selectedMessageIds.value.length === 0) {
+    return
+  }
+
+  forwardingMessages.value = true
+  try {
+    await chatStore.forwardMessages({
+      sourceConversationId: activeConversation.value.id,
+      targetConversationId,
+      messageIds: selectedMessageIds.value,
+    })
+    clearSelectedMessages()
+    notifications.success('Сообщения пересланы')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось переслать сообщения')
+  } finally {
+    forwardingMessages.value = false
   }
 }
 

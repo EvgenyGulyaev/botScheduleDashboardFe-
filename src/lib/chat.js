@@ -272,6 +272,8 @@ export const normalizeChatMessage = (message = {}) => ({
   senderEmail: normalizeString(message.sender_email ?? message.senderEmail),
   senderLogin: normalizeString(message.sender_login ?? message.senderLogin),
   text: normalizeString(message.text),
+  favorite: Boolean(message.favorite ?? message.is_favorite ?? message.isFavorite),
+  forwardedFrom: normalizeForwardedFrom(message.forwarded_from ?? message.forwardedFrom),
   aliceAnnounced: Boolean(message.alice_announced ?? message.aliceAnnounced),
   createdAt: normalizeIso(message.created_at ?? message.createdAt),
   updatedAt: normalizeIso(message.updated_at ?? message.updatedAt),
@@ -289,6 +291,39 @@ export const normalizeChatMessage = (message = {}) => ({
   image: normalizeChatImage(message.image),
   call: normalizeChatCall(message.call),
 })
+
+function normalizeForwardedFrom(forwardedFrom = null) {
+  if (!forwardedFrom || typeof forwardedFrom !== 'object') {
+    return null
+  }
+
+  return {
+    conversationId: normalizeString(
+      forwardedFrom.original_conversation_id ??
+        forwardedFrom.originalConversationId ??
+        forwardedFrom.conversation_id ??
+        forwardedFrom.conversationId,
+    ),
+    messageId: normalizeString(
+      forwardedFrom.original_message_id ??
+        forwardedFrom.originalMessageId ??
+        forwardedFrom.message_id ??
+        forwardedFrom.messageId,
+    ),
+    senderEmail: normalizeString(
+      forwardedFrom.original_sender_email ??
+        forwardedFrom.originalSenderEmail ??
+        forwardedFrom.sender_email ??
+        forwardedFrom.senderEmail,
+    ),
+    senderLogin: normalizeString(
+      forwardedFrom.original_sender_login ??
+        forwardedFrom.originalSenderLogin ??
+        forwardedFrom.sender_login ??
+        forwardedFrom.senderLogin,
+    ),
+  }
+}
 
 const normalizeMessageReceiptCount = (message = {}, kind = 'delivered') => {
   const snakeKey = kind === 'read' ? 'read_by_count' : 'delivered_to_count'
