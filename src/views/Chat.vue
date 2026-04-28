@@ -1984,6 +1984,7 @@ let typingActiveConversationId = ''
 let typingStartedSentAt = 0
 let suppressDraftAutosave = false
 let pendingInitialUnreadScrollConversationId = ''
+let preferBottomForPendingInitialScroll = false
 let programmaticUnreadScrollGuardTimer = null
 let programmaticUnreadScrollActive = false
 
@@ -4272,6 +4273,7 @@ watch(
       pendingInitialUnreadScrollConversationId = conversationId
     } else {
       pendingInitialUnreadScrollConversationId = ''
+      preferBottomForPendingInitialScroll = false
     }
     stopComposerTyping()
     cancelEditing()
@@ -4340,6 +4342,7 @@ watch(
     const conversationChanged = Boolean(conversationId && conversationId !== previousConversationId)
     if (conversationChanged) {
       pendingInitialUnreadScrollConversationId = conversationId
+      preferBottomForPendingInitialScroll = previousConversationId == null
     }
     const isInitialScroll =
       Boolean(conversationId) && pendingInitialUnreadScrollConversationId === conversationId
@@ -4356,9 +4359,11 @@ watch(
       messagesLoaded: Boolean(messagesLoaded),
       wasNearBottom,
       hasFocusedViewport: hasFocusedChatViewport(),
+      preferBottomOnInitialOpen: preferBottomForPendingInitialScroll,
     })
     if (action !== 'none' && action !== 'defer') {
       pendingInitialUnreadScrollConversationId = ''
+      preferBottomForPendingInitialScroll = false
     }
     await applyUnreadScrollAction(action)
   },

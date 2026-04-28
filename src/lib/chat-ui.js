@@ -330,6 +330,7 @@ export const getChatUnreadScrollAction = ({
   messagesLoaded = true,
   wasNearBottom = false,
   hasFocusedViewport = true,
+  preferBottomOnInitialOpen = false,
 } = {}) => {
   if (!hasFocusedViewport) {
     return 'none'
@@ -337,6 +338,10 @@ export const getChatUnreadScrollAction = ({
 
   if (conversationChanged && !messagesLoaded) {
     return 'defer'
+  }
+
+  if (conversationChanged && preferBottomOnInitialOpen) {
+    return 'bottom'
   }
 
   if (conversationChanged && hasFirstUnread) {
