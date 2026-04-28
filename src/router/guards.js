@@ -1,6 +1,8 @@
 export const resolveAuthRedirect = ({
   isAuthenticated,
   isAdmin = false,
+  isSuperAdmin = false,
+  appPermissions = [],
   to,
   defaultRoute = '/chat',
 }) => {
@@ -13,6 +15,20 @@ export const resolveAuthRedirect = ({
   }
 
   if (isAuthenticated && to.meta?.requiresAdmin && !isAdmin) {
+    return defaultRoute
+  }
+
+  if (isAuthenticated && to.meta?.requiresSuperAdmin && !isSuperAdmin) {
+    return defaultRoute
+  }
+
+  if (
+    isAuthenticated &&
+    to.meta?.appKey &&
+    Array.isArray(appPermissions) &&
+    appPermissions.length > 0 &&
+    !appPermissions.includes(to.meta.appKey)
+  ) {
     return defaultRoute
   }
 

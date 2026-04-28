@@ -83,7 +83,9 @@ test('updates stored session token from auth refresh response header', () => {
     email: 'alice@example.com',
     login: '',
     isAdmin: false,
+    isSuperAdmin: false,
     defaultApp: 'chat',
+    appPermissions: [],
     notificationSettings: {
       pushEnabled: false,
       soundEnabled: true,

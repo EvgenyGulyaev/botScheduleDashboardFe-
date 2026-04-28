@@ -228,6 +228,31 @@ export const useAuthStore = defineStore('auth', {
       return response.data || null
     },
 
+    async fetchAdminUsers() {
+      const api = this.api
+      const response = await api.get('/admin/users')
+      return Array.isArray(response.data?.items)
+        ? response.data.items.map((user) => normalizeAuthUser(user))
+        : []
+    },
+
+    async createAdminUser(payload = {}) {
+      const api = this.api
+      const response = await api.post('/admin/users', payload)
+      return normalizeAuthUser(response.data)
+    },
+
+    async updateAdminUser(email = '', payload = {}) {
+      const api = this.api
+      const response = await api.patch(`/admin/users/${encodeURIComponent(email)}`, payload)
+      return normalizeAuthUser(response.data)
+    },
+
+    async deleteAdminUser(email = '') {
+      const api = this.api
+      return api.delete(`/admin/users/${encodeURIComponent(email)}`)
+    },
+
     async deletePushSubscription(endpoint = '') {
       const api = this.api
       return api.delete('/profile/push-subscriptions', {

@@ -10,19 +10,25 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../views/Dashboard.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresSuperAdmin: true, appKey: 'dashboard' },
+  },
+  {
+    path: '/admin/users',
+    name: 'AdminUsers',
+    component: () => import('../views/AdminUsers.vue'),
+    meta: { requiresAuth: true, requiresSuperAdmin: true },
   },
   {
     path: '/messages',
     name: 'Messages',
     component: () => import('../views/Messages.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, appKey: 'messages' },
   },
   {
     path: '/chat',
     name: 'Chat',
     component: () => import('../views/Chat.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, appKey: 'chat' },
   },
   {
     path: '/settings',
@@ -34,7 +40,7 @@ const routes = [
     path: '/alice',
     name: 'Alice',
     component: () => import('../views/Alice.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdmin: true, appKey: 'alice' },
   },
   {
     path: '/tasks',
@@ -46,13 +52,13 @@ const routes = [
     path: '/geo3d',
     name: 'Geo3D',
     component: () => import('../views/Geo3D.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, appKey: 'geo3d' },
   },
   {
     path: '/short-links',
     name: 'ShortLinks',
     component: () => import('../views/ShortLinks.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, appKey: 'short-links' },
   },
   { path: '/', redirect: '/login' },
 ]
@@ -68,6 +74,8 @@ router.beforeEach((to) => {
   return resolveAuthRedirect({
     isAuthenticated: authStore.isAuthenticated,
     isAdmin: Boolean(authStore.user?.isAdmin),
+    isSuperAdmin: Boolean(authStore.user?.isSuperAdmin),
+    appPermissions: authStore.user?.appPermissions || [],
     defaultRoute: authStore.getDefaultRoute(),
     to,
   })

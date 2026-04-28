@@ -81,7 +81,9 @@ test('normalizes profile notification and push metadata', () => {
     login: 'alice',
     email: 'alice@example.com',
     is_admin: true,
+    is_super_admin: true,
     default_app: 'dashboard',
+    app_permissions: ['chat', 'dashboard'],
     notification_settings: {
       push_enabled: true,
       sound_enabled: false,
@@ -105,8 +107,12 @@ test('normalizes profile notification and push metadata', () => {
     email: 'alice@example.com',
     is_admin: true,
     isAdmin: true,
+    is_super_admin: true,
+    isSuperAdmin: true,
     default_app: 'dashboard',
     defaultApp: 'dashboard',
+    app_permissions: ['chat', 'dashboard'],
+    appPermissions: ['chat', 'dashboard'],
     notification_settings: {
       push_enabled: true,
       sound_enabled: false,

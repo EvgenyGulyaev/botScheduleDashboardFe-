@@ -4,6 +4,11 @@ export const normalizeAuthUser = (payload = {}) => {
   const notificationSettings = payload?.notification_settings ?? payload?.notificationSettings ?? {}
   const push = payload?.push ?? payload?.pushConfig ?? {}
   const alice = payload?.alice_settings ?? payload?.aliceSettings ?? {}
+  const appPermissions = Array.isArray(payload?.app_permissions)
+    ? payload.app_permissions
+    : Array.isArray(payload?.appPermissions)
+      ? payload.appPermissions
+      : []
   const aliceVoice =
     alice?.voice ??
     alice?.voice_id ??
@@ -43,7 +48,9 @@ export const normalizeAuthUser = (payload = {}) => {
     login: payload?.login ?? '',
     email: payload?.email ?? '',
     isAdmin: Boolean(payload?.is_admin ?? payload?.isAdmin),
+    isSuperAdmin: Boolean(payload?.is_super_admin ?? payload?.isSuperAdmin),
     defaultApp: resolveDefaultAppValue(payload?.default_app ?? payload?.defaultApp ?? 'chat'),
+    appPermissions,
     notificationSettings: {
       pushEnabled: Boolean(
         notificationSettings?.push_enabled ?? notificationSettings?.pushEnabled ?? false,

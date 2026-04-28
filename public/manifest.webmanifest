@@ -1,0 +1,17 @@
+{
+  "name": "Bot Admin Chat",
+  "short_name": "Bot Admin",
+  "description": "Чат и админка Bot Admin",
+  "start_url": "/chat",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48 64x64 128x128 256x256",
+      "type": "image/x-icon"
+    }
+  ]
+}

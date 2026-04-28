@@ -41,6 +41,18 @@ test('redirects non-admin users away from admin-only routes', () => {
   assert.equal(result, '/chat')
 })
 
+test('redirects non-super-admin users away from super-admin-only routes', () => {
+  const result = resolveAuthRedirect({
+    isAuthenticated: true,
+    isAdmin: true,
+    isSuperAdmin: false,
+    defaultRoute: '/chat',
+    to: { path: '/dashboard', meta: { requiresAuth: true, requiresSuperAdmin: true } },
+  })
+
+  assert.equal(result, '/chat')
+})
+
 test('allows navigation when route matches auth state', () => {
   const guestResult = resolveAuthRedirect({
     isAuthenticated: false,
@@ -56,8 +68,15 @@ test('allows navigation when route matches auth state', () => {
     isAdmin: true,
     to: { path: '/alice', meta: { requiresAuth: true, requiresAdmin: true } },
   })
+  const superAdminResult = resolveAuthRedirect({
+    isAuthenticated: true,
+    isAdmin: true,
+    isSuperAdmin: true,
+    to: { path: '/dashboard', meta: { requiresAuth: true, requiresSuperAdmin: true } },
+  })
 
   assert.equal(guestResult, true)
   assert.equal(authResult, true)
   assert.equal(adminResult, true)
+  assert.equal(superAdminResult, true)
 })

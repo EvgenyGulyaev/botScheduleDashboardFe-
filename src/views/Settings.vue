@@ -72,7 +72,7 @@
                 class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
               >
                 <option
-                  v-for="option in DEFAULT_APP_OPTIONS"
+                  v-for="option in profileDefaultAppOptions"
                   :key="option.value"
                   :value="option.value"
                 >
@@ -412,6 +412,15 @@ const aliceSettingsHint = ref('')
 const pushSupported = computed(
   () => isWebPushSupported() && Boolean(authStore.user?.push?.supported),
 )
+
+const profileDefaultAppOptions = computed(() => {
+  const permissions = Array.isArray(authStore.user?.appPermissions) ? authStore.user.appPermissions : []
+  if (!permissions.length) {
+    return DEFAULT_APP_OPTIONS
+  }
+  const allowed = new Set(permissions)
+  return DEFAULT_APP_OPTIONS.filter((option) => allowed.has(option.value))
+})
 
 const fillForms = (user = authStore.user) => {
   profileForm.value = {
