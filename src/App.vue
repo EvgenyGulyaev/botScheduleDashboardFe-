@@ -212,6 +212,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getAdminMenuItems, getAppMenuItems } from './lib/app-navigation.js'
 import {
   getIOSInstallSteps,
+  isMobileOrTabletInstallContext,
   isStandaloneDisplayMode,
   readInstallPromptDismissed,
   shouldShowPwaInstallPrompt,
@@ -242,6 +243,7 @@ const showInstallPrompt = computed(() =>
     isAuthenticated: authStore.isAuthenticated,
     isStandalone: isStandaloneDisplayMode(window),
     dismissed: installPromptDismissed.value,
+    isMobileOrTablet: isMobileOrTabletInstallContext(window),
   }),
 )
 

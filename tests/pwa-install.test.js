@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   getIOSInstallSteps,
+  isMobileOrTabletInstallContext,
   isStandaloneDisplayMode,
   shouldShowPwaInstallPrompt,
 } from '../src/lib/pwa-install.js'
@@ -20,17 +21,48 @@ test('detects standalone display mode from browser signals', () => {
 
 test('shows install prompt only for authenticated non-standalone users', () => {
   assert.equal(
-    shouldShowPwaInstallPrompt({ isAuthenticated: true, isStandalone: false, dismissed: false }),
+    shouldShowPwaInstallPrompt({
+      isAuthenticated: true,
+      isStandalone: false,
+      dismissed: false,
+      isMobileOrTablet: true,
+    }),
     true,
   )
   assert.equal(
-    shouldShowPwaInstallPrompt({ isAuthenticated: true, isStandalone: true, dismissed: false }),
+    shouldShowPwaInstallPrompt({
+      isAuthenticated: true,
+      isStandalone: true,
+      dismissed: false,
+      isMobileOrTablet: true,
+    }),
     false,
   )
   assert.equal(
-    shouldShowPwaInstallPrompt({ isAuthenticated: true, isStandalone: false, dismissed: true }),
+    shouldShowPwaInstallPrompt({
+      isAuthenticated: true,
+      isStandalone: false,
+      dismissed: true,
+      isMobileOrTablet: true,
+    }),
     false,
   )
+  assert.equal(
+    shouldShowPwaInstallPrompt({
+      isAuthenticated: true,
+      isStandalone: false,
+      dismissed: false,
+      isMobileOrTablet: false,
+    }),
+    false,
+  )
+})
+
+test('detects mobile or tablet install context by width or platform', () => {
+  assert.equal(isMobileOrTabletInstallContext({ innerWidth: 1280, navigator: { userAgent: 'Desktop' } }), false)
+  assert.equal(isMobileOrTabletInstallContext({ innerWidth: 1024, navigator: { userAgent: 'Desktop' } }), true)
+  assert.equal(isMobileOrTabletInstallContext({ innerWidth: 1440, navigator: { userAgent: 'Mozilla/5.0 (iPhone)' } }), true)
+  assert.equal(isMobileOrTabletInstallContext({ innerWidth: 1440, navigator: { userAgent: 'Mozilla/5.0 (Android)' } }), true)
 })
 
 test('explains ios install flow because browsers cannot auto-install there', () => {

@@ -13,6 +13,14 @@ export const isStandaloneDisplayMode = (target = globalThis) => {
 export const isIOSDevice = (nav = globalThis.navigator) =>
   /iphone|ipad|ipod/i.test(nav?.userAgent || '')
 
+export const isMobileOrTabletInstallContext = (target = globalThis) => {
+  const userAgent = target?.navigator?.userAgent || ''
+  if (/android|iphone|ipad|ipod|mobile|tablet/i.test(userAgent)) {
+    return true
+  }
+  return Number(target?.innerWidth || 0) > 0 && Number(target.innerWidth) <= 1024
+}
+
 export const getIOSInstallSteps = () => [
   'Нажми кнопку «Поделиться» в Safari.',
   'Выбери «На экран Домой».',
@@ -30,4 +38,5 @@ export const shouldShowPwaInstallPrompt = ({
   isAuthenticated,
   isStandalone,
   dismissed,
-}) => Boolean(isAuthenticated) && !isStandalone && !dismissed
+  isMobileOrTablet = false,
+}) => Boolean(isAuthenticated) && !isStandalone && !dismissed && Boolean(isMobileOrTablet)
