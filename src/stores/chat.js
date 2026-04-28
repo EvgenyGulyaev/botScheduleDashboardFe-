@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { markRaw } from 'vue'
 import {
   applyChatSocketEvent,
   buildChatWebSocketUrl,
@@ -36,6 +37,7 @@ const createLoadingState = () => ({
 const socketEnvelopeListeners = new Set()
 const typingExpiryTimers = new Map()
 const draftSaveTimers = new Map()
+const CHAT_PRESENCE_HEARTBEAT_MS = 20000
 
 const createClientMessageId = () => {
   if (globalThis.crypto?.randomUUID) {
@@ -243,6 +245,24 @@ const getSocketOpenState = () =>
 
 const getSocketConnectingState = () =>
   typeof WebSocket !== 'undefined' && WebSocket.CONNECTING != null ? WebSocket.CONNECTING : 0
+
+const clearPresenceHeartbeat = (state) => {
+  if (state.presenceHeartbeatTimer) {
+    globalThis.clearInterval(state.presenceHeartbeatTimer)
+    state.presenceHeartbeatTimer = null
+  }
+}
+
+const startPresenceHeartbeat = (state, socket) => {
+  clearPresenceHeartbeat(state)
+  state.presenceHeartbeatTimer = globalThis.setInterval(() => {
+    if (state.socket !== socket) {
+      clearPresenceHeartbeat(state)
+      return
+    }
+    sendSocketEnvelope(socket, 'ping')
+  }, CHAT_PRESENCE_HEARTBEAT_MS)
+}
 
 const latestPeerMessage = (messages = [], currentUserEmail = '') => {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -537,6 +557,7 @@ export const useChatStore = defineStore('chat', {
     socketStatus: 'disconnected',
     reconnectAttempts: 0,
     reconnectTimer: null,
+    presenceHeartbeatTimer: null,
     socket: null,
     manualDisconnect: false,
     soundEnabled: isChatSoundEnabled(),
@@ -1151,7 +1172,7 @@ export const useChatStore = defineStore('chat', {
       this.socketStatus = 'connecting'
 
       const socket = new WebSocket(buildChatWebSocketUrl(getCurrentOrigin(), token))
-      this.socket = socket
+      this.socket = markRaw(socket)
 
       socket.addEventListener('open', () => {
         if (this.socket !== socket) {
@@ -1161,6 +1182,7 @@ export const useChatStore = defineStore('chat', {
         this.socketStatus = 'connected'
         this.reconnectAttempts = 0
         this.error = null
+        startPresenceHeartbeat(this, socket)
       })
 
       socket.addEventListener('message', (event) => {
@@ -1182,6 +1204,7 @@ export const useChatStore = defineStore('chat', {
       })
 
       socket.addEventListener('close', () => {
+        clearPresenceHeartbeat(this)
         if (this.socket === socket) {
           this.socket = null
         }
@@ -1216,6 +1239,7 @@ export const useChatStore = defineStore('chat', {
         clearTimeout(this.reconnectTimer)
         this.reconnectTimer = null
       }
+      clearPresenceHeartbeat(this)
 
       if (this.socket) {
         this.socket.close()

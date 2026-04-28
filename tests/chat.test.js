@@ -1003,6 +1003,55 @@ test('chat store sends websocket commands with auth user context', async () => {
   delete globalThis.WebSocket
 })
 
+test('chat store sends presence heartbeat pings while websocket is connected', () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+
+  const timers = []
+  const previousSetInterval = globalThis.setInterval
+  const previousClearInterval = globalThis.clearInterval
+  globalThis.setInterval = (handler, delay) => {
+    const timer = { handler, delay, cleared: false }
+    timers.push(timer)
+    return timer
+  }
+  globalThis.clearInterval = (timer) => {
+    if (timer) {
+      timer.cleared = true
+    }
+  }
+
+  const authStore = useAuthStore()
+  authStore.api = createFakeApi()
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const chatStore = useChatStore()
+  chatStore.connect()
+  FakeWebSocket.instances[0].dispatch('open')
+
+  assert.equal(timers.length, 1)
+  assert.equal(timers[0].delay, 20000)
+  timers[0].handler()
+
+  const sent = JSON.parse(FakeWebSocket.instances[0].sent[0])
+  assert.equal(sent.event, 'ping')
+
+  chatStore.manualDisconnect = true
+  FakeWebSocket.instances[0].dispatch('close')
+  assert.equal(timers[0].cleared, true)
+
+  globalThis.setInterval = previousSetInterval
+  globalThis.clearInterval = previousClearInterval
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
 test('chat store reconciles optimistic text bubble by client message id', async () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()
