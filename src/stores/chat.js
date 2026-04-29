@@ -14,6 +14,7 @@ import {
   normalizeChatUsers,
   pruneExpiredChatTypers,
 } from '../lib/chat.js'
+import { normalizeChatReminders } from '../lib/chat-power-tools.js'
 import {
   buildIncomingChatNotice,
   isChatSoundEnabled,
@@ -32,6 +33,8 @@ const createLoadingState = () => ({
   conversations: false,
   messages: false,
   search: false,
+  favorites: false,
+  reminders: false,
 })
 
 const socketEnvelopeListeners = new Set()
@@ -563,6 +566,8 @@ export const useChatStore = defineStore('chat', {
     soundEnabled: isChatSoundEnabled(),
     toastEnabled: isChatToastEnabled(),
     searchResults: [],
+    favoriteMessages: [],
+    reminders: [],
     lastSearchQuery: '',
     highlightedMessageId: '',
     callConfig: null,
@@ -1023,10 +1028,22 @@ export const useChatStore = defineStore('chat', {
         `/chat/conversations/${conversationId}/messages/${messageId}/favorite`,
       )
       if (response.data?.id) {
-        return replaceMessage(this, conversationId, response.data)
+        const message = replaceMessage(this, conversationId, response.data)
+        this.favoriteMessages = normalizeChatMessages([
+          ...this.favoriteMessages.filter((item) => item.id !== messageId),
+          { ...message, favorite: true },
+        ])
+        return message
       }
       updateMessageLocally(this, conversationId, messageId, { favorite: true })
-      return this.messagesByConversation[conversationId]?.find((message) => message.id === messageId) || null
+      const message = this.messagesByConversation[conversationId]?.find((item) => item.id === messageId) || null
+      if (message) {
+        this.favoriteMessages = normalizeChatMessages([
+          ...this.favoriteMessages.filter((item) => item.id !== messageId),
+          { ...message, favorite: true },
+        ])
+      }
+      return message
     },
 
     async unfavoriteMessage({ conversationId, messageId }) {
@@ -1040,10 +1057,76 @@ export const useChatStore = defineStore('chat', {
         `/chat/conversations/${conversationId}/messages/${messageId}/favorite`,
       )
       if (response.data?.id) {
-        return replaceMessage(this, conversationId, response.data)
+        const message = replaceMessage(this, conversationId, response.data)
+        this.favoriteMessages = this.favoriteMessages.filter((item) => item.id !== messageId)
+        return message
       }
       updateMessageLocally(this, conversationId, messageId, { favorite: false })
+      this.favoriteMessages = this.favoriteMessages.filter((item) => item.id !== messageId)
       return this.messagesByConversation[conversationId]?.find((message) => message.id === messageId) || null
+    },
+
+    async loadFavoriteMessages() {
+      this.loading = { ...this.loading, favorites: true }
+      try {
+        const authStore = useAuthStore()
+        const api = getApi(authStore)
+        const response = await api.get('/chat/favorites')
+        const messages = normalizeChatMessages(response.data?.messages ?? response.data ?? [])
+        this.favoriteMessages = messages.map((message) => ({ ...message, favorite: true }))
+        return this.favoriteMessages
+      } finally {
+        this.loading = { ...this.loading, favorites: false }
+      }
+    },
+
+    async loadReminders() {
+      this.loading = { ...this.loading, reminders: true }
+      try {
+        const authStore = useAuthStore()
+        const api = getApi(authStore)
+        const response = await api.get('/chat/reminders')
+        this.reminders = normalizeChatReminders(response.data?.reminders ?? response.data ?? [])
+        return this.reminders
+      } finally {
+        this.loading = { ...this.loading, reminders: false }
+      }
+    },
+
+    async createReminder({ conversationId, messageId, remindAt }) {
+      if (!conversationId || !messageId || !remindAt) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.post(
+        `/chat/conversations/${conversationId}/messages/${messageId}/reminders`,
+        {
+          remind_at: remindAt,
+        },
+      )
+      const [reminder] = normalizeChatReminders([response.data])
+      if (!reminder) {
+        return null
+      }
+      this.reminders = normalizeChatReminders([
+        ...this.reminders.filter((item) => item.id !== reminder.id),
+        reminder,
+      ])
+      return reminder
+    },
+
+    async deleteReminder(reminderId) {
+      if (!reminderId) {
+        return false
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      await api.delete(`/chat/reminders/${reminderId}`)
+      this.reminders = this.reminders.filter((reminder) => reminder.id !== reminderId)
+      return true
     },
 
     async forwardMessages({ sourceConversationId, targetConversationId, messageIds = [] }) {

@@ -2017,6 +2017,91 @@ test('chat store uses backend favorite and forward payload contracts', async () 
   delete globalThis.localStorage
 })
 
+test('chat store loads favorite messages and manages reminders through backend endpoints', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const fakeApi = createFakeApi()
+  fakeApi.get = (url) => {
+    fakeApi.calls.push(['get', url])
+    if (url === '/chat/favorites') {
+      return Promise.resolve({
+        data: {
+          messages: [
+            {
+              id: 'fav-1',
+              conversation_id: 'chat-1',
+              type: 'text',
+              text: 'важное',
+              sender_email: 'alice@example.com',
+              sender_login: 'alice',
+              favorite: true,
+              created_at: '2026-04-20T10:00:00Z',
+            },
+          ],
+        },
+      })
+    }
+    return Promise.resolve({
+      data: {
+        reminders: [
+          {
+            id: 'rem-1',
+            conversation_id: 'chat-1',
+            message_id: 'msg-1',
+            message_text: 'ответить',
+            remind_at: '2026-04-20T12:00:00Z',
+            created_at: '2026-04-20T10:00:00Z',
+          },
+        ],
+      },
+    })
+  }
+  fakeApi.post = (url, body) => {
+    fakeApi.calls.push(['post', url, body])
+    return Promise.resolve({
+      data: {
+        id: 'rem-2',
+        conversation_id: 'chat-1',
+        message_id: 'msg-2',
+        message_text: 'позже',
+        remind_at: body.remind_at,
+        created_at: '2026-04-20T10:10:00Z',
+      },
+    })
+  }
+
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  await chatStore.loadFavoriteMessages()
+  await chatStore.loadReminders()
+  await chatStore.createReminder({
+    conversationId: 'chat-1',
+    messageId: 'msg-2',
+    remindAt: '2026-04-20T13:00:00.000Z',
+  })
+  await chatStore.deleteReminder('rem-1')
+
+  assert.equal(chatStore.favoriteMessages[0].id, 'fav-1')
+  assert.deepEqual(chatStore.reminders.map((reminder) => reminder.id), ['rem-2'])
+  assert.deepEqual(fakeApi.calls, [
+    ['get', '/chat/favorites'],
+    ['get', '/chat/reminders'],
+    [
+      'post',
+      '/chat/conversations/chat-1/messages/msg-2/reminders',
+      { remind_at: '2026-04-20T13:00:00.000Z' },
+    ],
+    ['delete', '/chat/reminders/rem-1', undefined],
+  ])
+
+  delete globalThis.localStorage
+})
+
 test('chat store deletes group conversation and clears local state', async () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()

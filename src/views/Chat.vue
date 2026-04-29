@@ -185,6 +185,196 @@
                 Последних чатов пока нет. Найди пользователя выше или создай группу.
               </div>
             </div>
+
+            <div class="mt-4 border-t border-slate-100 pt-4">
+              <div class="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h4 class="text-sm font-bold text-slate-950">Центр чата</h4>
+                  <p class="text-xs text-slate-500">Непрочитанные, важное и напоминания</p>
+                </div>
+                <span
+                  v-if="totalUnreadCount"
+                  class="rounded-full bg-sky-600 px-2.5 py-1 text-[11px] font-bold text-white"
+                >
+                  {{ totalUnreadCount }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  class="rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition"
+                  :class="chatCenterMode === 'unread' ? 'border-sky-300 bg-sky-50 text-sky-800' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'"
+                  @click="openChatCenter('unread')"
+                >
+                  Непрочитанные
+                </button>
+                <button
+                  type="button"
+                  class="rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition"
+                  :class="chatCenterMode === 'important' ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'"
+                  @click="openChatCenter('important')"
+                >
+                  Важное
+                </button>
+                <button
+                  type="button"
+                  class="rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition"
+                  :class="chatCenterMode === 'reminders' ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'"
+                  @click="openChatCenter('reminders')"
+                >
+                  Напоминания
+                </button>
+                <button
+                  type="button"
+                  class="rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition"
+                  :class="chatCenterMode === 'search' ? 'border-indigo-300 bg-indigo-50 text-indigo-800' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'"
+                  @click="openChatCenter('search')"
+                >
+                  Поиск
+                </button>
+              </div>
+
+              <div
+                v-if="chatCenterMode"
+                class="mt-3 rounded-3xl border border-slate-200 bg-slate-50 p-3"
+              >
+                <div v-if="chatCenterMode === 'unread'" class="space-y-2">
+                  <button
+                    v-for="conversation in unreadCenterItems"
+                    :key="`unread-${conversation.id}`"
+                    type="button"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left transition hover:border-sky-200 hover:bg-sky-50"
+                    @click="selectUnreadConversation(conversation)"
+                  >
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="truncate text-sm font-semibold text-slate-950">
+                        {{ conversation.title }}
+                      </span>
+                      <span class="rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                        {{ conversation.unreadCount }}
+                      </span>
+                    </div>
+                    <div class="mt-1 truncate text-xs text-slate-500">
+                      {{ conversationPreview(conversation) }}
+                    </div>
+                  </button>
+                  <div
+                    v-if="!unreadCenterItems.length"
+                    class="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-5 text-center text-xs text-slate-500"
+                  >
+                    Всё прочитано.
+                  </div>
+                </div>
+
+                <div v-else-if="chatCenterMode === 'important'" class="space-y-2">
+                  <input
+                    v-model="importantQuery"
+                    type="search"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-amber-300"
+                    placeholder="Фильтр важного"
+                  />
+                  <div
+                    v-if="chatStore.loading.favorites"
+                    class="rounded-2xl border border-slate-200 bg-white px-3 py-4 text-xs text-slate-500"
+                  >
+                    Загружаем важное…
+                  </div>
+                  <button
+                    v-for="message in importantMessages"
+                    :key="`important-${message.conversationId}-${message.id}`"
+                    type="button"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left transition hover:border-amber-200 hover:bg-amber-50"
+                    @click="openFavoriteMessage(message)"
+                  >
+                    <div class="truncate text-xs font-semibold text-amber-700">
+                      ★ {{ conversationTitleById(message.conversationId) }}
+                    </div>
+                    <div class="mt-1 line-clamp-2 text-sm text-slate-700">
+                      {{ messagePreviewText(message) }}
+                    </div>
+                  </button>
+                  <div
+                    v-if="!chatStore.loading.favorites && !importantMessages.length"
+                    class="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-5 text-center text-xs text-slate-500"
+                  >
+                    Важных сообщений пока нет.
+                  </div>
+                </div>
+
+                <div v-else-if="chatCenterMode === 'reminders'" class="space-y-2">
+                  <div
+                    v-if="chatStore.loading.reminders"
+                    class="rounded-2xl border border-slate-200 bg-white px-3 py-4 text-xs text-slate-500"
+                  >
+                    Загружаем напоминания…
+                  </div>
+                  <div
+                    v-for="reminder in reminderItems"
+                    :key="`reminder-${reminder.id}`"
+                    class="rounded-2xl border border-slate-200 bg-white p-3"
+                  >
+                    <button
+                      type="button"
+                      class="block w-full text-left"
+                      @click="openReminderMessage(reminder)"
+                    >
+                      <div class="truncate text-xs font-semibold text-rose-700">
+                        ⏰ {{ formatReminderDate(reminder.remindAt) }}
+                      </div>
+                      <div class="mt-1 text-sm text-slate-700">
+                        {{ reminder.messageText || 'Сообщение' }}
+                      </div>
+                      <div class="mt-1 truncate text-xs text-slate-500">
+                        {{ reminder.conversationTitle || conversationTitleById(reminder.conversationId) }}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      class="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+                      @click="removeReminder(reminder.id)"
+                    >
+                      Убрать
+                    </button>
+                  </div>
+                  <div
+                    v-if="!chatStore.loading.reminders && !reminderItems.length"
+                    class="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-5 text-center text-xs text-slate-500"
+                  >
+                    Напоминаний пока нет.
+                  </div>
+                </div>
+
+                <div v-else-if="chatCenterMode === 'search'" class="space-y-2">
+                  <input
+                    v-model="searchQuery"
+                    type="search"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-indigo-300"
+                    placeholder="Поиск по всем сообщениям"
+                  />
+                  <button
+                    v-for="result in activeSearchResults"
+                    :key="`center-search-${result.conversationId}-${result.messageId}`"
+                    type="button"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left transition hover:border-indigo-200 hover:bg-indigo-50"
+                    @click="openSearchResult(result)"
+                  >
+                    <div class="truncate text-xs font-semibold text-indigo-700">
+                      {{ result.conversationTitle || 'Чат' }}
+                    </div>
+                    <div class="mt-1 text-sm text-slate-700">
+                      {{ searchResultExcerpt(result) }}
+                    </div>
+                  </button>
+                  <div
+                    v-if="searchQuery.trim() && !chatStore.loading.search && !activeSearchResults.length"
+                    class="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-5 text-center text-xs text-slate-500"
+                  >
+                    Ничего не нашли.
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
         </aside>
 
@@ -1015,6 +1205,15 @@
                         >
                           ☺
                         </button>
+                        <button
+                          type="button"
+                          class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-sm transition hover:bg-slate-100"
+                          aria-label="Напомнить"
+                          title="Напомнить"
+                          @click="toggleReminderPicker(message)"
+                        >
+                          ⏰
+                        </button>
                       </div>
                       <div
                         v-if="reactionPickerMessageId === message.id"
@@ -1032,6 +1231,25 @@
                             @click="selectReaction(message, emoji)"
                           >
                             {{ emoji }}
+                          </button>
+                        </div>
+                      </div>
+                      <div
+                        v-if="reminderPickerMessageId === message.id"
+                        class="mt-2.5 rounded-2xl border border-rose-100 bg-white/90 px-3 py-3"
+                      >
+                        <div class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-rose-500">
+                          Напомнить
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                          <button
+                            v-for="option in reminderPresetOptions()"
+                            :key="`${message.id}-reminder-${option.key}`"
+                            type="button"
+                            class="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                            @click="setMessageReminder(message, option)"
+                          >
+                            {{ option.label }}
                           </button>
                         </div>
                       </div>
@@ -1855,6 +2073,12 @@ import {
 import { getChatDraftPreview } from '../lib/chat.js'
 import { renderChatMarkdown } from '../lib/chat-markdown.js'
 import {
+  buildUnreadCenterItems,
+  filterImportantMessages,
+  getChatReminderPresetOptions,
+  getTotalUnreadCount,
+} from '../lib/chat-power-tools.js'
+import {
   buildChatSearchExcerpt,
   buildChatTimelineItems,
   getChatAudioRecorderLabel,
@@ -1950,10 +2174,13 @@ const recordingTimer = ref(null)
 const searchOpen = ref(false)
 const searchQuery = ref('')
 const searchTimer = ref(null)
+const chatCenterMode = ref('')
+const importantQuery = ref('')
 const replyingToMessageId = ref('')
 const editingMessageId = ref('')
 const editingMessageText = ref('')
 const reactionPickerMessageId = ref('')
+const reminderPickerMessageId = ref('')
 const aliceAnnouncementPendingMessageId = ref('')
 const aliceAnnouncementErrorMessageId = ref('')
 const isMobileLayout = ref(false)
@@ -1987,6 +2214,8 @@ let pendingInitialUnreadScrollConversationId = ''
 let preferBottomForPendingInitialScroll = false
 let programmaticUnreadScrollGuardTimer = null
 let programmaticUnreadScrollActive = false
+let reminderDueTimer = null
+const notifiedReminderIds = new Set()
 
 const chatAudioMaxSeconds = Math.max(1, Number(import.meta.env.VITE_CHAT_AUDIO_MAX_SECONDS || 60))
 const composerEmojis = [
@@ -2144,6 +2373,12 @@ const activeConversationTitle = computed(() => activeConversation.value?.title |
 const activePinnedMessage = computed(() => activeConversation.value?.pinnedMessage || null)
 const audioRecorderLabel = computed(() => getChatAudioRecorderLabel(isRecordingAudio.value))
 const activeSearchResults = computed(() => chatStore.searchResults)
+const unreadCenterItems = computed(() => buildUnreadCenterItems(chatStore.conversations))
+const totalUnreadCount = computed(() => getTotalUnreadCount(chatStore.conversations))
+const importantMessages = computed(() =>
+  filterImportantMessages(chatStore.favoriteMessages, importantQuery.value),
+)
+const reminderItems = computed(() => chatStore.reminders)
 const activePresenceText = computed(() =>
   activeConversation.value ? getChatPresenceText(activeConversation.value) : '',
 )
@@ -2309,6 +2544,70 @@ const openSettings = () => {
   router.push('/settings')
 }
 
+const openChatCenter = async (mode) => {
+  chatCenterMode.value = chatCenterMode.value === mode ? '' : mode
+  if (!chatCenterMode.value) {
+    return
+  }
+
+  try {
+    if (mode === 'important') {
+      await chatStore.loadFavoriteMessages()
+    } else if (mode === 'reminders') {
+      await chatStore.loadReminders()
+    } else if (mode === 'search' && searchQuery.value.trim()) {
+      await chatStore.searchMessages(searchQuery.value)
+    }
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось загрузить центр чата')
+  }
+}
+
+const selectUnreadConversation = async (conversation) => {
+  if (!conversation?.id) {
+    return
+  }
+
+  try {
+    await chatStore.setActiveConversation(conversation.id)
+    openConversationScreen()
+    await nextTick()
+    if (activeFirstUnreadMessageId.value) {
+      await scrollToMessage(activeFirstUnreadMessageId.value, { behavior: 'auto' })
+    }
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось открыть непрочитанный чат')
+  }
+}
+
+const openStoredMessage = async ({ conversationId, messageId }) => {
+  if (!conversationId || !messageId) {
+    return
+  }
+
+  try {
+    await chatStore.setActiveConversation(conversationId)
+    openConversationScreen()
+    await scrollToMessage(messageId)
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось перейти к сообщению')
+  }
+}
+
+const openFavoriteMessage = (message) =>
+  openStoredMessage({ conversationId: message?.conversationId, messageId: message?.id })
+
+const openReminderMessage = (reminder) =>
+  openStoredMessage({ conversationId: reminder?.conversationId, messageId: reminder?.messageId })
+
+const removeReminder = async (reminderId) => {
+  try {
+    await chatStore.deleteReminder(reminderId)
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось убрать напоминание')
+  }
+}
+
 const openCallFocus = (email = '') => {
   if (!displayedCall.value?.joinable || !displayedCallMediaTiles.value.length) {
     return
@@ -2381,6 +2680,57 @@ const conversationPreview = (conversation) => {
 }
 
 const conversationPresence = (conversation) => getChatPresenceText(conversation)
+
+const conversationTitleById = (conversationId) =>
+  chatStore.conversations.find((conversation) => conversation.id === conversationId)?.title || 'Чат'
+
+const messagePreviewText = (message = {}) => {
+  if (message.type === 'audio') {
+    return 'Голосовое сообщение'
+  }
+  if (message.type === 'image') {
+    return 'Изображение'
+  }
+  if (message.type === 'call') {
+    return 'Звонок'
+  }
+  return String(message.text || message.messageText || '').trim() || 'Сообщение'
+}
+
+const formatReminderDate = (value) => {
+  if (!value) {
+    return 'без времени'
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return String(value)
+  }
+
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+const checkDueReminders = () => {
+  const now = Date.now()
+  for (const reminder of chatStore.reminders) {
+    if (!reminder?.id || notifiedReminderIds.has(reminder.id)) {
+      continue
+    }
+    const dueAt = new Date(reminder.remindAt).getTime()
+    if (!Number.isFinite(dueAt) || dueAt > now) {
+      continue
+    }
+    notifiedReminderIds.add(reminder.id)
+    notifications.info(`Напоминание: ${reminder.messageText || 'сообщение в чате'}`, {
+      duration: 8000,
+    })
+  }
+}
 
 const messageSenderLabel = (message) =>
   getChatMessageSenderLabel(message, {
@@ -2730,6 +3080,36 @@ const toggleReactionPicker = (message) => {
 
   reactionPickerMessageId.value =
     reactionPickerMessageId.value === message.id ? '' : message.id
+  reminderPickerMessageId.value = ''
+}
+
+const reminderPresetOptions = () => getChatReminderPresetOptions(new Date())
+
+const toggleReminderPicker = (message) => {
+  if (!message?.id) {
+    return
+  }
+
+  reminderPickerMessageId.value = reminderPickerMessageId.value === message.id ? '' : message.id
+  reactionPickerMessageId.value = ''
+}
+
+const setMessageReminder = async (message, option) => {
+  if (!activeConversation.value || !message?.id || !option?.remindAt) {
+    return
+  }
+
+  try {
+    await chatStore.createReminder({
+      conversationId: activeConversation.value.id,
+      messageId: message.id,
+      remindAt: option.remindAt,
+    })
+    reminderPickerMessageId.value = ''
+    notifications.success(`Напомню: ${option.label}`)
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось поставить напоминание')
+  }
 }
 
 const selectReaction = async (message, emoji) => {
@@ -4221,6 +4601,8 @@ onMounted(async () => {
   }
   try {
     await chatStore.loadInitialState()
+    chatStore.loadReminders().then(checkDueReminders).catch(() => {})
+    reminderDueTimer = setInterval(checkDueReminders, 30000)
     if (!isMobileLayout.value && !chatStore.activeConversationId && chatStore.conversations[0]) {
       await selectConversation(chatStore.conversations[0].id)
     } else if (chatStore.activeConversationId) {
@@ -4249,7 +4631,7 @@ watch(searchQuery, (value) => {
     searchTimer.value = null
   }
 
-  if (!searchOpen.value) {
+  if (!searchOpen.value && chatCenterMode.value !== 'search') {
     return
   }
 
@@ -4280,6 +4662,7 @@ watch(
     clearReplyState()
     clearSelectedMessages()
     reactionPickerMessageId.value = ''
+    reminderPickerMessageId.value = ''
     void applyComposerDraft(conversationId)
     if (isMobileLayout.value && !chatStore.activeConversationId) {
       mobileView.value = 'list'
@@ -4468,6 +4851,10 @@ onUnmounted(() => {
   if (searchTimer.value) {
     clearTimeout(searchTimer.value)
     searchTimer.value = null
+  }
+  if (reminderDueTimer) {
+    clearInterval(reminderDueTimer)
+    reminderDueTimer = null
   }
   if (highlightTimerId) {
     clearTimeout(highlightTimerId)
