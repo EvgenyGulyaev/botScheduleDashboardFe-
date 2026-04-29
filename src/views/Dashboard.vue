@@ -101,7 +101,20 @@
               <p class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
                 {{ botStatus }}
               </p>
-              <p class="text-xs sm:text-sm text-gray-500">Статус сервиса</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <span
+                  class="inline-flex rounded-full border px-3 py-1 text-xs font-bold"
+                  :class="healthBadge.classes"
+                >
+                  {{ healthBadge.label }}
+                </span>
+                <span class="text-xs sm:text-sm text-gray-500">
+                  {{ selectedStatus.subState || 'substate unknown' }}
+                </span>
+              </div>
+              <p v-if="selectedStatus.description" class="text-sm text-slate-500">
+                {{ selectedStatus.description }}
+              </p>
             </div>
             <div
               :class="statusClass"
@@ -167,6 +180,100 @@
                 </div>
               </div>
             </div>
+
+            <!-- UPTIME -->
+            <div
+              class="flex items-center p-4 bg-gradient-to-r from-sky-50 to-sky-100 rounded-xl shadow-sm border"
+            >
+              <div
+                class="flex-shrink-0 w-10 h-10 rounded-xl bg-sky-500 flex items-center justify-center text-white text-sm font-bold"
+              >
+                UP
+              </div>
+              <div class="ml-4 min-w-0 flex-1">
+                <div class="text-xs uppercase tracking-wide text-sky-700 font-medium">Uptime</div>
+                <div class="text-lg sm:text-xl font-bold text-sky-900 mt-1 truncate">
+                  {{ stats.uptime || '—' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- RESTARTS -->
+            <div
+              class="flex items-center p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl shadow-sm border"
+            >
+              <div
+                class="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white text-sm font-bold"
+              >
+                RST
+              </div>
+              <div class="ml-4 min-w-0 flex-1">
+                <div class="text-xs uppercase tracking-wide text-amber-700 font-medium">
+                  Restarts
+                </div>
+                <div class="text-lg sm:text-xl font-bold text-amber-900 mt-1 truncate">
+                  {{ stats.restarts || '0' }}
+                </div>
+              </div>
+            </div>
+
+            <!-- TASKS -->
+            <div
+              class="flex items-center p-4 bg-gradient-to-r from-violet-50 to-violet-100 rounded-xl shadow-sm border"
+            >
+              <div
+                class="flex-shrink-0 w-10 h-10 rounded-xl bg-violet-500 flex items-center justify-center text-white text-sm font-bold"
+              >
+                TSK
+              </div>
+              <div class="ml-4 min-w-0 flex-1">
+                <div class="text-xs uppercase tracking-wide text-violet-700 font-medium">Tasks</div>
+                <div class="text-lg sm:text-xl font-bold text-violet-900 mt-1 truncate">
+                  {{ stats.tasks || '—' }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="hasLoadedStatus" class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Детали systemd
+              </div>
+              <dl class="mt-3 space-y-2 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-500">Loaded</dt>
+                  <dd class="font-semibold text-slate-900">{{ selectedStatus.loaded || '—' }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-500">Active since</dt>
+                  <dd class="text-right font-semibold text-slate-900">
+                    {{ stats.activeSince || '—' }}
+                  </dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-500">Unit file</dt>
+                  <dd class="truncate text-right font-semibold text-slate-900">
+                    {{ stats.fragmentPath || '—' }}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="rounded-2xl border border-slate-900 bg-slate-950 p-4 text-slate-100">
+              <div class="mb-3 flex items-center justify-between gap-3">
+                <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Последние логи
+                </div>
+                <div class="text-xs text-slate-500">{{ selectedStatus.logs.length }} строк</div>
+              </div>
+              <div v-if="selectedStatus.logs.length" class="max-h-52 space-y-1 overflow-y-auto font-mono text-xs leading-relaxed">
+                <div v-for="line in selectedStatus.logs" :key="line" class="break-words">
+                  {{ line }}
+                </div>
+              </div>
+              <div v-else class="text-sm text-slate-400">Логи пока не подтянулись.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -209,7 +316,7 @@
             class="group p-5 sm:p-6 rounded-2xl hover:shadow-2xl cursor-pointer transition-all border-2 hover:border-blue-300 hover:bg-blue-50 border-gray-200 bg-gradient-to-br from-white/80 to-gray-50"
           >
             <div class="flex items-start justify-between mb-3">
-              <div class="text-3xl sm:text-4xl">{{ serviceStatus[service]?.icon || '🟡' }}</div>
+              <div class="text-3xl sm:text-4xl">{{ serviceTile(service).icon }}</div>
               <div
                 class="w-6 h-6 rounded-full bg-gray-200 group-hover:bg-blue-200 flex items-center justify-center transition-colors"
               >
@@ -232,7 +339,16 @@
               {{ service }}
             </div>
             <div class="text-xs sm:text-sm text-gray-500 leading-tight">
-              {{ serviceStatus[service]?.status || 'unknown' }}
+              {{ serviceTile(service).status }}
+            </div>
+            <div class="mt-3 flex flex-wrap gap-1">
+              <span
+                v-for="item in serviceTile(service).meta"
+                :key="item"
+                class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600"
+              >
+                {{ item }}
+              </span>
             </div>
           </div>
         </div>
@@ -244,6 +360,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
+import {
+  getServiceHealthBadge,
+  normalizeServiceStatus,
+  summarizeServiceTile,
+} from '../lib/dashboard-service-status.js'
 import { formatLastUpdatedLabel } from '../lib/view-feedback.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useNotificationsStore } from '../stores/notifications.js'
@@ -252,7 +373,7 @@ import { isUnauthorizedError } from '../lib/auth-session.js'
 const authStore = useAuthStore()
 const notifications = useNotificationsStore()
 const selectedService = ref('bot')
-const botStatus = ref('unknown')
+const selectedStatus = ref(normalizeServiceStatus({ service: selectedService.value }))
 const loading = ref(false)
 const loadingAll = ref(false)
 const serviceStatus = ref({})
@@ -261,13 +382,6 @@ const allServicesError = ref('')
 const lastUpdatedAt = ref(null)
 const hasLoadedStatus = ref(false)
 const hasLoadedServices = ref(false)
-
-// Статистика
-const stats = ref({
-  pid: '',
-  cpu: '',
-  memory: '',
-})
 
 const services = [
   'bot',
@@ -279,34 +393,39 @@ const services = [
   'alice-speaker-service',
 ]
 const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdatedAt.value))
+const botStatus = computed(() => selectedStatus.value.status)
+const stats = computed(() => selectedStatus.value.stats)
+const healthBadge = computed(() => getServiceHealthBadge(selectedStatus.value.health?.level))
 
 // Статусы
 const statusClass = computed(() =>
-  botStatus.value === 'active'
+  selectedStatus.value.health?.level === 'ok'
     ? 'bg-green-100 border-green-400'
-    : botStatus.value === 'error'
+    : selectedStatus.value.health?.level === 'error'
       ? 'bg-red-100 border-red-400'
       : 'bg-yellow-100 border-yellow-400',
 )
 
 const statusBorderClass = computed(() =>
-  botStatus.value === 'active'
+  selectedStatus.value.health?.level === 'ok'
     ? 'border-green-500'
-    : botStatus.value === 'error'
+    : selectedStatus.value.health?.level === 'error'
       ? 'border-red-500'
       : 'border-yellow-500',
 )
 
-const statusIcon = computed(() =>
-  botStatus.value === 'active' ? '🟢' : botStatus.value === 'error' ? '🔴' : '🟡',
-)
+const statusIcon = computed(() => healthBadge.value.icon)
+
+const serviceTile = (service) =>
+  summarizeServiceTile(serviceStatus.value[service] || normalizeServiceStatus({ service }))
 
 const loadStatus = async () => {
   loading.value = true
   try {
     const res = await authStore.api.get(`/bot/status?service=${selectedService.value}`)
-    botStatus.value = res.data.status || 'unknown'
-    stats.value = res.data.Stats || stats.value
+    const normalized = normalizeServiceStatus(res.data)
+    selectedStatus.value = normalized
+    serviceStatus.value[selectedService.value] = normalized
     statusError.value = ''
     lastUpdatedAt.value = new Date()
     hasLoadedStatus.value = true
@@ -315,7 +434,11 @@ const loadStatus = async () => {
     if (isUnauthorizedError(error)) {
       return
     }
-    botStatus.value = 'error'
+    selectedStatus.value = normalizeServiceStatus({
+      service: selectedService.value,
+      status: 'error',
+      health: { level: 'error', message: 'Не получилось получить данные по выбранному сервису.' },
+    })
     statusError.value =
       error.response?.data?.message || 'Не получилось получить данные по выбранному сервису.'
   } finally {
@@ -331,15 +454,16 @@ const loadAllServices = async () => {
       services.map(async (service) => {
         try {
           const res = await authStore.api.get(`/bot/status?service=${service}`)
-          serviceStatus.value[service] = {
-            status: res.data.status || 'unknown',
-            icon: res.data.status === 'active' ? '🟢' : res.data.status === 'error' ? '🔴' : '🟡',
-          }
+          serviceStatus.value[service] = normalizeServiceStatus(res.data)
         } catch (error) {
           if (isUnauthorizedError(error)) {
             return
           }
-          serviceStatus.value[service] = { status: 'error', icon: '🔴' }
+          serviceStatus.value[service] = normalizeServiceStatus({
+            service,
+            status: 'error',
+            health: { level: 'error' },
+          })
           allServicesError.value =
             'Часть сервисов не ответила. Можно повторить обновление через кнопку выше.'
         }
