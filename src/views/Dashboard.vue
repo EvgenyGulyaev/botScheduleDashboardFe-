@@ -41,6 +41,12 @@
           title="Список сервисов обновился не полностью"
           :message="allServicesError"
         />
+        <InlineNotice
+          v-if="systemError"
+          tone="error"
+          title="Системная информация не обновилась"
+          :message="systemError"
+        />
       </div>
 
       <!-- Выбор сервиса + быстрые действия -->
@@ -73,6 +79,88 @@
           >
             {{ loading ? '🔄 Перезапуск...' : '🔄 Перезапустить' }}
           </button>
+        </div>
+      </div>
+
+      <!-- Сервер -->
+      <div class="mb-8 rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-xl sm:p-6">
+        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Сервер
+            </p>
+            <h3 class="mt-1 text-2xl font-bold">
+              {{ systemInfo.hostname || 'server' }}
+            </h3>
+            <p class="mt-1 text-sm text-slate-400">
+              {{ systemInfo.os }}/{{ systemInfo.arch }} · uptime {{ systemInfo.uptime.human || '—' }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="systemLoading"
+            @click="loadSystemInfo"
+          >
+            {{ systemLoading ? 'Обновляем...' : 'Обновить сервер' }}
+          </button>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-4">
+          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-400">CPU</div>
+            <div class="mt-2 text-2xl font-bold">{{ systemInfo.cpu.cores || '—' }} cores</div>
+            <div class="mt-1 text-sm text-slate-300">
+              load {{ systemInfo.cpu.load.one.toFixed(2) }} / {{ systemInfo.cpu.load.five.toFixed(2) }} /
+              {{ systemInfo.cpu.load.fifteen.toFixed(2) }}
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xs uppercase tracking-wide text-slate-400">RAM</div>
+              <span class="rounded-full px-2 py-1 text-xs font-bold" :class="usageBadgeClass(systemInfo.memory.usedPercent)">
+                {{ systemInfo.memory.usedPercent.toFixed(0) }}%
+              </span>
+            </div>
+            <div class="mt-2 text-2xl font-bold">{{ systemInfo.memory.used || '—' }}</div>
+            <div class="mt-1 text-sm text-slate-300">
+              из {{ systemInfo.memory.total || '—' }}, свободно {{ systemInfo.memory.available || '—' }}
+            </div>
+            <div class="mt-3 h-2 rounded-full bg-white/10">
+              <div
+                class="h-2 rounded-full bg-emerald-400"
+                :style="{ width: `${boundedPercent(systemInfo.memory.usedPercent)}%` }"
+              ></div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xs uppercase tracking-wide text-slate-400">Диск {{ systemInfo.disk.path }}</div>
+              <span class="rounded-full px-2 py-1 text-xs font-bold" :class="usageBadgeClass(systemInfo.disk.usedPercent)">
+                {{ systemInfo.disk.usedPercent.toFixed(0) }}%
+              </span>
+            </div>
+            <div class="mt-2 text-2xl font-bold">{{ systemInfo.disk.used || '—' }}</div>
+            <div class="mt-1 text-sm text-slate-300">
+              из {{ systemInfo.disk.total || '—' }}, свободно {{ systemInfo.disk.free || '—' }}
+            </div>
+            <div class="mt-3 h-2 rounded-full bg-white/10">
+              <div
+                class="h-2 rounded-full bg-sky-400"
+                :style="{ width: `${boundedPercent(systemInfo.disk.usedPercent)}%` }"
+              ></div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-400">Swap</div>
+            <div class="mt-2 text-2xl font-bold">{{ systemInfo.memory.swapUsed || '—' }}</div>
+            <div class="mt-1 text-sm text-slate-300">
+              Полезно, если RAM внезапно заканчивается.
+            </div>
+          </div>
         </div>
       </div>
 
@@ -365,6 +453,11 @@ import {
   normalizeServiceStatus,
   summarizeServiceTile,
 } from '../lib/dashboard-service-status.js'
+import {
+  emptySystemInfo,
+  normalizeSystemInfo,
+  systemUsageTone,
+} from '../lib/dashboard-system-info.js'
 import { formatLastUpdatedLabel } from '../lib/view-feedback.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useNotificationsStore } from '../stores/notifications.js'
@@ -377,8 +470,11 @@ const selectedStatus = ref(normalizeServiceStatus({ service: selectedService.val
 const loading = ref(false)
 const loadingAll = ref(false)
 const serviceStatus = ref({})
+const systemInfo = ref(emptySystemInfo())
+const systemLoading = ref(false)
 const statusError = ref('')
 const allServicesError = ref('')
+const systemError = ref('')
 const lastUpdatedAt = ref(null)
 const hasLoadedStatus = ref(false)
 const hasLoadedServices = ref(false)
@@ -418,6 +514,36 @@ const statusIcon = computed(() => healthBadge.value.icon)
 
 const serviceTile = (service) =>
   summarizeServiceTile(serviceStatus.value[service] || normalizeServiceStatus({ service }))
+
+const boundedPercent = (value = 0) => Math.max(0, Math.min(100, Number(value) || 0))
+
+const usageBadgeClass = (percent = 0) => {
+  const tone = systemUsageTone(percent)
+  if (tone === 'danger') {
+    return 'bg-rose-400/20 text-rose-100'
+  }
+  if (tone === 'warning') {
+    return 'bg-amber-400/20 text-amber-100'
+  }
+  return 'bg-emerald-400/20 text-emerald-100'
+}
+
+const loadSystemInfo = async () => {
+  systemLoading.value = true
+  try {
+    const res = await authStore.api.get('/server/status')
+    systemInfo.value = normalizeSystemInfo(res.data)
+    systemError.value = ''
+  } catch (error) {
+    if (isUnauthorizedError(error)) {
+      return
+    }
+    systemError.value =
+      error.response?.data?.message || 'Не получилось получить системную информацию сервера.'
+  } finally {
+    systemLoading.value = false
+  }
+}
 
 const loadStatus = async () => {
   loading.value = true
@@ -492,6 +618,7 @@ const restartBot = async () => {
 }
 
 onMounted(async () => {
+  await loadSystemInfo()
   await loadStatus()
   await loadAllServices()
 })
