@@ -36,6 +36,6 @@ test('shows admin dashboard dropdown only for super admins', () => {
   assert.deepEqual(getAdminMenuItems(false), [])
   assert.deepEqual(
     getAdminMenuItems(true).map((item) => item.to),
-    ['/dashboard', '/admin/users'],
+    ['/dashboard', '/admin/users', '/admin/audit'],
   )
 })

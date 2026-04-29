@@ -9,6 +9,7 @@ import {
   writeStoredAuth,
 } from '../lib/auth-storage.js'
 import { buildAliceAnnouncementPayload, normalizeAliceAccountResources } from '../lib/alice.js'
+import { normalizeAuditEntries } from '../lib/admin-audit.js'
 import { resolveDefaultAppRoute } from '../lib/default-app.js'
 import { isUnauthorizedError, redirectToLogin } from '../lib/auth-session.js'
 
@@ -251,6 +252,12 @@ export const useAuthStore = defineStore('auth', {
     async deleteAdminUser(email = '') {
       const api = this.api
       return api.delete(`/admin/users/${encodeURIComponent(email)}`)
+    },
+
+    async fetchAdminAudit() {
+      const api = this.api
+      const response = await api.get('/admin/audit')
+      return normalizeAuditEntries(response.data?.items)
     },
 
     async deletePushSubscription(endpoint = '') {

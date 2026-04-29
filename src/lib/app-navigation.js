@@ -47,6 +47,11 @@ const ADMIN_MENU_ITEMS = [
     label: 'Пользователи',
     icon: '👥',
   },
+  {
+    to: '/admin/audit',
+    label: 'Аудит',
+    icon: '🧾',
+  },
 ]
 
 const normalizeMenuOptions = (options = false) => {
