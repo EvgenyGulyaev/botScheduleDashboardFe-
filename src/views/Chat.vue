@@ -585,6 +585,20 @@
                     </button>
                     <button
                       type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-rose-100 bg-white text-base text-rose-600 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="
+                        !activeConversation ||
+                        !activeMessages.length ||
+                        clearingConversationMessages
+                      "
+                      title="Удалить все сообщения"
+                      aria-label="Удалить все сообщения"
+                      @click="clearActiveConversationMessages"
+                    >
+                      🧹
+                    </button>
+                    <button
+                      type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
                       :title="searchOpen ? 'Закрыть поиск' : 'Поиск по всем чатам'"
                       aria-label="Поиск по чатам"
@@ -644,6 +658,20 @@
                       @click="jumpToPinnedMessage"
                     >
                       📌
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-100 bg-white text-lg text-rose-600 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="
+                        !activeConversation ||
+                        !activeMessages.length ||
+                        clearingConversationMessages
+                      "
+                      title="Удалить все сообщения"
+                      aria-label="Удалить все сообщения"
+                      @click="clearActiveConversationMessages"
+                    >
+                      🧹
                     </button>
                     <button
                       type="button"
@@ -2426,6 +2454,7 @@ const groupSettingsForm = ref({
   memberEmails: [],
 })
 const selectedMessageIds = ref([])
+const clearingConversationMessages = ref(false)
 const messageElements = new Map()
 const remoteMediaElements = new Map()
 const peerConnections = new Map()
@@ -3456,6 +3485,38 @@ const clearActivePin = async () => {
     await chatStore.clearPin(activeConversation.value.id)
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось снять закреп')
+  }
+}
+
+const clearActiveConversationMessages = async () => {
+  if (
+    !activeConversation.value ||
+    !activeMessages.value.length ||
+    clearingConversationMessages.value
+  ) {
+    return
+  }
+
+  const confirmed =
+    typeof window === 'undefined' ||
+    window.confirm(
+      `Удалить все сообщения в чате «${activeConversationTitle.value}»? Это действие нельзя отменить.`,
+    )
+  if (!confirmed) {
+    return
+  }
+
+  clearingConversationMessages.value = true
+  try {
+    await chatStore.clearConversationMessages(activeConversation.value.id)
+    clearSelectedMessages()
+    clearReplyState()
+    cancelEditing()
+    notifications.success('Сообщения в чате удалены')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось очистить чат')
+  } finally {
+    clearingConversationMessages.value = false
   }
 }
 

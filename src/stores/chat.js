@@ -547,6 +547,25 @@ const removeMessageLocally = (state, conversationId, messageId) => {
   return true
 }
 
+const clearConversationMessagesLocally = (state, conversationId) => {
+  state.messagesByConversation[conversationId] = []
+  state.lastReadMessageIdByConversation[conversationId] = ''
+
+  const conversation = state.conversations.find((item) => item.id === conversationId)
+  if (!conversation) {
+    return true
+  }
+
+  conversation.lastMessageId = ''
+  conversation.lastMessageText = ''
+  conversation.lastMessageAt = ''
+  conversation.lastMessage = null
+  conversation.pinnedMessageId = ''
+  conversation.pinnedMessage = null
+  conversation.unreadCount = 0
+  return true
+}
+
 const markOptimisticTextMessageFailed = (
   state,
   conversationId,
@@ -1611,6 +1630,21 @@ export const useChatStore = defineStore('chat', {
       const api = getApi(authStore)
       await api.delete(`/chat/conversations/${conversationId}/messages/${messageId}`)
       return removeMessageLocally(this, conversationId, messageId)
+    },
+
+    async clearConversationMessages(conversationId) {
+      if (!conversationId) {
+        return []
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const response = await api.delete(`/chat/conversations/${conversationId}/messages`)
+      const deletedIds = Array.isArray(response.data?.deleted_message_ids)
+        ? response.data.deleted_message_ids
+        : response.data?.deletedMessageIds || []
+      clearConversationMessagesLocally(this, conversationId)
+      return deletedIds
     },
 
     async setReaction({ conversationId, messageId, emoji }) {

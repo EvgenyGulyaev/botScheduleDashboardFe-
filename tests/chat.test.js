@@ -2132,6 +2132,56 @@ test('chat store uses backend favorite and forward payload contracts', async () 
   delete globalThis.localStorage
 })
 
+test('chat store clears all messages in an active conversation', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const calls = []
+  const authStore = useAuthStore()
+  authStore.api = {
+    delete(url) {
+      calls.push(['delete', url])
+      return Promise.resolve({
+        data: {
+          deleted_message_ids: ['msg-1', 'msg-2'],
+        },
+      })
+    },
+  }
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const chatStore = useChatStore()
+  chatStore.conversations = [
+    {
+      id: 'group-1',
+      title: 'Team',
+      lastMessageId: 'msg-2',
+      lastMessageText: 'two',
+      pinnedMessageId: 'msg-1',
+      pinnedMessage: { id: 'msg-1', text: 'one' },
+      unreadCount: 2,
+    },
+  ]
+  chatStore.activeConversationId = 'group-1'
+  chatStore.messagesByConversation = {
+    'group-1': [
+      normalizeChatMessage({ id: 'msg-1', conversation_id: 'group-1', text: 'one' }),
+      normalizeChatMessage({ id: 'msg-2', conversation_id: 'group-1', text: 'two' }),
+    ],
+  }
+
+  const deletedIds = await chatStore.clearConversationMessages('group-1')
+
+  assert.deepEqual(deletedIds, ['msg-1', 'msg-2'])
+  assert.deepEqual(calls, [['delete', '/chat/conversations/group-1/messages']])
+  assert.deepEqual(chatStore.messagesByConversation['group-1'], [])
+  assert.equal(chatStore.conversations[0].lastMessageId, '')
+  assert.equal(chatStore.conversations[0].pinnedMessageId, '')
+  assert.equal(chatStore.conversations[0].unreadCount, 0)
+
+  delete globalThis.localStorage
+})
+
 test('chat store loads favorite messages and manages reminders through backend endpoints', async () => {
   setActivePinia(createPinia())
   globalThis.localStorage = createStorageMock()
