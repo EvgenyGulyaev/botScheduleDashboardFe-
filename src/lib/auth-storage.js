@@ -9,6 +9,11 @@ export const normalizeAuthUser = (payload = {}) => {
     : Array.isArray(payload?.appPermissions)
       ? payload.appPermissions
       : []
+  const visibilityGroups = Array.isArray(payload?.visibility_groups)
+    ? payload.visibility_groups
+    : Array.isArray(payload?.visibilityGroups)
+      ? payload.visibilityGroups
+      : ['general']
   const aliceVoice =
     alice?.voice ??
     alice?.voice_id ??
@@ -51,6 +56,7 @@ export const normalizeAuthUser = (payload = {}) => {
     isSuperAdmin: Boolean(payload?.is_super_admin ?? payload?.isSuperAdmin),
     defaultApp: resolveDefaultAppValue(payload?.default_app ?? payload?.defaultApp ?? 'chat'),
     appPermissions,
+    visibilityGroups,
     notificationSettings: {
       pushEnabled: Boolean(
         notificationSettings?.push_enabled ?? notificationSettings?.pushEnabled ?? false,

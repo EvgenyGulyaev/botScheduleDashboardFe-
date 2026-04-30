@@ -1,5 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 px-4 py-6 sm:px-6 lg:px-8">
+  <div
+    class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 px-4 py-6 sm:px-6 lg:px-8"
+  >
     <div class="mx-auto max-w-7xl">
       <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -24,12 +26,15 @@
         </div>
         <div v-else class="overflow-x-auto">
           <table class="min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <thead
+              class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+            >
               <tr>
                 <th class="px-4 py-3">Логин</th>
                 <th class="px-4 py-3">Email</th>
                 <th class="px-4 py-3">Роли</th>
                 <th class="px-4 py-3">Права</th>
+                <th class="px-4 py-3">Группы</th>
                 <th class="px-4 py-3">Старт</th>
                 <th class="px-4 py-3 text-right">Действия</th>
               </tr>
@@ -40,19 +45,31 @@
                 <td class="px-4 py-4 text-slate-600">{{ user.email }}</td>
                 <td class="px-4 py-4">
                   <div class="flex flex-wrap gap-1">
-                    <span v-if="user.isSuperAdmin" class="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">
+                    <span
+                      v-if="user.isSuperAdmin"
+                      class="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800"
+                    >
                       super admin
                     </span>
-                    <span v-if="user.isAdmin" class="rounded-full bg-sky-100 px-2 py-1 text-xs font-bold text-sky-800">
+                    <span
+                      v-if="user.isAdmin"
+                      class="rounded-full bg-sky-100 px-2 py-1 text-xs font-bold text-sky-800"
+                    >
                       admin
                     </span>
-                    <span v-if="!user.isAdmin && !user.isSuperAdmin" class="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                    <span
+                      v-if="!user.isAdmin && !user.isSuperAdmin"
+                      class="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600"
+                    >
                       user
                     </span>
                   </div>
                 </td>
                 <td class="px-4 py-4 text-slate-600">
                   {{ permissionLabels(user.appPermissions).join(', ') || 'Нет доступа' }}
+                </td>
+                <td class="px-4 py-4 text-slate-600">
+                  {{ visibilityGroupLabels(user.visibilityGroups).join(', ') }}
                 </td>
                 <td class="px-4 py-4 text-slate-600">{{ labelForApp(user.defaultApp) }}</td>
                 <td class="px-4 py-4">
@@ -81,7 +98,10 @@
       </section>
     </div>
 
-    <div v-if="editing" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6">
+    <div
+      v-if="editing"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-6"
+    >
       <form
         class="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6"
         @submit.prevent="saveUser"
@@ -106,11 +126,15 @@
 
         <div class="grid gap-4 sm:grid-cols-2">
           <label class="block">
-            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Логин</span>
+            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+              >Логин</span
+            >
             <input v-model="form.login" class="field" required />
           </label>
           <label class="block">
-            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Email</span>
+            <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+              >Email</span
+            >
             <input v-model="form.email" type="email" class="field" required />
           </label>
           <label class="block sm:col-span-2">
@@ -128,18 +152,24 @@
         </div>
 
         <div class="mt-5 grid gap-3 sm:grid-cols-2">
-          <label class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <label
+            class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+          >
             <span class="text-sm font-semibold text-slate-950">Admin</span>
             <input v-model="form.isAdmin" type="checkbox" class="h-5 w-5" />
           </label>
-          <label class="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <label
+            class="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+          >
             <span class="text-sm font-semibold text-amber-950">Super admin</span>
             <input v-model="form.isSuperAdmin" type="checkbox" class="h-5 w-5" />
           </label>
         </div>
 
         <div class="mt-5">
-          <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Права приложений</div>
+          <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Права приложений
+          </div>
           <div class="grid gap-2 sm:grid-cols-2">
             <label
               v-for="option in availablePermissionOptions"
@@ -158,9 +188,29 @@
         </div>
 
         <label class="mt-5 block">
-          <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Стартовая страница</span>
+          <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Группы видимости
+          </span>
+          <input
+            v-model="visibilityGroupsInput"
+            class="field"
+            placeholder="general, family, work"
+          />
+          <span class="mt-1 block text-xs text-slate-500">
+            Пользователь видит людей из общих групп. Новую группу можно создать прямо здесь.
+          </span>
+        </label>
+
+        <label class="mt-5 block">
+          <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+            >Стартовая страница</span
+          >
           <select v-model="form.defaultApp" class="field">
-            <option v-for="option in defaultOptionsForForm" :key="option.value" :value="option.value">
+            <option
+              v-for="option in defaultOptionsForForm"
+              :key="option.value"
+              :value="option.value"
+            >
               {{ option.label }}
             </option>
           </select>
@@ -203,6 +253,7 @@ const editing = ref(false)
 const editingMode = ref('create')
 const originalEmail = ref('')
 const form = ref(createEmptyForm())
+const visibilityGroupsInput = ref('general')
 
 const permissionOptions = DEFAULT_APP_OPTIONS.map((option) => ({
   value: option.value,
@@ -213,9 +264,6 @@ const availablePermissionOptions = computed(() =>
   permissionOptions.filter((option) => {
     if (option.value === 'dashboard') {
       return form.value.isSuperAdmin
-    }
-    if (option.value === 'alice') {
-      return form.value.isAdmin || form.value.isSuperAdmin
     }
     return true
   }),
@@ -231,7 +279,9 @@ watch(
   () => [form.value.isAdmin, form.value.isSuperAdmin],
   () => {
     const allowed = new Set(availablePermissionOptions.value.map((option) => option.value))
-    form.value.appPermissions = form.value.appPermissions.filter((permission) => allowed.has(permission))
+    form.value.appPermissions = form.value.appPermissions.filter((permission) =>
+      allowed.has(permission),
+    )
     if (form.value.isSuperAdmin && !form.value.appPermissions.includes('dashboard')) {
       form.value.appPermissions.unshift('dashboard')
     }
@@ -267,6 +317,7 @@ const startCreate = () => {
   editingMode.value = 'create'
   originalEmail.value = ''
   form.value = createEmptyForm()
+  visibilityGroupsInput.value = 'general'
   editing.value = true
 }
 
@@ -282,6 +333,7 @@ const startEdit = (user) => {
     defaultApp: resolveDefaultAppValue(user.defaultApp),
     appPermissions: Array.isArray(user.appPermissions) ? [...user.appPermissions] : ['chat'],
   }
+  visibilityGroupsInput.value = visibilityGroupLabels(user.visibilityGroups).join(', ')
   editing.value = true
 }
 
@@ -300,6 +352,7 @@ const saveUser = async () => {
       is_super_admin: Boolean(form.value.isSuperAdmin),
       default_app: resolveDefaultAppValue(form.value.defaultApp),
       app_permissions: [...form.value.appPermissions],
+      visibility_groups: parseVisibilityGroups(visibilityGroupsInput.value),
     }
     if (form.value.password.trim()) {
       payload.password = form.value.password.trim()
@@ -337,8 +390,21 @@ const deleteUser = async (user) => {
 const permissionLabels = (permissions = []) =>
   permissions.map((permission) => labelForApp(permission)).filter(Boolean)
 
+const visibilityGroupLabels = (groups = []) => {
+  const values = Array.isArray(groups) ? groups : []
+  return values.length ? values : ['general']
+}
+
 const labelForApp = (app) =>
   DEFAULT_APP_OPTIONS.find((option) => option.value === app)?.label || app
+
+const parseVisibilityGroups = (value = '') => {
+  const groups = String(value)
+    .split(',')
+    .map((group) => group.trim())
+    .filter(Boolean)
+  return groups.length ? groups : ['general']
+}
 
 function createEmptyForm() {
   return {
@@ -365,7 +431,9 @@ onMounted(loadUsers)
   font-size: 0.875rem;
   color: rgb(15 23 42);
   outline: none;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .field:focus {

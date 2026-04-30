@@ -1415,7 +1415,7 @@
                                 <span>{{ formatMessageTime(message.createdAt) }}</span>
                                 <span v-if="message.editedAt">изменено</span>
                                 <button
-                                  v-if="message.aliceAnnounced"
+                                  v-if="message.aliceAnnounced && canUseAlice"
                                   type="button"
                                   class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-200 disabled:cursor-wait disabled:opacity-70"
                                   :disabled="aliceAnnouncementPendingMessageId === message.id"
@@ -2501,8 +2501,13 @@ const composerEmojis = [
 ]
 
 const currentUserEmail = computed(() => authStore.user?.email || '')
-const shouldAutoAnnounceOnAlice = computed(() =>
-  ['direct', 'group'].includes(activeConversation.value?.type || ''),
+const canUseAlice = computed(() =>
+  (Array.isArray(authStore.user?.appPermissions) ? authStore.user.appPermissions : []).includes(
+    'alice',
+  ),
+)
+const shouldAutoAnnounceOnAlice = computed(
+  () => canUseAlice.value && ['direct', 'group'].includes(activeConversation.value?.type || ''),
 )
 const currentUserLogin = computed(() => authStore.user?.login || authStore.user?.email || '')
 const chatErrorMessage = computed(

@@ -84,6 +84,7 @@ test('normalizes profile notification and push metadata', () => {
     is_super_admin: true,
     default_app: 'dashboard',
     app_permissions: ['chat', 'dashboard'],
+    visibility_groups: ['general', 'family'],
     notification_settings: {
       push_enabled: true,
       sound_enabled: false,
@@ -113,6 +114,8 @@ test('normalizes profile notification and push metadata', () => {
     defaultApp: 'dashboard',
     app_permissions: ['chat', 'dashboard'],
     appPermissions: ['chat', 'dashboard'],
+    visibility_groups: ['general', 'family'],
+    visibilityGroups: ['general', 'family'],
     notification_settings: {
       push_enabled: true,
       sound_enabled: false,

@@ -30,12 +30,12 @@ test('redirects authenticated users to configured default route', () => {
   assert.equal(result, '/short-links')
 })
 
-test('redirects non-admin users away from admin-only routes', () => {
+test('redirects users without app permission away from app routes', () => {
   const result = resolveAuthRedirect({
     isAuthenticated: true,
-    isAdmin: false,
+    appPermissions: ['chat'],
     defaultRoute: '/chat',
-    to: { path: '/alice', meta: { requiresAuth: true, requiresAdmin: true } },
+    to: { path: '/alice', meta: { requiresAuth: true, appKey: 'alice' } },
   })
 
   assert.equal(result, '/chat')
@@ -65,8 +65,8 @@ test('allows navigation when route matches auth state', () => {
   })
   const adminResult = resolveAuthRedirect({
     isAuthenticated: true,
-    isAdmin: true,
-    to: { path: '/alice', meta: { requiresAuth: true, requiresAdmin: true } },
+    appPermissions: ['chat', 'alice'],
+    to: { path: '/alice', meta: { requiresAuth: true, appKey: 'alice' } },
   })
   const superAdminResult = resolveAuthRedirect({
     isAuthenticated: true,

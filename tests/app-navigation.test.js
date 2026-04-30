@@ -2,21 +2,26 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { getAdminMenuItems, getAppMenuItems } from '../src/lib/app-navigation.js'
 
-test('hides alice app from non-admin users', () => {
+test('hides alice app without explicit alice permission', () => {
   assert.equal(
-    getAppMenuItems(false).some((item) => item.to === '/alice'),
+    getAppMenuItems({
+      isAdmin: true,
+      appPermissions: ['chat'],
+    }).some((item) => item.to === '/alice'),
     false,
   )
 })
 
-test('shows alice app for admins', () => {
-  const aliceItem = getAppMenuItems(true).find((item) => item.to === '/alice')
+test('shows alice app for users with alice permission', () => {
+  const aliceItem = getAppMenuItems({
+    isAdmin: false,
+    appPermissions: ['chat', 'alice'],
+  }).find((item) => item.to === '/alice')
 
   assert.deepEqual(aliceItem, {
     to: '/alice',
     label: 'Алиса',
     icon: '🔊',
-    adminOnly: true,
   })
 })
 

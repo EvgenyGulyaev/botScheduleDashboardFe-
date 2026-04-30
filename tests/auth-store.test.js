@@ -46,7 +46,10 @@ test('logs out and redirects to login when api responds with 401', async () => {
   const rejected = authStore.api.interceptors.response.handlers[0].rejected
   const error = { response: { status: 401 } }
 
-  await assert.rejects(() => rejected(error), (caughtError) => caughtError === error)
+  await assert.rejects(
+    () => rejected(error),
+    (caughtError) => caughtError === error,
+  )
 
   assert.equal(authStore.token, null)
   assert.equal(authStore.user, null)
@@ -86,6 +89,7 @@ test('updates stored session token from auth refresh response header', () => {
     isSuperAdmin: false,
     defaultApp: 'chat',
     appPermissions: [],
+    visibilityGroups: ['general'],
     notificationSettings: {
       pushEnabled: false,
       soundEnabled: true,

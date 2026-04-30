@@ -4,8 +4,16 @@ import { resolveAuthRedirect } from './guards.js'
 
 const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },
-  { path: '/forgot-password', name: 'ForgotPassword', component: () => import('../views/ForgotPassword.vue') },
-  { path: '/reset-password', name: 'ResetPassword', component: () => import('../views/ResetPassword.vue') },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('../views/ForgotPassword.vue'),
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../views/ResetPassword.vue'),
+  },
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -46,7 +54,7 @@ const routes = [
     path: '/alice',
     name: 'Alice',
     component: () => import('../views/Alice.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, appKey: 'alice' },
+    meta: { requiresAuth: true, appKey: 'alice' },
   },
   {
     path: '/tasks',

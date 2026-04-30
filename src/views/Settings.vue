@@ -4,9 +4,7 @@
       <div class="mb-6 flex items-center justify-between gap-4">
         <div>
           <h2 class="text-2xl font-bold text-slate-950">Настройки</h2>
-          <p class="mt-1 text-sm text-slate-500">
-            Профиль, уведомления и push для чата.
-          </p>
+          <p class="mt-1 text-sm text-slate-500">Профиль, уведомления и push для чата.</p>
         </div>
         <button
           type="button"
@@ -100,7 +98,9 @@
           </div>
 
           <form class="space-y-4" @submit.prevent="saveNotificationSettings">
-            <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <label
+              class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+            >
               <div>
                 <div class="text-sm font-semibold text-slate-950">Push-уведомления</div>
                 <div class="mt-1 text-xs text-slate-500">
@@ -119,7 +119,9 @@
               />
             </label>
 
-            <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <label
+              class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+            >
               <div>
                 <div class="text-sm font-semibold text-slate-950">Звук в чате</div>
                 <div class="mt-1 text-xs text-slate-500">
@@ -134,7 +136,9 @@
               />
             </label>
 
-            <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <label
+              class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+            >
               <div>
                 <div class="text-sm font-semibold text-slate-950">Toast на странице</div>
                 <div class="mt-1 text-xs text-slate-500">
@@ -167,7 +171,10 @@
         </section>
       </div>
 
-      <section class="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <section
+        v-if="canUseAlice"
+        class="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+      >
         <div class="mb-5">
           <h3 class="text-lg font-semibold text-slate-950">Алиса</h3>
           <p class="mt-1 text-sm text-slate-500">
@@ -175,7 +182,10 @@
           </p>
         </div>
 
-        <div v-if="aliceSettingsHint" class="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+        <div
+          v-if="aliceSettingsHint"
+          class="mb-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-800"
+        >
           {{ aliceSettingsHint }}
         </div>
 
@@ -196,7 +206,12 @@
               </option>
             </select>
             <div v-if="selectedAliceAccount" class="mt-1 text-xs text-slate-500">
-              Режим: {{ selectedAliceAccount.transport === 'unofficial' ? 'прямая озвучка' : 'через сценарий' }}
+              Режим:
+              {{
+                selectedAliceAccount.transport === 'unofficial'
+                  ? 'прямая озвучка'
+                  : 'через сценарий'
+              }}
             </div>
           </label>
 
@@ -211,7 +226,11 @@
               @change="onAliceHouseholdChange"
             >
               <option value="">Не выбран</option>
-              <option v-for="household in aliceHouseholdOptions" :key="household.id" :value="household.id">
+              <option
+                v-for="household in aliceHouseholdOptions"
+                :key="household.id"
+                :value="household.id"
+              >
                 {{ household.label }}
               </option>
             </select>
@@ -224,7 +243,9 @@
             <select
               v-model="profileForm.aliceRoomId"
               class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-              :disabled="aliceLoading || !profileForm.aliceAccountId || !profileForm.aliceHouseholdId"
+              :disabled="
+                aliceLoading || !profileForm.aliceAccountId || !profileForm.aliceHouseholdId
+              "
               @change="onAliceRoomChange"
             >
               <option value="">Не выбрана</option>
@@ -241,7 +262,12 @@
             <select
               v-model="profileForm.aliceDeviceId"
               class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white"
-              :disabled="aliceLoading || !profileForm.aliceAccountId || !profileForm.aliceHouseholdId || !profileForm.aliceRoomId"
+              :disabled="
+                aliceLoading ||
+                !profileForm.aliceAccountId ||
+                !profileForm.aliceHouseholdId ||
+                !profileForm.aliceRoomId
+              "
             >
               <option value="">Не выбрана</option>
               <option v-for="device in filteredAliceDevices" :key="device.id" :value="device.id">
@@ -283,7 +309,9 @@
 
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
               <label class="block">
-                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <span
+                  class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
                   Начало
                 </span>
                 <input
@@ -295,7 +323,9 @@
               </label>
 
               <label class="block">
-                <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <span
+                  class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
                   Окончание
                 </span>
                 <input
@@ -308,7 +338,9 @@
             </div>
           </div>
 
-          <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2">
+          <label
+            class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2"
+          >
             <div>
               <div class="text-sm font-semibold text-slate-950">Озвучивать имя отправителя</div>
               <div class="mt-1 text-xs text-slate-500">
@@ -323,7 +355,9 @@
             />
           </label>
 
-          <label class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2">
+          <label
+            class="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 lg:col-span-2"
+          >
             <div>
               <div class="text-sm font-semibold text-slate-950">Не получать на Алису</div>
               <div class="mt-1 text-xs text-slate-500">
@@ -412,9 +446,16 @@ const aliceSettingsHint = ref('')
 const pushSupported = computed(
   () => isWebPushSupported() && Boolean(authStore.user?.push?.supported),
 )
+const canUseAlice = computed(() =>
+  (Array.isArray(authStore.user?.appPermissions) ? authStore.user.appPermissions : []).includes(
+    'alice',
+  ),
+)
 
 const profileDefaultAppOptions = computed(() => {
-  const permissions = Array.isArray(authStore.user?.appPermissions) ? authStore.user.appPermissions : []
+  const permissions = Array.isArray(authStore.user?.appPermissions)
+    ? authStore.user.appPermissions
+    : []
   if (!permissions.length) {
     return DEFAULT_APP_OPTIONS
   }
@@ -512,7 +553,9 @@ const saveNotificationSettings = async () => {
         throw new Error('Push-уведомления недоступны в этом браузере')
       }
 
-      const subscription = existingSubscription || (await subscribeToPushNotifications(authStore.user?.push?.publicKey || ''))
+      const subscription =
+        existingSubscription ||
+        (await subscribeToPushNotifications(authStore.user?.push?.publicKey || ''))
       await authStore.savePushSubscription(serializePushSubscription(subscription))
       pushHint.value =
         getBrowserPushPermission() === 'granted'
@@ -542,8 +585,9 @@ const goBack = () => {
   router.push('/chat')
 }
 
-const selectedAliceAccount = computed(() =>
-  aliceAccounts.value.find((account) => account.id === profileForm.value.aliceAccountId) || null,
+const selectedAliceAccount = computed(
+  () =>
+    aliceAccounts.value.find((account) => account.id === profileForm.value.aliceAccountId) || null,
 )
 
 const aliceHouseholdOptions = computed(() =>
@@ -739,9 +783,11 @@ onMounted(async () => {
     notifications.errorFrom(error, 'Не удалось загрузить настройки')
   }
   fillForms()
-  await loadAliceAccounts()
-  if (profileForm.value.aliceAccountId) {
-    await loadAliceResources(profileForm.value.aliceAccountId)
+  if (canUseAlice.value) {
+    await loadAliceAccounts()
+    if (profileForm.value.aliceAccountId) {
+      await loadAliceResources(profileForm.value.aliceAccountId)
+    }
   }
 })
 </script>

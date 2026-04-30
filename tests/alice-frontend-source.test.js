@@ -2,14 +2,14 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const readSource = (relativePath) =>
-  readFileSync(new URL(relativePath, import.meta.url), 'utf8')
+const readSource = (relativePath) => readFileSync(new URL(relativePath, import.meta.url), 'utf8')
 
 test('chat view uses automatic alice announce and allows repeating from sent badge', () => {
   const source = readSource('../src/views/Chat.vue')
 
   assert.doesNotMatch(source, /Отправлять и на Алису/)
   assert.match(source, /const shouldAutoAnnounceOnAlice = computed\(/)
+  assert.match(source, /canUseAlice\.value/)
   assert.ok(
     (source.match(/announceOnAlice:\s*shouldAutoAnnounceOnAlice\.value/g) || []).length >= 2,
   )
@@ -25,6 +25,7 @@ test('chat view uses automatic alice announce and allows repeating from sent bad
 test('settings view includes alice quiet hours controls and save payload fields', () => {
   const source = readSource('../src/views/Settings.vue')
 
+  assert.match(source, /v-if="canUseAlice"/)
   assert.match(source, /Тихие часы/)
   assert.match(source, /[Пп]о Москве/)
   assert.match(source, /v-model="profileForm\.aliceQuietHoursEnabled"/)
@@ -33,6 +34,17 @@ test('settings view includes alice quiet hours controls and save payload fields'
   assert.match(source, /payload\.alice_quiet_hours_enabled = nextAliceQuietHoursEnabled/)
   assert.match(source, /payload\.alice_quiet_hours_start = nextAliceQuietHoursStart/)
   assert.match(source, /payload\.alice_quiet_hours_end = nextAliceQuietHoursEnd/)
+})
+
+test('admin users view manages visibility groups and alice permission payload', () => {
+  const source = readSource('../src/views/AdminUsers.vue')
+  const defaultAppSource = readSource('../src/lib/default-app.js')
+
+  assert.match(source, /Группы видимости/)
+  assert.match(source, /visibilityGroupsInput/)
+  assert.match(source, /visibility_groups:\s*parseVisibilityGroups/)
+  assert.match(defaultAppSource, /value:\s*'alice'/)
+  assert.doesNotMatch(source, /option\.value === 'alice'/)
 })
 
 test('alice admin page includes cleanup action for service scenarios', () => {

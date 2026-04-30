@@ -10,7 +10,10 @@ export const resolveAuthRedirect = ({
     return '/login'
   }
 
-  if (isAuthenticated && (to.path === '/login' || to.path === '/forgot-password' || to.path === '/reset-password')) {
+  if (
+    isAuthenticated &&
+    (to.path === '/login' || to.path === '/forgot-password' || to.path === '/reset-password')
+  ) {
     return defaultRoute
   }
 
@@ -26,7 +29,6 @@ export const resolveAuthRedirect = ({
     isAuthenticated &&
     to.meta?.appKey &&
     Array.isArray(appPermissions) &&
-    appPermissions.length > 0 &&
     !appPermissions.includes(to.meta.appKey)
   ) {
     return defaultRoute
