@@ -88,7 +88,9 @@ export const getSelectedChatMessagesActionState = ({
     selectedCount,
     canFavorite: hasSelection,
     canForward: hasSelection,
-    canDelete: hasSelection && selectedMessages.every((message) => isChatMessageEditable(message, currentUserEmail)),
+    canDelete:
+      hasSelection &&
+      selectedMessages.every((message) => isChatMessageEditable(message, currentUserEmail)),
   }
 }
 
@@ -130,11 +132,8 @@ export const getTypingIndicatorLabel = (typers = []) => {
   return `${labels[0]} и ещё ${labels.length - 1} печатают...`
 }
 
-export const shouldRefreshChatTyping = (
-  lastSentAt = 0,
-  now = Date.now(),
-  intervalMs = 3000,
-) => Number(now) - Number(lastSentAt || 0) >= Number(intervalMs)
+export const shouldRefreshChatTyping = (lastSentAt = 0, now = Date.now(), intervalMs = 3000) =>
+  Number(now) - Number(lastSentAt || 0) >= Number(intervalMs)
 
 export const getChatMessageSenderLabel = (message = {}, currentUser = {}) => {
   if (message.senderEmail && message.senderEmail === currentUser.email) {
@@ -169,11 +168,17 @@ export const isChatMessageReadByPeer = (message = {}, currentUserEmail = '') => 
     return isOneTimeMediaConsumedByPeer(message.image, currentUserEmail)
   }
 
+  if (message?.type === 'file' && message.file) {
+    return isOneTimeMediaConsumedByPeer(message.file, currentUserEmail)
+  }
+
   if (message.deliveryStatus === 'read' || Number(message.readByCount || 0) > 0) {
     return true
   }
 
-  return (message.readBy || []).some((receipt) => receipt.email && receipt.email !== currentUserEmail)
+  return (message.readBy || []).some(
+    (receipt) => receipt.email && receipt.email !== currentUserEmail,
+  )
 }
 
 export const getChatMessageLifecycleStatus = (message = {}, currentUserEmail = '') => {
@@ -219,7 +224,9 @@ export const getChatMessageStatusTitle = (message = {}, currentUserEmail = '') =
         ? 'Голосовое прослушано'
         : message?.type === 'image'
           ? 'Изображение просмотрено'
-          : 'Прочитано собеседником'
+          : message?.type === 'file'
+            ? 'Файл скачан'
+            : 'Прочитано собеседником'
     default:
       return 'Отправлено'
   }
@@ -270,6 +277,22 @@ export const getImageMessageButtonLabel = (
   return 'Открыть 1 раз'
 }
 
+export const getFileMessageButtonLabel = (
+  message = {},
+  downloadingFileMessageId = null,
+  targetMessageId = message?.id,
+) => {
+  if (message?.file?.consumed || isOneTimeMediaExpired(message?.file)) {
+    return 'Недоступно'
+  }
+
+  if (downloadingFileMessageId && targetMessageId && downloadingFileMessageId === targetMessageId) {
+    return 'Скачиваем…'
+  }
+
+  return 'Скачать 1 раз'
+}
+
 export const getChatAudioRecorderLabel = (isRecording = false) =>
   isRecording ? 'Остановить запись' : 'Начать запись'
 
@@ -290,9 +313,7 @@ export const groupChatReactions = (reactions = []) =>
   ).map(([emoji, count]) => ({ emoji, count }))
 
 export const getCurrentUserReactionEmoji = (reactions = [], currentUserEmail = '') =>
-  String(
-    reactions.find((reaction) => reaction?.userEmail === currentUserEmail)?.emoji || '',
-  )
+  String(reactions.find((reaction) => reaction?.userEmail === currentUserEmail)?.emoji || '')
 
 export const isChatMessageEditable = (message = {}, currentUserEmail = '') =>
   message?.type === 'text' && message?.senderEmail === currentUserEmail
@@ -405,11 +426,17 @@ export const getChatReplyPreviewText = (message = {}) => {
     return 'Изображение'
   }
 
+  if (message.type === 'file') {
+    return message.file?.filename ? `Файл: ${message.file.filename}` : 'Файл'
+  }
+
   return String(message.text || '').trim()
 }
 
 export const buildChatSearchExcerpt = (text = '', query = '', maxLength = 96) => {
-  const source = String(text || '').replace(/\s+/g, ' ').trim()
+  const source = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim()
   const needle = String(query || '').trim()
   if (!source) {
     return ''
@@ -475,6 +502,30 @@ export const getDroppedImageFile = (dataTransfer = null) => {
       String(file?.type || '').startsWith('image/'),
     ) || null
   )
+}
+
+export const extractChatMentions = (text = '', members = []) => {
+  const source = String(text || '')
+  if (!source.includes('@')) {
+    return []
+  }
+
+  const membersByLogin = new Map(
+    (Array.isArray(members) ? members : [])
+      .filter((member) => member?.login)
+      .map((member) => [String(member.login).toLowerCase(), member]),
+  )
+  const seen = new Set()
+  const result = []
+  for (const match of source.matchAll(/(^|[\s([{])@([a-zA-Z0-9_.-]{2,64})/g)) {
+    const login = String(match[2] || '').toLowerCase()
+    if (!login || seen.has(login) || !membersByLogin.has(login)) {
+      continue
+    }
+    seen.add(login)
+    result.push(membersByLogin.get(login))
+  }
+  return result
 }
 
 export const insertEmojiIntoText = (

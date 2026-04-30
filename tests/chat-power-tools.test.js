@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   buildUnreadCenterItems,
   filterImportantMessages,
+  filterChatMessagesByMode,
   getChatReminderPresetOptions,
   getTotalUnreadCount,
   normalizeChatReminders,
@@ -17,7 +18,10 @@ test('builds unread center sorted by latest activity', () => {
 
   const items = buildUnreadCenterItems(conversations)
 
-  assert.deepEqual(items.map((item) => item.id), ['c', 'a'])
+  assert.deepEqual(
+    items.map((item) => item.id),
+    ['c', 'a'],
+  )
   assert.equal(getTotalUnreadCount(conversations), 4)
 })
 
@@ -69,10 +73,44 @@ test('normalizes reminders and builds quick reminder presets', () => {
     },
   ])
 
-  assert.deepEqual(reminders.map((reminder) => reminder.id), ['soon', 'later'])
+  assert.deepEqual(
+    reminders.map((reminder) => reminder.id),
+    ['soon', 'later'],
+  )
 
   const options = getChatReminderPresetOptions(new Date('2026-04-20T08:30:00Z'))
   assert.equal(options[0].remindAt, '2026-04-20T08:45:00.000Z')
   assert.equal(options[1].remindAt, '2026-04-20T09:30:00.000Z')
   assert.equal(options[2].key, 'tomorrow')
+})
+
+test('filters active chat messages by group work modes', () => {
+  const messages = [
+    { id: 'read', type: 'text', text: 'read', senderEmail: 'bob@example.com' },
+    { id: 'unread', type: 'text', text: 'unread', senderEmail: 'bob@example.com' },
+    { id: 'own', type: 'text', text: 'own', senderEmail: 'alice@example.com' },
+    { id: 'star', type: 'text', text: 'star', senderEmail: 'bob@example.com', favorite: true },
+    { id: 'voice', type: 'audio', senderEmail: 'bob@example.com' },
+    { id: 'doc', type: 'file', senderEmail: 'bob@example.com' },
+  ]
+
+  assert.deepEqual(
+    filterChatMessagesByMode(messages, 'unread', {
+      lastReadMessageId: 'read',
+      currentUserEmail: 'alice@example.com',
+    }).map((message) => message.id),
+    ['unread', 'star', 'voice', 'doc'],
+  )
+  assert.deepEqual(
+    filterChatMessagesByMode(messages, 'important').map((message) => message.id),
+    ['star'],
+  )
+  assert.deepEqual(
+    filterChatMessagesByMode(messages, 'media').map((message) => message.id),
+    ['voice', 'doc'],
+  )
+  assert.deepEqual(
+    filterChatMessagesByMode(messages, 'files').map((message) => message.id),
+    ['doc'],
+  )
 })

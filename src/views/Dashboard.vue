@@ -79,21 +79,40 @@
           >
             {{ loading ? '🔄 Перезапуск...' : '🔄 Перезапустить' }}
           </button>
+
+          <div
+            class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
+          >
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Логи
+            </label>
+            <select
+              v-model.number="logLines"
+              @change="loadStatus"
+              class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm text-slate-700 outline-none focus:border-blue-300"
+            >
+              <option :value="8">8 строк</option>
+              <option :value="30">30 строк</option>
+              <option :value="80">80 строк</option>
+              <option :value="200">200 строк</option>
+            </select>
+          </div>
         </div>
       </div>
 
       <!-- Сервер -->
-      <div class="mb-8 rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-xl sm:p-6">
+      <div
+        class="mb-8 rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-xl sm:p-6"
+      >
         <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              Сервер
-            </p>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Сервер</p>
             <h3 class="mt-1 text-2xl font-bold">
               {{ systemInfo.hostname || 'server' }}
             </h3>
             <p class="mt-1 text-sm text-slate-400">
-              {{ systemInfo.os }}/{{ systemInfo.arch }} · uptime {{ systemInfo.uptime.human || '—' }}
+              {{ systemInfo.os }}/{{ systemInfo.arch }} · uptime
+              {{ systemInfo.uptime.human || '—' }}
             </p>
           </div>
           <button
@@ -111,7 +130,8 @@
             <div class="text-xs uppercase tracking-wide text-slate-400">CPU</div>
             <div class="mt-2 text-2xl font-bold">{{ systemInfo.cpu.cores || '—' }} cores</div>
             <div class="mt-1 text-sm text-slate-300">
-              load {{ systemInfo.cpu.load.one.toFixed(2) }} / {{ systemInfo.cpu.load.five.toFixed(2) }} /
+              load {{ systemInfo.cpu.load.one.toFixed(2) }} /
+              {{ systemInfo.cpu.load.five.toFixed(2) }} /
               {{ systemInfo.cpu.load.fifteen.toFixed(2) }}
             </div>
           </div>
@@ -119,13 +139,17 @@
           <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
             <div class="flex items-center justify-between gap-3">
               <div class="text-xs uppercase tracking-wide text-slate-400">RAM</div>
-              <span class="rounded-full px-2 py-1 text-xs font-bold" :class="usageBadgeClass(systemInfo.memory.usedPercent)">
+              <span
+                class="rounded-full px-2 py-1 text-xs font-bold"
+                :class="usageBadgeClass(systemInfo.memory.usedPercent)"
+              >
                 {{ systemInfo.memory.usedPercent.toFixed(0) }}%
               </span>
             </div>
             <div class="mt-2 text-2xl font-bold">{{ systemInfo.memory.used || '—' }}</div>
             <div class="mt-1 text-sm text-slate-300">
-              из {{ systemInfo.memory.total || '—' }}, свободно {{ systemInfo.memory.available || '—' }}
+              из {{ systemInfo.memory.total || '—' }}, свободно
+              {{ systemInfo.memory.available || '—' }}
             </div>
             <div class="mt-3 h-2 rounded-full bg-white/10">
               <div
@@ -137,8 +161,13 @@
 
           <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
             <div class="flex items-center justify-between gap-3">
-              <div class="text-xs uppercase tracking-wide text-slate-400">Диск {{ systemInfo.disk.path }}</div>
-              <span class="rounded-full px-2 py-1 text-xs font-bold" :class="usageBadgeClass(systemInfo.disk.usedPercent)">
+              <div class="text-xs uppercase tracking-wide text-slate-400">
+                Диск {{ systemInfo.disk.path }}
+              </div>
+              <span
+                class="rounded-full px-2 py-1 text-xs font-bold"
+                :class="usageBadgeClass(systemInfo.disk.usedPercent)"
+              >
                 {{ systemInfo.disk.usedPercent.toFixed(0) }}%
               </span>
             </div>
@@ -157,8 +186,46 @@
           <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
             <div class="text-xs uppercase tracking-wide text-slate-400">Swap</div>
             <div class="mt-2 text-2xl font-bold">{{ systemInfo.memory.swapUsed || '—' }}</div>
-            <div class="mt-1 text-sm text-slate-300">
-              Полезно, если RAM внезапно заканчивается.
+            <div class="mt-1 text-sm text-slate-300">Полезно, если RAM внезапно заканчивается.</div>
+          </div>
+        </div>
+
+        <div v-if="systemAlerts.length" class="mt-5 grid gap-3 lg:grid-cols-2">
+          <div
+            v-for="alert in systemAlerts"
+            :key="`${alert.metric}-${alert.message}`"
+            class="rounded-2xl border px-4 py-3 text-sm font-semibold"
+            :class="alertClass(alert.level)"
+          >
+            {{ alert.message }}
+          </div>
+        </div>
+
+        <div
+          v-if="compactSystemHistory.length > 1"
+          class="mt-5 rounded-2xl border border-white/10 bg-white/10 p-4"
+        >
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              История последних замеров
+            </div>
+            <div class="text-xs text-slate-500">RAM / Disk</div>
+          </div>
+          <div class="flex h-24 items-end gap-2">
+            <div
+              v-for="sample in compactSystemHistory"
+              :key="sample.at"
+              class="flex flex-1 items-end gap-1"
+              :title="`${Math.round(sample.memory)}% RAM, ${Math.round(sample.disk)}% disk`"
+            >
+              <span
+                class="w-full rounded-t bg-emerald-400/80"
+                :style="{ height: historyBarHeight(sample.memory) }"
+              ></span>
+              <span
+                class="w-full rounded-t bg-sky-400/80"
+                :style="{ height: historyBarHeight(sample.disk) }"
+              ></span>
             </div>
           </div>
         </div>
@@ -323,7 +390,10 @@
             </div>
           </div>
 
-          <div v-if="hasLoadedStatus" class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+          <div
+            v-if="hasLoadedStatus"
+            class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]"
+          >
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Детали systemd
@@ -355,7 +425,10 @@
                 </div>
                 <div class="text-xs text-slate-500">{{ selectedStatus.logs.length }} строк</div>
               </div>
-              <div v-if="selectedStatus.logs.length" class="max-h-52 space-y-1 overflow-y-auto font-mono text-xs leading-relaxed">
+              <div
+                v-if="selectedStatus.logs.length"
+                class="max-h-52 space-y-1 overflow-y-auto font-mono text-xs leading-relaxed"
+              >
                 <div v-for="line in selectedStatus.logs" :key="line" class="break-words">
                   {{ line }}
                 </div>
@@ -394,13 +467,10 @@
           v-else
           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
         >
-	          <div
-	            v-for="service in services"
-	            :key="service"
-	            @click="
-	              selectedService = service;
-	              loadStatus()
-	            "
+          <div
+            v-for="service in services"
+            :key="service"
+            @click="selectService(service)"
             class="group p-5 sm:p-6 rounded-2xl hover:shadow-2xl cursor-pointer transition-all border-2 hover:border-blue-300 hover:bg-blue-50 border-gray-200 bg-gradient-to-br from-white/80 to-gray-50"
           >
             <div class="flex items-start justify-between mb-3">
@@ -471,7 +541,9 @@ const loading = ref(false)
 const loadingAll = ref(false)
 const serviceStatus = ref({})
 const systemInfo = ref(emptySystemInfo())
+const systemHistory = ref([])
 const systemLoading = ref(false)
+const logLines = ref(30)
 const statusError = ref('')
 const allServicesError = ref('')
 const systemError = ref('')
@@ -492,6 +564,18 @@ const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdate
 const botStatus = computed(() => selectedStatus.value.status)
 const stats = computed(() => selectedStatus.value.stats)
 const healthBadge = computed(() => getServiceHealthBadge(selectedStatus.value.health?.level))
+const systemAlerts = computed(() => [
+  ...(systemInfo.value.alerts || []),
+  ...services
+    .map((service) => serviceStatus.value[service])
+    .filter((status) => status?.health?.level === 'error')
+    .map((status) => ({
+      level: 'danger',
+      metric: 'service',
+      message: `Сервис ${status.service} сейчас в ошибке.`,
+    })),
+])
+const compactSystemHistory = computed(() => systemHistory.value.slice(-12))
 
 // Статусы
 const statusClass = computed(() =>
@@ -528,11 +612,28 @@ const usageBadgeClass = (percent = 0) => {
   return 'bg-emerald-400/20 text-emerald-100'
 }
 
+const alertClass = (level = 'warning') =>
+  level === 'danger'
+    ? 'border-rose-400/30 bg-rose-400/10 text-rose-100'
+    : 'border-amber-400/30 bg-amber-400/10 text-amber-100'
+
+const historyBarHeight = (value = 0) => `${Math.max(8, Math.min(100, Number(value) || 0))}%`
+
 const loadSystemInfo = async () => {
   systemLoading.value = true
   try {
     const res = await authStore.api.get('/server/status')
-    systemInfo.value = normalizeSystemInfo(res.data)
+    const normalized = normalizeSystemInfo(res.data)
+    systemInfo.value = normalized
+    systemHistory.value = [
+      ...systemHistory.value.slice(-19),
+      {
+        at: new Date().toISOString(),
+        memory: normalized.memory.usedPercent,
+        disk: normalized.disk.usedPercent,
+        load: normalized.cpu.load.one,
+      },
+    ]
     systemError.value = ''
   } catch (error) {
     if (isUnauthorizedError(error)) {
@@ -548,7 +649,9 @@ const loadSystemInfo = async () => {
 const loadStatus = async () => {
   loading.value = true
   try {
-    const res = await authStore.api.get(`/bot/status?service=${selectedService.value}`)
+    const res = await authStore.api.get(
+      `/bot/status?service=${selectedService.value}&lines=${logLines.value}`,
+    )
     const normalized = normalizeServiceStatus(res.data)
     selectedStatus.value = normalized
     serviceStatus.value[selectedService.value] = normalized
@@ -579,7 +682,9 @@ const loadAllServices = async () => {
     await Promise.all(
       services.map(async (service) => {
         try {
-          const res = await authStore.api.get(`/bot/status?service=${service}`)
+          const res = await authStore.api.get(
+            `/bot/status?service=${service}&lines=${logLines.value}`,
+          )
           serviceStatus.value[service] = normalizeServiceStatus(res.data)
         } catch (error) {
           if (isUnauthorizedError(error)) {
@@ -599,6 +704,11 @@ const loadAllServices = async () => {
   } finally {
     loadingAll.value = false
   }
+}
+
+const selectService = (service) => {
+  selectedService.value = service
+  loadStatus()
 }
 
 const restartBot = async () => {

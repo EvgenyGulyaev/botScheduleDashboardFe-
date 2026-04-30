@@ -2,9 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   buildChatSearchExcerpt,
+  extractChatMentions,
   filterChatUsersForSearch,
   getAudioMessageButtonLabel,
   getChatSwipeReplyState,
+  getFileMessageButtonLabel,
   getDroppedImageFile,
   getChatMessageSenderLabel,
   getChatMessageStatusIcon,
@@ -222,7 +224,10 @@ test('audio message status uses listener identity instead of current user playba
 
   assert.equal(isChatMessageReadByPeer(message, 'wardercompany@gmail.com'), true)
   assert.equal(getChatMessageStatusIcon(message, 'wardercompany@gmail.com'), '✓✓')
-  assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Голосовое прослушано')
+  assert.equal(
+    getChatMessageStatusTitle(message, 'wardercompany@gmail.com'),
+    'Голосовое прослушано',
+  )
 })
 
 test('image message status uses viewer identity instead of generic read receipts', () => {
@@ -238,7 +243,26 @@ test('image message status uses viewer identity instead of generic read receipts
 
   assert.equal(isChatMessageReadByPeer(message, 'wardercompany@gmail.com'), true)
   assert.equal(getChatMessageStatusIcon(message, 'wardercompany@gmail.com'), '✓✓')
-  assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Изображение просмотрено')
+  assert.equal(
+    getChatMessageStatusTitle(message, 'wardercompany@gmail.com'),
+    'Изображение просмотрено',
+  )
+})
+
+test('file message status uses downloader identity instead of generic read receipts', () => {
+  const message = {
+    type: 'file',
+    readBy: [],
+    file: {
+      consumed: true,
+      consumedByEmail: 'nika@example.com',
+      expired: false,
+    },
+  }
+
+  assert.equal(isChatMessageReadByPeer(message, 'wardercompany@gmail.com'), true)
+  assert.equal(getChatMessageStatusIcon(message, 'wardercompany@gmail.com'), '✓✓')
+  assert.equal(getChatMessageStatusTitle(message, 'wardercompany@gmail.com'), 'Файл скачан')
 })
 
 test('message read status uses double check when peer has read it', () => {
@@ -309,24 +333,15 @@ test('groups reactions by emoji and detects current user reaction', () => {
 
 test('allows editing only own text messages', () => {
   assert.equal(
-    isChatMessageEditable(
-      { type: 'text', senderEmail: 'alice@example.com' },
-      'alice@example.com',
-    ),
+    isChatMessageEditable({ type: 'text', senderEmail: 'alice@example.com' }, 'alice@example.com'),
     true,
   )
   assert.equal(
-    isChatMessageEditable(
-      { type: 'audio', senderEmail: 'alice@example.com' },
-      'alice@example.com',
-    ),
+    isChatMessageEditable({ type: 'audio', senderEmail: 'alice@example.com' }, 'alice@example.com'),
     false,
   )
   assert.equal(
-    isChatMessageEditable(
-      { type: 'text', senderEmail: 'bob@example.com' },
-      'alice@example.com',
-    ),
+    isChatMessageEditable({ type: 'text', senderEmail: 'bob@example.com' }, 'alice@example.com'),
     false,
   )
 })
@@ -335,6 +350,7 @@ test('builds reply preview labels for text and one-time media', () => {
   assert.equal(getChatReplyPreviewText({ type: 'text', text: '  Привет  ' }), 'Привет')
   assert.equal(getChatReplyPreviewText({ type: 'audio', text: 'ignored' }), 'Голосовое сообщение')
   assert.equal(getChatReplyPreviewText({ type: 'image', text: 'ignored' }), 'Изображение')
+  assert.equal(getChatReplyPreviewText({ type: 'file', text: 'ignored' }), 'Файл')
 })
 
 test('builds compact search excerpt around the match', () => {
@@ -454,5 +470,40 @@ test('marks consumed or expired audio message button as unavailable', () => {
   assert.equal(
     getAudioMessageButtonLabel({ id: 'msg-2', audio: { consumed: false, expired: false } }, null),
     'Прослушать 1 раз',
+  )
+})
+
+test('marks consumed or expired file message button as unavailable', () => {
+  assert.equal(
+    getFileMessageButtonLabel({ file: { consumed: true, expired: false } }, null),
+    'Недоступно',
+  )
+  assert.equal(
+    getFileMessageButtonLabel({ file: { consumed: false, expired: true } }, null),
+    'Недоступно',
+  )
+  assert.equal(
+    getFileMessageButtonLabel(
+      { id: 'msg-1', file: { consumed: false, expired: false } },
+      'msg-1',
+      'msg-1',
+    ),
+    'Скачиваем…',
+  )
+  assert.equal(
+    getFileMessageButtonLabel({ id: 'msg-2', file: { consumed: false, expired: false } }, null),
+    'Скачать 1 раз',
+  )
+})
+
+test('extracts group chat mentions from message text', () => {
+  const mentions = extractChatMentions('Привет @nika и @warder, @unknown не подсвечиваем', [
+    { login: 'nika', email: 'nika@example.com' },
+    { login: 'warder', email: 'warder@example.com' },
+  ])
+
+  assert.deepEqual(
+    mentions.map((mention) => mention.login),
+    ['nika', 'warder'],
   )
 })

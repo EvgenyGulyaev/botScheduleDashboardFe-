@@ -23,7 +23,14 @@ const EMPTY_SYSTEM_INFO = {
   uptime: {
     human: '',
   },
+  alerts: [],
 }
+
+const normalizeSystemAlert = (alert = {}) => ({
+  level: String(alert?.level || 'warning'),
+  metric: String(alert?.metric || ''),
+  message: String(alert?.message || ''),
+})
 
 export const normalizeSystemInfo = (payload = {}) => ({
   hostname: payload?.hostname || '',
@@ -56,6 +63,9 @@ export const normalizeSystemInfo = (payload = {}) => ({
   uptime: {
     human: payload?.uptime?.human || '',
   },
+  alerts: (Array.isArray(payload?.alerts) ? payload.alerts : [])
+    .map(normalizeSystemAlert)
+    .filter((alert) => alert.message),
 })
 
 export const emptySystemInfo = () => structuredClone(EMPTY_SYSTEM_INFO)

@@ -348,6 +348,26 @@ const updateImageMessage = (state, conversationId, messageId, patch = {}) => {
   return nextMessage
 }
 
+const updateFileMessage = (state, conversationId, messageId, patch = {}) => {
+  const messages = ensureMessagesCollection(state, conversationId)
+  const index = messages.findIndex((message) => message.id === messageId)
+  if (index === -1) {
+    return null
+  }
+
+  const nextMessage = {
+    ...messages[index],
+    file: {
+      ...(messages[index].file || {}),
+      ...patch,
+    },
+  }
+  const nextMessages = [...messages]
+  nextMessages[index] = nextMessage
+  state.messagesByConversation[conversationId] = nextMessages
+  return nextMessage
+}
+
 const typingTimerKey = (conversationId, email) => `${conversationId}::${email}`
 
 const clearTypingExpiryTimer = (conversationId, email) => {
@@ -849,7 +869,9 @@ export const useChatStore = defineStore('chat', {
           return null
         }
         this.activeCallsByConversation[conversationId] = call
-        if (call?.participants?.some((participant) => participant.email === authStore.user?.email)) {
+        if (
+          call?.participants?.some((participant) => participant.email === authStore.user?.email)
+        ) {
           this.activeCall = call
         }
         return call
@@ -1036,7 +1058,8 @@ export const useChatStore = defineStore('chat', {
         return message
       }
       updateMessageLocally(this, conversationId, messageId, { favorite: true })
-      const message = this.messagesByConversation[conversationId]?.find((item) => item.id === messageId) || null
+      const message =
+        this.messagesByConversation[conversationId]?.find((item) => item.id === messageId) || null
       if (message) {
         this.favoriteMessages = normalizeChatMessages([
           ...this.favoriteMessages.filter((item) => item.id !== messageId),
@@ -1063,7 +1086,10 @@ export const useChatStore = defineStore('chat', {
       }
       updateMessageLocally(this, conversationId, messageId, { favorite: false })
       this.favoriteMessages = this.favoriteMessages.filter((item) => item.id !== messageId)
-      return this.messagesByConversation[conversationId]?.find((message) => message.id === messageId) || null
+      return (
+        this.messagesByConversation[conversationId]?.find((message) => message.id === messageId) ||
+        null
+      )
     },
 
     async loadFavoriteMessages() {
@@ -1412,9 +1438,7 @@ export const useChatStore = defineStore('chat', {
 
       const messages = this.messagesByConversation[targetConversationId] || []
       const message = messages.find((item) =>
-        clientMessageId
-          ? item.clientMessageId === clientMessageId
-          : item.id === messageId,
+        clientMessageId ? item.clientMessageId === clientMessageId : item.id === messageId,
       )
       if (!message || message.type !== 'text' || message.deliveryStatus !== 'failed') {
         return false
@@ -1569,9 +1593,12 @@ export const useChatStore = defineStore('chat', {
 
       const authStore = useAuthStore()
       const api = getApi(authStore)
-      const response = await api.patch(`/chat/conversations/${conversationId}/messages/${messageId}`, {
-        text: String(text).trim(),
-      })
+      const response = await api.patch(
+        `/chat/conversations/${conversationId}/messages/${messageId}`,
+        {
+          text: String(text).trim(),
+        },
+      )
       return replaceMessage(this, conversationId, response.data)
     },
 
@@ -1701,13 +1728,17 @@ export const useChatStore = defineStore('chat', {
       form.append('audio', file, 'voice.webm')
 
       try {
-        const response = await api.post(withTokenPath(`/chat/conversations/${conversationId}/audio`, authStore.token), form, {
-          headers: authStore.token
-            ? {
-                'X-Chat-Token': authStore.token,
-              }
-            : undefined,
-        })
+        const response = await api.post(
+          withTokenPath(`/chat/conversations/${conversationId}/audio`, authStore.token),
+          form,
+          {
+            headers: authStore.token
+              ? {
+                  'X-Chat-Token': authStore.token,
+                }
+              : undefined,
+          },
+        )
         const message = normalizeChatMessage(response.data)
         const messages = ensureMessagesCollection(this, conversationId)
         if (!messages.some((item) => item.id === message.id)) {
@@ -1775,13 +1806,17 @@ export const useChatStore = defineStore('chat', {
       form.append('image', file, filename)
 
       try {
-        const response = await api.post(withTokenPath(`/chat/conversations/${conversationId}/image`, authStore.token), form, {
-          headers: authStore.token
-            ? {
-                'X-Chat-Token': authStore.token,
-              }
-            : undefined,
-        })
+        const response = await api.post(
+          withTokenPath(`/chat/conversations/${conversationId}/image`, authStore.token),
+          form,
+          {
+            headers: authStore.token
+              ? {
+                  'X-Chat-Token': authStore.token,
+                }
+              : undefined,
+          },
+        )
         const message = normalizeChatMessage(response.data)
         const messages = ensureMessagesCollection(this, conversationId)
         if (!messages.some((item) => item.id === message.id)) {
@@ -1811,6 +1846,84 @@ export const useChatStore = defineStore('chat', {
           },
         )
         updateImageMessage(this, conversationId, messageId, {
+          consumed: true,
+          consumedByEmail: currentUser.email || '',
+          consumedByLogin: currentUser.login || '',
+        })
+        return response.data
+      } catch (error) {
+        if (error?.response?.status === 410) {
+          await this.loadMessages(conversationId)
+        }
+        throw error
+      }
+    },
+
+    async sendFileMessage({ conversationId, fileBlob, filename = 'file', clientMessageId }) {
+      if (!conversationId || !fileBlob) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const currentUser = getCurrentUser(authStore)
+      const socket = this.socket || this.connect()
+      if (socket) {
+        markLatestPeerMessageRead(this, socket, conversationId, currentUser.email || '')
+      }
+      delete this.mediaSendErrorByConversation[conversationId]
+
+      const form = new FormData()
+      form.append('client_message_id', clientMessageId || createClientMessageId())
+      const file =
+        typeof File !== 'undefined'
+          ? new File([fileBlob], filename, {
+              type: fileBlob.type || 'application/octet-stream',
+            })
+          : fileBlob
+      form.append('file', file, filename)
+
+      try {
+        const response = await api.post(
+          withTokenPath(`/chat/conversations/${conversationId}/file`, authStore.token),
+          form,
+          {
+            headers: authStore.token
+              ? {
+                  'X-Chat-Token': authStore.token,
+                }
+              : undefined,
+          },
+        )
+        const message = normalizeChatMessage(response.data)
+        const messages = ensureMessagesCollection(this, conversationId)
+        if (!messages.some((item) => item.id === message.id)) {
+          this.messagesByConversation[conversationId] = [...messages, message]
+        }
+        return message
+      } catch (error) {
+        this.mediaSendErrorByConversation[conversationId] =
+          'Не удалось отправить файл. Выберите файл и попробуйте ещё раз.'
+        throw error
+      }
+    },
+
+    async consumeFileMessage({ conversationId, messageId }) {
+      if (!conversationId || !messageId) {
+        return null
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      const currentUser = getCurrentUser(authStore)
+      try {
+        const response = await api.get(
+          `/chat/conversations/${conversationId}/messages/${messageId}/file`,
+          {
+            responseType: 'blob',
+          },
+        )
+        updateFileMessage(this, conversationId, messageId, {
           consumed: true,
           consumedByEmail: currentUser.email || '',
           consumedByLogin: currentUser.login || '',

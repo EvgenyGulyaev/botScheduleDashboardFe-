@@ -257,6 +257,32 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(imageMessage.image.mimeType, 'image/png')
   assert.equal(imageMessage.image.expiresAt, '2026-04-17T11:00:00Z')
 
+  const fileMessage = normalizeChatMessage({
+    id: 'msg-file',
+    conversation_id: 'group-1',
+    type: 'file',
+    sender_email: 'alice@example.com',
+    sender_login: 'alice',
+    text: 'report.txt',
+    created_at: '2026-04-16T11:02:30Z',
+    file: {
+      id: 'file-1',
+      filename: 'report.txt',
+      mime_type: 'text/plain',
+      size_bytes: 512,
+      consumed: false,
+      consumed_by_email: '',
+      consumed_by_login: '',
+      expires_at: '2026-04-17T11:00:00Z',
+      expired: false,
+    },
+  })
+
+  assert.equal(fileMessage.type, 'file')
+  assert.equal(fileMessage.file.filename, 'report.txt')
+  assert.equal(fileMessage.file.mimeType, 'text/plain')
+  assert.equal(fileMessage.file.sizeBytes, 512)
+
   const replyMessage = normalizeChatMessage({
     id: 'msg-reply',
     conversation_id: 'group-1',
@@ -503,9 +529,7 @@ test('applies call lifecycle events into active call state', () => {
           started_by_login: 'alice',
           started_at: '2026-04-20T10:00:00Z',
           max_participants: 4,
-          participants: [
-            { email: 'alice@example.com', login: 'alice', muted: false },
-          ],
+          participants: [{ email: 'alice@example.com', login: 'alice', muted: false }],
         },
         message: {
           id: 'msg-call',
@@ -1209,7 +1233,10 @@ test('failed text retry reuses same client message id and reconciles on success'
   })
 
   assert.equal(retried, true)
-  assert.equal(JSON.parse(FakeWebSocket.instances[0].sent[0]).data.client_message_id, 'client-retry-1')
+  assert.equal(
+    JSON.parse(FakeWebSocket.instances[0].sent[0]).data.client_message_id,
+    'client-retry-1',
+  )
   assert.equal(chatStore.messagesByConversation['group-1'][0].deliveryStatus, 'pending')
 
   chatStore.handleSocketEvent({
@@ -1570,7 +1597,10 @@ test('chat store uploads and consumes one-time audio messages', async () => {
   assert.equal(calls[1][2].responseType, 'blob')
   assert.equal(blob.type, 'audio/webm')
   assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumed, true)
-  assert.equal(chatStore.messagesByConversation['group-1'][0].audio.consumedByEmail, 'alice@example.com')
+  assert.equal(
+    chatStore.messagesByConversation['group-1'][0].audio.consumedByEmail,
+    'alice@example.com',
+  )
 
   delete globalThis.localStorage
   delete globalThis.window
@@ -1690,7 +1720,92 @@ test('chat store uploads and consumes one-time image messages', async () => {
   assert.equal(calls[1][2].responseType, 'blob')
   assert.equal(blob.type, 'image/png')
   assert.equal(chatStore.messagesByConversation['group-1'][0].image.consumed, true)
-  assert.equal(chatStore.messagesByConversation['group-1'][0].image.consumedByEmail, 'alice@example.com')
+  assert.equal(
+    chatStore.messagesByConversation['group-1'][0].image.consumedByEmail,
+    'alice@example.com',
+  )
+
+  delete globalThis.localStorage
+  delete globalThis.window
+  delete globalThis.WebSocket
+})
+
+test('chat store uploads and consumes one-time file messages', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+  globalThis.window = { location: { origin: 'http://localhost:5173' } }
+  const FakeWebSocket = createSocketMock()
+  globalThis.WebSocket = FakeWebSocket
+
+  const calls = []
+  const fakeApi = {
+    get(url, config) {
+      calls.push(['get', url, config])
+      return Promise.resolve({ data: new Blob(['report'], { type: 'text/plain' }) })
+    },
+    post(url, body, config) {
+      calls.push(['post', url, body, config])
+      return Promise.resolve({
+        data: {
+          id: 'msg-file',
+          conversation_id: 'group-1',
+          type: 'file',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'report.txt',
+          file: {
+            id: 'file-1',
+            filename: 'report.txt',
+            mime_type: 'text/plain',
+            size_bytes: 6,
+            consumed: false,
+            consumed_by_email: '',
+            consumed_by_login: '',
+            expires_at: '2026-04-17T11:00:00Z',
+            expired: false,
+          },
+        },
+      })
+    },
+  }
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.token = 'token-123'
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+  notifications.error = () => {}
+
+  const chatStore = useChatStore()
+  const message = await chatStore.sendFileMessage({
+    conversationId: 'group-1',
+    fileBlob: new Blob(['report'], { type: 'text/plain' }),
+    filename: 'report.txt',
+    clientMessageId: 'file-client-1',
+  })
+
+  assert.equal(calls[0][0], 'post')
+  assert.equal(calls[0][1], '/chat/conversations/group-1/file/token-123')
+  assert.ok(calls[0][2] instanceof FormData)
+  assert.equal(calls[0][2].get('client_message_id'), 'file-client-1')
+  assert.equal(calls[0][3].headers['X-Chat-Token'], 'token-123')
+  assert.equal(message.type, 'file')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].file.filename, 'report.txt')
+
+  const blob = await chatStore.consumeFileMessage({
+    conversationId: 'group-1',
+    messageId: 'msg-file',
+  })
+
+  assert.equal(calls[1][0], 'get')
+  assert.equal(calls[1][2].responseType, 'blob')
+  assert.equal(blob.type, 'text/plain')
+  assert.equal(chatStore.messagesByConversation['group-1'][0].file.consumed, true)
+  assert.equal(
+    chatStore.messagesByConversation['group-1'][0].file.consumedByEmail,
+    'alice@example.com',
+  )
 
   delete globalThis.localStorage
   delete globalThis.window
@@ -2087,7 +2202,10 @@ test('chat store loads favorite messages and manages reminders through backend e
   await chatStore.deleteReminder('rem-1')
 
   assert.equal(chatStore.favoriteMessages[0].id, 'fav-1')
-  assert.deepEqual(chatStore.reminders.map((reminder) => reminder.id), ['rem-2'])
+  assert.deepEqual(
+    chatStore.reminders.map((reminder) => reminder.id),
+    ['rem-2'],
+  )
   assert.deepEqual(fakeApi.calls, [
     ['get', '/chat/favorites'],
     ['get', '/chat/reminders'],
@@ -2150,7 +2268,10 @@ test('chat store removes local group state when current user leaves', async () =
 
   await chatStore.leaveGroupConversation('group-1')
 
-  assert.equal(chatStore.conversations.some((conversation) => conversation.id === 'group-1'), false)
+  assert.equal(
+    chatStore.conversations.some((conversation) => conversation.id === 'group-1'),
+    false,
+  )
   assert.equal(chatStore.messagesByConversation['group-1'], undefined)
   assert.equal(chatStore.activeConversationId, null)
 

@@ -106,6 +106,26 @@ const normalizeChatImage = (image = null) => {
   }
 }
 
+const normalizeChatFile = (file = null) => {
+  if (!file) {
+    return null
+  }
+
+  return {
+    id: normalizeString(file.id),
+    filename: normalizeString(file.filename || file.name),
+    mimeType: normalizeString(file.mime_type ?? file.mimeType),
+    sizeBytes: Number(file.size_bytes ?? file.sizeBytes ?? 0),
+    consumed: Boolean(file.consumed),
+    consumedAt: normalizeIso(file.consumed_at ?? file.consumedAt),
+    consumedByEmail: normalizeString(file.consumed_by_email ?? file.consumedByEmail),
+    consumedByLogin: normalizeString(file.consumed_by_login ?? file.consumedByLogin),
+    expiresAt: normalizeIso(file.expires_at ?? file.expiresAt),
+    expired: Boolean(file.expired),
+    expiredAt: normalizeIso(file.expired_at ?? file.expiredAt),
+  }
+}
+
 const normalizeReplyPreview = (reply = null) => {
   if (!reply) {
     return null
@@ -234,9 +254,7 @@ export const normalizeChatConversation = (conversation = {}, currentUserEmail = 
     pinnedMessageId: normalizeString(
       conversation.pinned_message_id ?? conversation.pinnedMessageId,
     ),
-    pinnedMessage: normalizeReplyPreview(
-      conversation.pinned_message ?? conversation.pinnedMessage,
-    ),
+    pinnedMessage: normalizeReplyPreview(conversation.pinned_message ?? conversation.pinnedMessage),
     lastReadMessageId: normalizeString(
       conversation.last_read_message_id ?? conversation.lastReadMessageId,
     ),
@@ -268,7 +286,10 @@ export const normalizeChatMessage = (message = {}) => ({
   id: normalizeString(message.id),
   conversationId: normalizeString(message.conversation_id ?? message.conversationId),
   clientMessageId: normalizeString(message.client_message_id ?? message.clientMessageId),
-  type: normalizeString(message.type || (message.audio ? 'audio' : message.image ? 'image' : 'text')),
+  type: normalizeString(
+    message.type ||
+      (message.audio ? 'audio' : message.image ? 'image' : message.file ? 'file' : 'text'),
+  ),
   senderEmail: normalizeString(message.sender_email ?? message.senderEmail),
   senderLogin: normalizeString(message.sender_login ?? message.senderLogin),
   text: normalizeString(message.text),
@@ -289,6 +310,7 @@ export const normalizeChatMessage = (message = {}) => ({
   reactions: toArray(message.reactions).map(normalizeReaction),
   audio: normalizeChatAudio(message.audio),
   image: normalizeChatImage(message.image),
+  file: normalizeChatFile(message.file),
   call: normalizeChatCall(message.call),
 })
 
@@ -328,7 +350,10 @@ function normalizeForwardedFrom(forwardedFrom = null) {
 const normalizeMessageReceiptCount = (message = {}, kind = 'delivered') => {
   const snakeKey = kind === 'read' ? 'read_by_count' : 'delivered_to_count'
   const camelKey = kind === 'read' ? 'readByCount' : 'deliveredToCount'
-  const fallback = kind === 'read' ? message.read_by ?? message.readBy : message.delivered_to ?? message.deliveredTo
+  const fallback =
+    kind === 'read'
+      ? (message.read_by ?? message.readBy)
+      : (message.delivered_to ?? message.deliveredTo)
   return Number(message[snakeKey] ?? message[camelKey] ?? toArray(fallback).length)
 }
 
@@ -460,9 +485,7 @@ const setConversationUnreadCount = (state, conversationId, unreadCount = 0) => {
 
 const incrementConversationUnreadCount = (state, conversationId) => {
   const normalizedConversationId = normalizeString(conversationId)
-  const conversation = state.conversations.find(
-    (item) => item.id === normalizedConversationId,
-  )
+  const conversation = state.conversations.find((item) => item.id === normalizedConversationId)
   setConversationUnreadCount(
     state,
     normalizedConversationId,
@@ -470,11 +493,7 @@ const incrementConversationUnreadCount = (state, conversationId) => {
   )
 }
 
-const countUnreadMessagesAfter = (
-  messages = [],
-  lastReadMessageId = '',
-  currentUserEmail = '',
-) => {
+const countUnreadMessagesAfter = (messages = [], lastReadMessageId = '', currentUserEmail = '') => {
   const items = Array.isArray(messages) ? messages : []
   const readIndex = lastReadMessageId
     ? items.findIndex((message) => message?.id === lastReadMessageId)
@@ -571,11 +590,7 @@ const clearReplyPreviewIfNeeded = (message = {}, removedIds = []) => {
   }
 }
 
-export const pruneExpiredChatTypers = (
-  state,
-  now = Date.now(),
-  ttlMs = CHAT_TYPING_TTL_MS,
-) => {
+export const pruneExpiredChatTypers = (state, now = Date.now(), ttlMs = CHAT_TYPING_TTL_MS) => {
   ensureConversationCollection(state)
   const nowMs = Number(now) || Date.now()
   for (const [conversationId, typers] of Object.entries(state.activeTypersByConversation)) {
@@ -619,9 +634,7 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
     }
 
     state.activeCallsByConversation[normalized.conversationId] = normalized
-    if (
-      normalized.participants.some((participant) => participant.email === currentUserEmail)
-    ) {
+    if (normalized.participants.some((participant) => participant.email === currentUserEmail)) {
       state.activeCall = normalized
     }
     return normalized
@@ -660,11 +673,7 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
     )
 
     if (data.conversation) {
-      upsertConversation(
-        state,
-        conversationPayload,
-        currentUserEmail,
-      )
+      upsertConversation(state, conversationPayload, currentUserEmail)
     }
 
     if (data.message) {
@@ -686,11 +695,7 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
       ? { ...data.conversation, members: data.members ?? data.conversation.members }
       : null
     if (data.conversation) {
-      upsertConversation(
-        state,
-        conversationPayload,
-        currentUserEmail,
-      )
+      upsertConversation(state, conversationPayload, currentUserEmail)
     }
 
     const reader = normalizeChatUser(data.reader || {})
@@ -867,7 +872,9 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
   if (event === 'presence_updated') {
     const conversationId = normalizeString(data.conversation_id ?? data.conversationId)
     const presence = normalizeChatPresence(data.presence || {})
-    const index = state.conversations.findIndex((conversation) => conversation.id === conversationId)
+    const index = state.conversations.findIndex(
+      (conversation) => conversation.id === conversationId,
+    )
     if (index !== -1) {
       state.conversations[index] = {
         ...state.conversations[index],
@@ -892,10 +899,7 @@ export const applyChatSocketEvent = (state, envelope, currentUserEmail = '') => 
       return state
     }
     const next = current.filter((typer) => typer.email !== user.email)
-    state.activeTypersByConversation[conversationId] = [
-      ...next,
-      withTypingExpiry(user),
-    ]
+    state.activeTypersByConversation[conversationId] = [...next, withTypingExpiry(user)]
     return state
   }
 

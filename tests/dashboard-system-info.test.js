@@ -26,6 +26,13 @@ test('normalizes server system info payload', () => {
       used_percent: 40,
     },
     uptime: { human: '2d 3h 10m' },
+    alerts: [
+      {
+        level: 'warning',
+        metric: 'disk',
+        message: 'Диск заполнен на 82%.',
+      },
+    ],
   })
 
   assert.equal(info.hostname, 'srv')
@@ -33,6 +40,13 @@ test('normalizes server system info payload', () => {
   assert.equal(info.memory.usedPercent, 50)
   assert.equal(info.disk.usedPercent, 40)
   assert.equal(info.uptime.human, '2d 3h 10m')
+  assert.deepEqual(info.alerts, [
+    {
+      level: 'warning',
+      metric: 'disk',
+      message: 'Диск заполнен на 82%.',
+    },
+  ])
 })
 
 test('maps usage percent to dashboard tone', () => {

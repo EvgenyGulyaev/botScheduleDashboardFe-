@@ -9,7 +9,9 @@ const messageTimestamp = (message = {}) =>
 
 export const buildUnreadCenterItems = (conversations = []) =>
   (Array.isArray(conversations) ? conversations : [])
-    .filter((conversation) => Number(conversation?.unreadCount ?? conversation?.unread_count ?? 0) > 0)
+    .filter(
+      (conversation) => Number(conversation?.unreadCount ?? conversation?.unread_count ?? 0) > 0,
+    )
     .map((conversation) => ({
       ...conversation,
       unreadCount: Number(conversation.unreadCount ?? conversation.unread_count ?? 0),
@@ -51,6 +53,45 @@ export const filterImportantMessages = (messages = [], query = '') => {
       .toLowerCase()
     return haystack.includes(normalizedQuery)
   })
+}
+
+export const filterChatMessagesByMode = (
+  messages = [],
+  mode = 'all',
+  { lastReadMessageId = '', currentUserEmail = '' } = {},
+) => {
+  const items = (Array.isArray(messages) ? messages : []).map(normalizeChatMessage)
+  const normalizedMode = normalizeString(mode) || 'all'
+  if (normalizedMode === 'all') {
+    return items
+  }
+
+  if (normalizedMode === 'unread') {
+    const readIndex = lastReadMessageId
+      ? items.findIndex((message) => message.id === lastReadMessageId)
+      : -1
+    return items.slice(readIndex + 1).filter((message) => {
+      return message.id && message.senderEmail !== currentUserEmail
+    })
+  }
+
+  if (normalizedMode === 'important') {
+    return items.filter((message) => message.favorite)
+  }
+
+  if (normalizedMode === 'media') {
+    return items.filter((message) => ['audio', 'image', 'file'].includes(message.type))
+  }
+
+  if (normalizedMode === 'audio') {
+    return items.filter((message) => message.type === 'audio')
+  }
+
+  if (normalizedMode === 'files') {
+    return items.filter((message) => message.type === 'file')
+  }
+
+  return items
 }
 
 export const normalizeChatReminder = (reminder = {}) => ({
