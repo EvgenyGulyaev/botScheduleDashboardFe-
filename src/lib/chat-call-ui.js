@@ -23,8 +23,12 @@ export const buildCallMediaConstraints = ({ video = true } = {}) => ({
 
 export const streamHasVideo = (stream) => toTracks(stream, 'video').length > 0
 
+export const streamVideoTrack = (stream) => toTracks(stream, 'video')[0] || null
+
 export const streamHasActiveVideo = (stream) =>
-  toTracks(stream, 'video').some((track) => track?.enabled !== false && track?.readyState !== 'ended')
+  toTracks(stream, 'video').some(
+    (track) => track?.enabled !== false && track?.readyState !== 'ended',
+  )
 
 export const setStreamTracksEnabled = (stream, kind, enabled) => {
   const tracks = toTracks(stream, kind)
@@ -34,6 +38,25 @@ export const setStreamTracksEnabled = (stream, kind, enabled) => {
   return tracks.length
 }
 
+export const replacePeerConnectionsVideoTrack = async (connections, track) => {
+  const values =
+    connections && typeof connections.values === 'function'
+      ? connections.values()
+      : connections || []
+  let replaced = 0
+  for (const connection of values) {
+    const sender = connection
+      ?.getSenders?.()
+      ?.find((item) => item?.track?.kind === 'video' && typeof item.replaceTrack === 'function')
+    if (!sender) {
+      continue
+    }
+    await sender.replaceTrack(track || null)
+    replaced += 1
+  }
+  return replaced
+}
+
 export const mergeCallMediaEntry = (current = {}, participant = {}, stream = null) => ({
   email: participant?.email || current?.email || '',
   login: participant?.login || current?.login || participant?.email || current?.email || '',
@@ -41,6 +64,7 @@ export const mergeCallMediaEntry = (current = {}, participant = {}, stream = nul
   stream: stream || current?.stream || null,
   cameraEnabled: stream ? streamHasActiveVideo(stream) : Boolean(current?.cameraEnabled),
   hasVideo: stream ? streamHasVideo(stream) : Boolean(current?.hasVideo),
+  screenSharing: Boolean(current?.screenSharing),
 })
 
 export const getCallVideoGridClass = (count = 0) => {
@@ -65,6 +89,7 @@ export const getCallFocusTile = (tiles = [], preferredEmail = '') => {
   }
 
   return (
+    normalizedTiles.find((tile) => tile.screenSharing && (tile.hasVideo || tile.stream)) ||
     normalizedTiles.find((tile) => tile.cameraEnabled || tile.hasVideo) ||
     normalizedTiles[0] ||
     null

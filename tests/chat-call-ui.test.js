@@ -6,9 +6,11 @@ import {
   getCallFocusTile,
   getCallVideoGridClass,
   mergeCallMediaEntry,
+  replacePeerConnectionsVideoTrack,
   setStreamTracksEnabled,
   streamHasActiveVideo,
   streamHasVideo,
+  streamVideoTrack,
 } from '../src/lib/chat-call-ui.js'
 
 test('builds call media constraints with optional video', () => {
@@ -71,6 +73,57 @@ test('toggles stream tracks for requested media kind', () => {
   assert.equal(audioTrack.enabled, false)
 })
 
+test('gets the first video track from a stream', () => {
+  const videoTrack = { kind: 'video' }
+  assert.equal(
+    streamVideoTrack({
+      getVideoTracks() {
+        return [videoTrack]
+      },
+    }),
+    videoTrack,
+  )
+  assert.equal(streamVideoTrack(null), null)
+})
+
+test('replaces video sender tracks across peer connections', async () => {
+  const nextTrack = { kind: 'video', id: 'screen-track' }
+  const replaced = []
+  const audioSender = {
+    track: { kind: 'audio' },
+    async replaceTrack(track) {
+      replaced.push(['audio', track])
+    },
+  }
+  const videoSender = {
+    track: { kind: 'video' },
+    async replaceTrack(track) {
+      replaced.push(['video', track])
+    },
+  }
+  const connections = new Map([
+    [
+      'peer-a@example.com',
+      {
+        getSenders() {
+          return [audioSender, videoSender]
+        },
+      },
+    ],
+    [
+      'peer-b@example.com',
+      {
+        getSenders() {
+          return [audioSender]
+        },
+      },
+    ],
+  ])
+
+  assert.equal(await replacePeerConnectionsVideoTrack(connections, nextTrack), 1)
+  assert.deepEqual(replaced, [['video', nextTrack]])
+})
+
 test('merges remote media entry with participant and stream state', () => {
   const participant = {
     email: 'nika@example.com',
@@ -84,7 +137,7 @@ test('merges remote media entry with participant and stream state', () => {
   }
 
   assert.deepEqual(
-    mergeCallMediaEntry({ cameraEnabled: false }, participant, stream),
+    mergeCallMediaEntry({ cameraEnabled: false, screenSharing: true }, participant, stream),
     {
       email: 'nika@example.com',
       login: 'nika',
@@ -92,6 +145,7 @@ test('merges remote media entry with participant and stream state', () => {
       stream,
       cameraEnabled: true,
       hasVideo: true,
+      screenSharing: true,
     },
   )
 })
@@ -106,12 +160,16 @@ test('picks focused call tile by explicit email or sensible fallback', () => {
   const tiles = [
     { email: 'audio@example.com', cameraEnabled: false, hasVideo: false },
     { email: 'video@example.com', cameraEnabled: true, hasVideo: true },
-    { email: 'other@example.com', cameraEnabled: false, hasVideo: true },
+    { email: 'other@example.com', cameraEnabled: false, hasVideo: true, screenSharing: true },
   ]
 
   assert.equal(getCallFocusTile(tiles, 'other@example.com')?.email, 'other@example.com')
-  assert.equal(getCallFocusTile(tiles, 'missing@example.com')?.email, 'video@example.com')
-  assert.equal(getCallFocusTile([{ email: 'audio@example.com', hasVideo: false }], '')?.email, 'audio@example.com')
+  assert.equal(getCallFocusTile(tiles, '')?.email, 'other@example.com')
+  assert.equal(getCallFocusTile(tiles, 'missing@example.com')?.email, 'other@example.com')
+  assert.equal(
+    getCallFocusTile([{ email: 'audio@example.com', hasVideo: false }], '')?.email,
+    'audio@example.com',
+  )
   assert.equal(getCallFocusTile([], 'video@example.com'), null)
 })
 

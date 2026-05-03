@@ -494,14 +494,34 @@
                       type="button"
                       :class="
                         mobileConversationMode
-                          ? 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-lg text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15'
-                          : 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100'
+                          ? 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-lg text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50'
+                          : 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50'
                       "
                       :title="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
                       :aria-label="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
+                      :disabled="localCallScreenSharing"
                       @click="toggleCallCamera"
                     >
                       {{ localCallCameraEnabled ? '📷' : '🚫' }}
+                    </button>
+                    <button
+                      v-if="displayedCall?.joinable && isCurrentUserInDisplayedCall"
+                      type="button"
+                      :class="
+                        mobileConversationMode
+                          ? 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-lg text-white shadow-sm backdrop-blur-sm transition hover:bg-white/15 disabled:cursor-wait disabled:opacity-50'
+                          : 'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-wait disabled:opacity-50'
+                      "
+                      :title="
+                        localCallScreenSharing ? 'Остановить демонстрацию экрана' : 'Показать экран'
+                      "
+                      :aria-label="
+                        localCallScreenSharing ? 'Остановить демонстрацию экрана' : 'Показать экран'
+                      "
+                      :disabled="startingScreenShare"
+                      @click="toggleCallScreenShare"
+                    >
+                      {{ localCallScreenSharing ? '🛑' : '🖥️' }}
                     </button>
                     <button
                       v-if="displayedCall?.joinable && isCurrentUserInDisplayedCall"
@@ -848,9 +868,25 @@
                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                       :title="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
                       :aria-label="localCallCameraEnabled ? 'Выключить камеру' : 'Включить камеру'"
+                      :disabled="localCallScreenSharing"
                       @click="toggleCallCamera"
                     >
                       {{ localCallCameraEnabled ? '📷' : '🚫' }}
+                    </button>
+                    <button
+                      v-if="displayedCall.joinable && isCurrentUserInDisplayedCall"
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-wait disabled:opacity-50"
+                      :title="
+                        localCallScreenSharing ? 'Остановить демонстрацию экрана' : 'Показать экран'
+                      "
+                      :aria-label="
+                        localCallScreenSharing ? 'Остановить демонстрацию экрана' : 'Показать экран'
+                      "
+                      :disabled="startingScreenShare"
+                      @click="toggleCallScreenShare"
+                    >
+                      {{ localCallScreenSharing ? '🛑' : '🖥️' }}
                     </button>
                     <button
                       v-if="displayedCall.joinable && isCurrentUserInDisplayedCall"
@@ -916,11 +952,18 @@
                           {{ tile.login || tile.email }}
                         </div>
                         <div class="mt-0.5 text-[11px] text-white/70">
-                          {{ tile.isLocal ? 'Вы в звонке' : 'Участник звонка' }}
+                          {{
+                            tile.screenSharing
+                              ? 'Демонстрация экрана'
+                              : tile.isLocal
+                                ? 'Вы в звонке'
+                                : 'Участник звонка'
+                          }}
                         </div>
                       </div>
                       <div class="flex shrink-0 items-center gap-1.5 text-base">
                         <span>{{ tile.muted ? '🔇' : '🎤' }}</span>
+                        <span v-if="tile.screenSharing">🖥️</span>
                         <span>{{ tile.cameraEnabled ? '📹' : '🚫' }}</span>
                       </div>
                     </div>
@@ -1848,11 +1891,18 @@
                         {{ focusedCallTile?.login || focusedCallTile?.email }}
                       </div>
                       <div class="mt-1 text-xs text-white/70 sm:text-sm">
-                        {{ focusedCallTile?.isLocal ? 'Вы в звонке' : 'Участник звонка' }}
+                        {{
+                          focusedCallTile?.screenSharing
+                            ? 'Демонстрация экрана'
+                            : focusedCallTile?.isLocal
+                              ? 'Вы в звонке'
+                              : 'Участник звонка'
+                        }}
                       </div>
                     </div>
                     <div class="flex shrink-0 items-center gap-2 text-lg">
                       <span>{{ focusedCallTile?.muted ? '🔇' : '🎤' }}</span>
+                      <span v-if="focusedCallTile?.screenSharing">🖥️</span>
                       <span>{{ focusedCallTile?.cameraEnabled ? '📹' : '🚫' }}</span>
                     </div>
                   </div>
@@ -2310,9 +2360,11 @@ import {
   getCallFocusTile,
   getCallVideoGridClass,
   mergeCallMediaEntry,
+  replacePeerConnectionsVideoTrack,
   setStreamTracksEnabled,
   streamHasActiveVideo,
   streamHasVideo,
+  streamVideoTrack,
 } from '../lib/chat-call-ui.js'
 import { getChatDraftPreview } from '../lib/chat.js'
 import { renderChatMarkdown } from '../lib/chat-markdown.js'
@@ -2418,6 +2470,8 @@ const callActionError = ref('')
 const localCallMuted = ref(false)
 const localCallCameraEnabled = ref(false)
 const localCallStream = ref(null)
+const localCallScreenStream = ref(null)
+const startingScreenShare = ref(false)
 const remoteCallMedia = ref([])
 const callFocusMode = ref(false)
 const focusedCallParticipantEmail = ref('')
@@ -2724,6 +2778,7 @@ const displayedCallStatusText = computed(() => {
 const displayedCallVideoGridClass = computed(() =>
   getCallVideoGridClass(displayedCallMediaTiles.value.length),
 )
+const localCallScreenSharing = computed(() => Boolean(localCallScreenStream.value))
 const displayedCallMediaTiles = computed(() => {
   if (!displayedCall.value) {
     return []
@@ -2731,13 +2786,15 @@ const displayedCallMediaTiles = computed(() => {
 
   const tiles = []
   if (isCurrentUserInDisplayedCall.value && localCallStream.value) {
+    const localStream = localCallScreenStream.value || localCallStream.value
     tiles.push({
       email: currentUserEmail.value,
       login: currentUserLogin.value,
       muted: localCallMuted.value,
-      stream: localCallStream.value,
-      cameraEnabled: localCallCameraEnabled.value,
-      hasVideo: streamHasVideo(localCallStream.value),
+      stream: localStream,
+      cameraEnabled: localCallScreenSharing.value || localCallCameraEnabled.value,
+      hasVideo: streamHasVideo(localStream),
+      screenSharing: localCallScreenSharing.value,
       isLocal: true,
     })
   }
@@ -2755,6 +2812,7 @@ const displayedCallMediaTiles = computed(() => {
       stream: mediaEntry?.stream || null,
       cameraEnabled: mediaEntry?.cameraEnabled ?? false,
       hasVideo: mediaEntry?.hasVideo ?? false,
+      screenSharing: mediaEntry?.screenSharing ?? false,
       isLocal: false,
     })
   }
@@ -3570,7 +3628,7 @@ const resetRemoteMedia = () => {
 
 const attachLocalMedia = () => {
   if (localCallVideo.value) {
-    localCallVideo.value.srcObject = localCallStream.value
+    localCallVideo.value.srcObject = localCallScreenStream.value || localCallStream.value
   }
 }
 
@@ -3579,14 +3637,32 @@ const updateRemoteMediaState = (email, patch = {}) => {
     return
   }
 
-  remoteCallMedia.value = remoteCallMedia.value.map((entry) =>
-    entry.email === email
-      ? {
-          ...entry,
-          ...patch,
-        }
-      : entry,
-  )
+  let updated = false
+  remoteCallMedia.value = remoteCallMedia.value.map((entry) => {
+    if (entry.email !== email) {
+      return entry
+    }
+    updated = true
+    return {
+      ...entry,
+      ...patch,
+    }
+  })
+  if (!updated) {
+    remoteCallMedia.value = [
+      ...remoteCallMedia.value,
+      {
+        email,
+        login: email,
+        muted: false,
+        stream: null,
+        cameraEnabled: false,
+        hasVideo: false,
+        screenSharing: false,
+        ...patch,
+      },
+    ]
+  }
 }
 
 const upsertRemoteMediaStream = (participant, stream) => {
@@ -3630,7 +3706,17 @@ const syncRemoteMediaMeta = (call) => {
     })
 }
 
+const stopLocalScreenStreamTracks = () => {
+  const tracks = localCallScreenStream.value?.getTracks?.() || []
+  for (const track of tracks) {
+    track.onended = null
+    track.stop()
+  }
+  localCallScreenStream.value = null
+}
+
 const stopLocalCallStream = () => {
+  stopLocalScreenStreamTracks()
   const tracks = localCallStream.value?.getTracks?.() || []
   for (const track of tracks) {
     track.stop()
@@ -3661,6 +3747,7 @@ const resetCallSession = () => {
   resetRemoteMedia()
   stopLocalCallStream()
   localCallMuted.value = false
+  startingScreenShare.value = false
 }
 
 const ensureCallConfig = async () => {
@@ -3704,6 +3791,21 @@ const ensureLocalCallStream = async ({ preferVideo = true } = {}) => {
   return stream
 }
 
+const localCallOutgoingTracks = () => [
+  ...(localCallStream.value?.getAudioTracks?.() || []),
+  ...(localCallScreenStream.value?.getVideoTracks?.() ||
+    localCallStream.value?.getVideoTracks?.() ||
+    []),
+]
+
+const localCallOutgoingStream = () => {
+  const tracks = localCallOutgoingTracks()
+  if (typeof MediaStream !== 'undefined') {
+    return new MediaStream(tracks)
+  }
+  return localCallScreenStream.value || localCallStream.value
+}
+
 const shouldInitiateOffer = (call, remoteParticipant) => {
   const localParticipant = call?.participants?.find(
     (participant) => participant.email === currentUserEmail.value,
@@ -3741,7 +3843,8 @@ const broadcastLocalMediaState = (call) => {
     }
 
     sendRtcSignal(call, participant, 'media-state', {
-      camera_enabled: localCallCameraEnabled.value,
+      camera_enabled: localCallScreenSharing.value || localCallCameraEnabled.value,
+      screen_sharing: localCallScreenSharing.value,
     })
   }
 }
@@ -3758,14 +3861,15 @@ const ensurePeerConnection = async (call, remoteParticipant, createOffer = false
   let connection = peerConnections.get(remoteParticipant.email)
   if (!connection) {
     await ensureCallConfig()
-    const stream = await ensureLocalCallStream()
+    await ensureLocalCallStream()
     connection = new RTCPeerConnection({
       iceServers: chatStore.callConfig?.iceServers || [{ urls: ['stun:stun.l.google.com:19302'] }],
     })
     peerConnections.set(remoteParticipant.email, connection)
 
-    for (const track of stream.getTracks()) {
-      connection.addTrack(track, stream)
+    const outgoingStream = localCallOutgoingStream()
+    for (const track of localCallOutgoingTracks()) {
+      connection.addTrack(track, outgoingStream)
     }
 
     connection.onicecandidate = (event) => {
@@ -3865,6 +3969,7 @@ const handleIncomingCallSignal = async (envelope) => {
   if (data.kind === 'media-state') {
     updateRemoteMediaState(remoteParticipant.email, {
       cameraEnabled: Boolean(data.payload?.camera_enabled),
+      screenSharing: Boolean(data.payload?.screen_sharing),
     })
     return
   }
@@ -4037,6 +4142,10 @@ const toggleCallCamera = async () => {
   if (!displayedCall.value?.id || !isCurrentUserInDisplayedCall.value || !localCallStream.value) {
     return
   }
+  if (localCallScreenSharing.value) {
+    notifications.info('Сначала останови демонстрацию экрана')
+    return
+  }
 
   const nextEnabled = !localCallCameraEnabled.value
   const changed = setStreamTracksEnabled(localCallStream.value, 'video', nextEnabled)
@@ -4047,6 +4156,92 @@ const toggleCallCamera = async () => {
 
   localCallCameraEnabled.value = nextEnabled
   broadcastLocalMediaState(displayedCall.value)
+}
+
+const startCallScreenShare = async () => {
+  if (!displayedCall.value?.id || !isCurrentUserInDisplayedCall.value) {
+    return
+  }
+  if (
+    typeof navigator === 'undefined' ||
+    !navigator.mediaDevices?.getDisplayMedia ||
+    (typeof window !== 'undefined' && window.isSecureContext === false)
+  ) {
+    throw new Error('Браузер не поддерживает демонстрацию экрана для этого сайта')
+  }
+
+  startingScreenShare.value = true
+  let stream = null
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        cursor: 'always',
+      },
+      audio: false,
+    })
+    const screenTrack = streamVideoTrack(stream)
+    if (!screenTrack) {
+      throw new Error('Не удалось получить видео экрана')
+    }
+
+    screenTrack.onended = () => {
+      if (localCallScreenStream.value === stream) {
+        void stopCallScreenShare()
+      }
+    }
+
+    localCallScreenStream.value = stream
+    const replaced = await replacePeerConnectionsVideoTrack(peerConnections, screenTrack)
+    if (peerConnections.size > 0 && replaced === 0) {
+      throw new Error('В этом звонке нет video-канала для демонстрации экрана')
+    }
+    attachLocalMedia()
+    broadcastLocalMediaState(displayedCall.value)
+    openCallFocus(currentUserEmail.value)
+  } catch (error) {
+    if (localCallScreenStream.value === stream) {
+      localCallScreenStream.value = null
+    }
+    const tracks = stream?.getTracks?.() || []
+    for (const track of tracks) {
+      track.onended = null
+      track.stop()
+    }
+    attachLocalMedia()
+    throw error
+  } finally {
+    startingScreenShare.value = false
+  }
+}
+
+const stopCallScreenShare = async () => {
+  if (!localCallScreenStream.value) {
+    return
+  }
+
+  stopLocalScreenStreamTracks()
+  const cameraTrack = localCallCameraEnabled.value ? streamVideoTrack(localCallStream.value) : null
+  await replacePeerConnectionsVideoTrack(peerConnections, cameraTrack)
+  attachLocalMedia()
+  broadcastLocalMediaState(displayedCall.value)
+}
+
+const toggleCallScreenShare = async () => {
+  if (!displayedCall.value?.id || !isCurrentUserInDisplayedCall.value) {
+    return
+  }
+
+  callActionError.value = ''
+  try {
+    if (localCallScreenSharing.value) {
+      await stopCallScreenShare()
+      return
+    }
+    await startCallScreenShare()
+  } catch (error) {
+    callActionError.value = error?.message || 'Не удалось запустить демонстрацию экрана'
+    notifications.errorFrom(error, 'Не удалось запустить демонстрацию экрана')
+  }
 }
 
 const handleCallAction = async () => {
@@ -5254,7 +5449,7 @@ watch(
 )
 
 watch(
-  () => localCallStream.value,
+  () => [localCallStream.value, localCallScreenStream.value],
   () => {
     attachLocalMedia()
   },

@@ -187,19 +187,64 @@
           </div>
         </div>
 
-        <label class="mt-5 block">
-          <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div class="mt-5">
+          <div class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Группы видимости
-          </span>
-          <input
-            v-model="visibilityGroupsInput"
-            class="field"
-            placeholder="general, family, work"
-          />
+          </div>
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div v-if="selectedVisibilityGroups.length" class="mb-3 flex flex-wrap gap-2">
+              <button
+                v-for="group in selectedVisibilityGroups"
+                :key="group"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+                @click="removeVisibilityGroup(group)"
+              >
+                {{ group }}
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+            <div v-else class="mb-3 text-xs text-slate-500">
+              Если ничего не выбрать, сохранится группа general.
+            </div>
+
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <input
+                v-model="newVisibilityGroupInput"
+                class="field bg-white"
+                placeholder="Например: family или work-team"
+                @keydown.enter.prevent="addVisibilityGroup()"
+              />
+              <button
+                type="button"
+                class="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                @click="addVisibilityGroup()"
+              >
+                Добавить
+              </button>
+            </div>
+
+            <div v-if="unusedVisibilityGroupOptions.length" class="mt-3">
+              <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Быстрый выбор
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="group in unusedVisibilityGroupOptions"
+                  :key="group"
+                  type="button"
+                  class="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                  @click="addVisibilityGroup(group)"
+                >
+                  + {{ group }}
+                </button>
+              </div>
+            </div>
+          </div>
           <span class="mt-1 block text-xs text-slate-500">
-            Пользователь видит людей из общих групп. Новую группу можно создать прямо здесь.
+            Можно выбрать существующие группы или вписать новую латиницей и нажать Enter.
           </span>
-        </label>
+        </div>
 
         <label class="mt-5 block">
           <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500"
@@ -240,6 +285,12 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { DEFAULT_APP_OPTIONS, resolveDefaultAppValue } from '../lib/default-app.js'
+import {
+  collectVisibilityGroupOptions,
+  DEFAULT_VISIBILITY_GROUP,
+  normalizeVisibilityGroups,
+  splitVisibilityGroupInput,
+} from '../lib/visibility-groups.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useNotificationsStore } from '../stores/notifications.js'
 
@@ -253,7 +304,8 @@ const editing = ref(false)
 const editingMode = ref('create')
 const originalEmail = ref('')
 const form = ref(createEmptyForm())
-const visibilityGroupsInput = ref('general')
+const selectedVisibilityGroups = ref([DEFAULT_VISIBILITY_GROUP])
+const newVisibilityGroupInput = ref('')
 
 const permissionOptions = DEFAULT_APP_OPTIONS.map((option) => ({
   value: option.value,
@@ -274,6 +326,14 @@ const defaultOptionsForForm = computed(() => {
   const options = DEFAULT_APP_OPTIONS.filter((option) => allowed.has(option.value))
   return options.length ? options : DEFAULT_APP_OPTIONS.filter((option) => option.value === 'chat')
 })
+
+const visibilityGroupOptions = computed(() =>
+  collectVisibilityGroupOptions(users.value, selectedVisibilityGroups.value),
+)
+
+const unusedVisibilityGroupOptions = computed(() =>
+  visibilityGroupOptions.value.filter((group) => !selectedVisibilityGroups.value.includes(group)),
+)
 
 watch(
   () => [form.value.isAdmin, form.value.isSuperAdmin],
@@ -317,7 +377,8 @@ const startCreate = () => {
   editingMode.value = 'create'
   originalEmail.value = ''
   form.value = createEmptyForm()
-  visibilityGroupsInput.value = 'general'
+  selectedVisibilityGroups.value = [DEFAULT_VISIBILITY_GROUP]
+  newVisibilityGroupInput.value = ''
   editing.value = true
 }
 
@@ -333,7 +394,8 @@ const startEdit = (user) => {
     defaultApp: resolveDefaultAppValue(user.defaultApp),
     appPermissions: Array.isArray(user.appPermissions) ? [...user.appPermissions] : ['chat'],
   }
-  visibilityGroupsInput.value = visibilityGroupLabels(user.visibilityGroups).join(', ')
+  selectedVisibilityGroups.value = normalizeVisibilityGroups(user.visibilityGroups)
+  newVisibilityGroupInput.value = ''
   editing.value = true
 }
 
@@ -352,7 +414,7 @@ const saveUser = async () => {
       is_super_admin: Boolean(form.value.isSuperAdmin),
       default_app: resolveDefaultAppValue(form.value.defaultApp),
       app_permissions: [...form.value.appPermissions],
-      visibility_groups: parseVisibilityGroups(visibilityGroupsInput.value),
+      visibility_groups: normalizeVisibilityGroups(selectedVisibilityGroups.value),
     }
     if (form.value.password.trim()) {
       payload.password = form.value.password.trim()
@@ -390,20 +452,25 @@ const deleteUser = async (user) => {
 const permissionLabels = (permissions = []) =>
   permissions.map((permission) => labelForApp(permission)).filter(Boolean)
 
-const visibilityGroupLabels = (groups = []) => {
-  const values = Array.isArray(groups) ? groups : []
-  return values.length ? values : ['general']
-}
+const visibilityGroupLabels = (groups = []) => normalizeVisibilityGroups(groups)
 
 const labelForApp = (app) =>
   DEFAULT_APP_OPTIONS.find((option) => option.value === app)?.label || app
 
-const parseVisibilityGroups = (value = '') => {
-  const groups = String(value)
-    .split(',')
-    .map((group) => group.trim())
-    .filter(Boolean)
-  return groups.length ? groups : ['general']
+const addVisibilityGroup = (value = newVisibilityGroupInput.value) => {
+  const nextGroups = [
+    ...selectedVisibilityGroups.value,
+    ...splitVisibilityGroupInput(value || newVisibilityGroupInput.value),
+  ]
+  selectedVisibilityGroups.value = normalizeVisibilityGroups(
+    nextGroups,
+    selectedVisibilityGroups.value,
+  )
+  newVisibilityGroupInput.value = ''
+}
+
+const removeVisibilityGroup = (group) => {
+  selectedVisibilityGroups.value = selectedVisibilityGroups.value.filter((item) => item !== group)
 }
 
 function createEmptyForm() {
