@@ -631,6 +631,16 @@
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                       :disabled="!activeConversation"
+                      title="Действия чата"
+                      aria-label="Действия чата"
+                      @click="openChatActions"
+                    >
+                      👥
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="!activeConversation"
                       title="Позвонить"
                       aria-label="Позвонить"
                       @click="handleCallAction"
@@ -647,32 +657,6 @@
                       ⚙️
                     </button>
                   </div>
-                </div>
-                <div
-                  v-if="mobileConversationMode && (canInviteToActiveGroup || canDeleteActiveGroup)"
-                  class="flex flex-wrap gap-2"
-                >
-                  <button
-                    v-if="canInviteToActiveGroup"
-                    type="button"
-                    class="inline-flex min-h-8 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 px-3 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-100"
-                    title="Пригласить в чат"
-                    aria-label="Пригласить в чат"
-                    @click="openGroupInvitePanel"
-                  >
-                    Пригласить
-                  </button>
-                  <button
-                    v-if="canDeleteActiveGroup"
-                    type="button"
-                    class="inline-flex min-h-8 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 px-3 text-xs font-semibold text-rose-700 shadow-sm transition hover:border-rose-200 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="deletingGroup"
-                    title="Удалить чат"
-                    aria-label="Удалить чат"
-                    @click="deleteActiveGroup"
-                  >
-                    {{ deletingGroup ? 'Удаляем…' : 'Удалить чат' }}
-                  </button>
                 </div>
                 <div
                   v-if="!mobileConversationMode"
@@ -733,42 +717,21 @@
                       type="button"
                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                       :disabled="!activeConversation"
+                      title="Действия чата"
+                      aria-label="Действия чата"
+                      @click="openChatActions"
+                    >
+                      👥
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="!activeConversation"
                       title="Позвонить"
                       aria-label="Позвонить"
                       @click="handleCallAction"
                     >
                       📞
-                    </button>
-                    <button
-                      v-if="canInviteToActiveGroup"
-                      type="button"
-                      class="inline-flex h-10 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 px-3 text-sm font-semibold text-sky-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-100"
-                      title="Пригласить в чат"
-                      aria-label="Пригласить в чат"
-                      @click="openGroupInvitePanel"
-                    >
-                      Пригласить
-                    </button>
-                    <button
-                      v-if="canDeleteActiveGroup"
-                      type="button"
-                      class="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 px-3 text-sm font-semibold text-rose-700 shadow-sm transition hover:border-rose-200 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                      :disabled="deletingGroup"
-                      title="Удалить чат"
-                      aria-label="Удалить чат"
-                      @click="deleteActiveGroup"
-                    >
-                      {{ deletingGroup ? 'Удаляем…' : 'Удалить чат' }}
-                    </button>
-                    <button
-                      v-if="activeConversation?.type === 'group'"
-                      type="button"
-                      class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100"
-                      title="Настройки группы"
-                      aria-label="Настройки группы"
-                      @click="openGroupSettings"
-                    >
-                      👥
                     </button>
                   </div>
                 </div>
@@ -2152,30 +2115,56 @@
     </div>
 
     <div
-      v-if="groupSettingsOpen && activeConversation?.type === 'group'"
+      v-if="groupSettingsOpen && activeConversation"
       class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 px-4 py-8 backdrop-blur-sm"
-      @click.self="closeGroupSettings"
+      @click.self="closeChatActions"
     >
       <section
         class="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-3xl bg-white p-6 shadow-2xl"
       >
         <div class="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h3 class="text-xl font-bold text-slate-950">Настройки группы</h3>
+            <h3 class="text-xl font-bold text-slate-950">Действия чата</h3>
             <p class="mt-1 text-sm text-slate-500">
-              Роли и участники управляются серверными правами.
+              Управление участниками и удалением текущего диалога.
             </p>
           </div>
           <button
             type="button"
             class="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-            @click="closeGroupSettings"
+            @click="closeChatActions"
           >
             Закрыть
           </button>
         </div>
 
-        <div class="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
+        <section
+          v-if="activeConversation.type === 'direct'"
+          class="rounded-3xl border border-slate-200 bg-slate-50 p-4"
+        >
+          <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Собеседник
+          </div>
+          <div class="mt-2 rounded-2xl border border-slate-200 bg-white p-4">
+            <div class="truncate text-base font-bold text-slate-950">
+              {{ activeDirectPeer?.login || activeDirectPeer?.email || activeConversationTitle }}
+            </div>
+            <div v-if="activeDirectPeer?.email" class="mt-1 truncate text-sm text-slate-500">
+              {{ activeDirectPeer.email }}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="mt-4 w-full rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="deletingConversation"
+            @click="deleteActiveConversation"
+          >
+            {{ deletingConversation ? 'Удаляем…' : 'Удалить чат' }}
+          </button>
+        </section>
+
+        <div v-else class="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
           <div class="space-y-4">
             <section class="rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <label
@@ -2207,7 +2196,6 @@
 
             <section
               v-if="activeConversation.permissions?.canAddMembers"
-              ref="groupInviteSection"
               class="rounded-3xl border border-slate-200 bg-slate-50 p-4"
             >
               <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -2306,10 +2294,10 @@
               v-if="activeConversation.permissions?.canDelete"
               type="button"
               class="mt-4 w-full rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="deletingGroup"
-              @click="deleteActiveGroup"
+              :disabled="deletingConversation"
+              @click="deleteActiveConversation"
             >
-              {{ deletingGroup ? 'Удаляем…' : 'Удалить чат' }}
+              {{ deletingConversation ? 'Удаляем…' : 'Удалить чат' }}
             </button>
           </section>
         </div>
@@ -2490,7 +2478,7 @@ const fileInput = ref(null)
 const emojiPickerRoot = ref(null)
 const emojiPickerOpen = ref(false)
 const creatingGroup = ref(false)
-const deletingGroup = ref(false)
+const deletingConversation = ref(false)
 const savingGroupSettings = ref(false)
 const forwardingMessages = ref(false)
 const sendingMessage = ref(false)
@@ -2501,7 +2489,6 @@ const groupModalOpen = ref(false)
 const groupSettingsOpen = ref(false)
 const forwardPickerOpen = ref(false)
 const messagesScroller = ref(null)
-const groupInviteSection = ref(null)
 const isRecordingAudio = ref(false)
 const recordingSeconds = ref(0)
 const recordedAudioDuration = ref(0)
@@ -2793,15 +2780,10 @@ const otherUsers = computed(() =>
 const activeGroupMemberEmails = computed(
   () => new Set((activeConversation.value?.members || []).map((member) => member.email)),
 )
-const canInviteToActiveGroup = computed(
-  () =>
-    activeConversation.value?.type === 'group' &&
-    Boolean(activeConversation.value.permissions?.canAddMembers),
-)
-const canDeleteActiveGroup = computed(
-  () =>
-    activeConversation.value?.type === 'group' &&
-    Boolean(activeConversation.value.permissions?.canDelete),
+const activeDirectPeer = computed(() =>
+  (activeConversation.value?.members || []).find(
+    (member) => member.email && member.email !== currentUserEmail.value,
+  ),
 )
 const groupInviteUsers = computed(() =>
   otherUsers.value.filter((user) => !activeGroupMemberEmails.value.has(user.email)),
@@ -5085,8 +5067,8 @@ const closeGroupModal = () => {
   groupModalOpen.value = false
 }
 
-const openGroupSettings = () => {
-  if (!activeConversation.value || activeConversation.value.type !== 'group') {
+const openChatActions = () => {
+  if (!activeConversation.value) {
     return
   }
 
@@ -5097,17 +5079,7 @@ const openGroupSettings = () => {
   groupSettingsOpen.value = true
 }
 
-const openGroupInvitePanel = async () => {
-  if (!canInviteToActiveGroup.value) {
-    return
-  }
-
-  openGroupSettings()
-  await nextTick()
-  groupInviteSection.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-}
-
-const closeGroupSettings = () => {
+const closeChatActions = () => {
   groupSettingsOpen.value = false
   groupSettingsForm.value = { title: '', memberEmails: [] }
 }
@@ -5136,28 +5108,33 @@ const createGroup = async () => {
   }
 }
 
-const deleteActiveGroup = async () => {
-  if (!activeConversation.value || activeConversation.value.type !== 'group') {
+const deleteActiveConversation = async () => {
+  if (!activeConversation.value) {
     return
   }
 
+  const conversation = activeConversation.value
   const confirmed =
     typeof window === 'undefined' ||
-    window.confirm(`Удалить группу «${activeConversation.value.title}»?`)
+    window.confirm(`Удалить чат «${conversation.title || activeConversationTitle.value}»?`)
   if (!confirmed) {
     return
   }
 
-  deletingGroup.value = true
+  deletingConversation.value = true
   try {
-    await chatStore.deleteGroupConversation(activeConversation.value.id)
-    closeGroupSettings()
+    if (conversation.type === 'direct') {
+      await chatStore.deleteDirectConversation(conversation.id)
+    } else {
+      await chatStore.deleteGroupConversation(conversation.id)
+    }
+    closeChatActions()
     openChatsScreen()
     notifications.success('Чат удалён')
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось удалить чат')
   } finally {
-    deletingGroup.value = false
+    deletingConversation.value = false
   }
 }
 
@@ -5215,7 +5192,7 @@ const removeGroupMember = async (member) => {
       member.email === currentUserEmail.value ? 'Вы вышли из группы' : 'Участник удалён',
     )
     if (member.email === currentUserEmail.value) {
-      closeGroupSettings()
+      closeChatActions()
     }
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось обновить участников')

@@ -1058,6 +1058,20 @@ export const useChatStore = defineStore('chat', {
       return true
     },
 
+    async deleteDirectConversation(conversationId) {
+      if (!conversationId) {
+        return false
+      }
+
+      const authStore = useAuthStore()
+      const api = getApi(authStore)
+      await api.delete(`/chat/conversations/direct/${conversationId}`)
+
+      removeConversationState(this, conversationId)
+
+      return true
+    },
+
     async favoriteMessage({ conversationId, messageId }) {
       if (!conversationId || !messageId) {
         return null
