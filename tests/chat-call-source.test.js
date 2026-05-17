@@ -54,3 +54,11 @@ test('mobile composer uses a 16px font to prevent ios focus zoom', () => {
   assert.match(source, /min-h-10 min-w-0 flex-1 resize-none[^']*text-base/)
   assert.doesNotMatch(source, /min-h-10 min-w-0 flex-1 resize-none[^']*text-sm/)
 })
+
+test('mobile chat list inputs use a 16px font to prevent ios focus zoom', () => {
+  const source = chatSource()
+
+  assert.match(source, /chatListSearchInputClass/)
+  assert.match(source, /chatCenterSearchInputClass/)
+  assert.match(source, /text-base[^']*sm:text-sm/)
+})

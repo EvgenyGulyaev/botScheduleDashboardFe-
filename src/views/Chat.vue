@@ -89,7 +89,7 @@
             <input
               v-model="chatSearch"
               type="search"
-              class="mb-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white xl:mb-3 xl:py-2"
+              :class="chatListSearchInputClass"
               placeholder="Найти человека"
             />
 
@@ -292,7 +292,7 @@
                   <input
                     v-model="importantQuery"
                     type="search"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-amber-300"
+                    :class="chatCenterSearchInputClass"
                     placeholder="Фильтр важного"
                   />
                   <div
@@ -373,7 +373,7 @@
                   <input
                     v-model="searchQuery"
                     type="search"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-indigo-300"
+                    :class="chatCenterSearchInputClass"
                     placeholder="Поиск по всем сообщениям"
                   />
                   <button
@@ -773,7 +773,7 @@
                       ref="searchInput"
                       v-model="searchQuery"
                       type="search"
-                      class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-300"
+                      class="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 sm:text-sm"
                       placeholder="Поиск по всем чатам"
                     />
                     <button
@@ -2653,6 +2653,10 @@ const chatMobileViewportStyle = computed(() => {
     top: 'var(--chat-mobile-viewport-offset-top)',
   }
 })
+const chatListSearchInputClass =
+  'mb-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-base text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-indigo-300 focus:bg-white sm:text-sm xl:mb-3 xl:py-2'
+const chatCenterSearchInputClass =
+  'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-950 outline-none transition focus:border-indigo-300 sm:text-sm'
 const activeConversation = computed(() => chatStore.activeConversation)
 const activeMessages = computed(() => chatStore.activeConversationMessages)
 const activeMessagesLoaded = computed(
