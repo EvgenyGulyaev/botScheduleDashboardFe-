@@ -2892,7 +2892,7 @@ const composerInputShellClass = computed(() =>
 )
 const composerTextareaClass = computed(() =>
   mobileConversationMode.value
-    ? 'min-h-10 min-w-0 flex-1 resize-none border-0 bg-transparent px-1 py-1 text-sm text-slate-950 outline-none placeholder:text-slate-400'
+    ? 'min-h-10 min-w-0 flex-1 resize-none border-0 bg-transparent px-1 py-1 text-base leading-5 text-slate-950 outline-none placeholder:text-slate-400'
     : 'w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-36 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white sm:pr-44',
 )
 const composerToolButtonClass =

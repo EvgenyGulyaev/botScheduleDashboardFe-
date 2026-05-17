@@ -47,3 +47,10 @@ test('mobile composer is constrained to viewport width without horizontal scroll
   assert.match(source, /flex min-w-0 max-w-full items-start gap-1\.5/)
   assert.match(source, /static inline-flex h-8 w-8 shrink-0/)
 })
+
+test('mobile composer uses a 16px font to prevent ios focus zoom', () => {
+  const source = chatSource()
+
+  assert.match(source, /min-h-10 min-w-0 flex-1 resize-none[^']*text-base/)
+  assert.doesNotMatch(source, /min-h-10 min-w-0 flex-1 resize-none[^']*text-sm/)
+})
