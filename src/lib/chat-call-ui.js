@@ -100,3 +100,9 @@ export const getCallFocusSidebarTiles = (tiles = [], featuredEmail = '') =>
   (Array.isArray(tiles) ? tiles : []).filter(
     (tile) => tile?.email && (!featuredEmail || tile.email !== featuredEmail),
   )
+
+export const getInitialCallFocusEmail = (tiles = [], currentUserEmail = '') => {
+  const normalizedTiles = Array.isArray(tiles) ? tiles.filter((tile) => tile?.email) : []
+  const remoteTiles = normalizedTiles.filter((tile) => tile.email !== currentUserEmail)
+  return getCallFocusTile(remoteTiles)?.email || getCallFocusTile(normalizedTiles)?.email || ''
+}

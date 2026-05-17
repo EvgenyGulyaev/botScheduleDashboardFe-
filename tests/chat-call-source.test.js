@@ -17,3 +17,20 @@ test('chat call view wires screen sharing controls and media state', () => {
   assert.match(source, /screen_sharing/)
   assert.match(source, /Демонстрац/)
 })
+
+test('mobile chat covers the app header and tracks the visual viewport height', () => {
+  const source = chatSource()
+
+  assert.match(source, /chatMobileViewportStyle/)
+  assert.match(source, /--chat-mobile-viewport-height/)
+  assert.match(source, /visualViewport/)
+  assert.doesNotMatch(source, /fixed inset-x-0 bottom-0 top-16 overflow-hidden bg-white/)
+})
+
+test('mobile call focus keeps participant thumbnails visible', () => {
+  const source = chatSource()
+
+  assert.match(source, /getInitialCallFocusEmail/)
+  assert.match(source, /mobileConversationMode\s*\?\s*'flex/)
+  assert.doesNotMatch(source, /mobileConversationMode\s*\?\s*'hidden'/)
+})

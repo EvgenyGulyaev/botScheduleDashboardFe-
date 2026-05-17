@@ -4,6 +4,7 @@ import {
   buildCallMediaConstraints,
   getCallFocusSidebarTiles,
   getCallFocusTile,
+  getInitialCallFocusEmail,
   getCallVideoGridClass,
   mergeCallMediaEntry,
   replacePeerConnectionsVideoTrack,
@@ -188,4 +189,15 @@ test('builds sidebar tiles without the currently focused participant', () => {
     getCallFocusSidebarTiles(tiles, '').map((tile) => tile.email),
     ['self@example.com', 'peer-a@example.com', 'peer-b@example.com'],
   )
+})
+
+test('prefers a remote participant for the initial focused video tile', () => {
+  const tiles = [
+    { email: 'self@example.com', isLocal: true, cameraEnabled: true, hasVideo: true },
+    { email: 'peer@example.com', isLocal: false, cameraEnabled: true, hasVideo: true },
+  ]
+
+  assert.equal(getInitialCallFocusEmail(tiles, 'self@example.com'), 'peer@example.com')
+  assert.equal(getInitialCallFocusEmail(tiles, 'peer@example.com'), 'self@example.com')
+  assert.equal(getInitialCallFocusEmail([tiles[0]], 'self@example.com'), 'self@example.com')
 })

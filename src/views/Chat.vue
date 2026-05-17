@@ -1,8 +1,9 @@
 <template>
   <div
+    :style="chatMobileViewportStyle"
     :class="
       mobileConversationMode
-        ? 'fixed inset-x-0 bottom-0 top-16 overflow-hidden bg-white'
+        ? 'fixed inset-x-0 top-0 z-40 overflow-hidden bg-white [height:var(--chat-mobile-viewport-height)]'
         : 'min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:min-h-[calc(100vh-5rem)] xl:overflow-hidden'
     "
   >
@@ -1912,7 +1913,7 @@
                   v-if="callFocusSidebarTiles.length"
                   :class="
                     mobileConversationMode
-                      ? 'hidden'
+                      ? 'flex gap-2 overflow-x-auto border-t border-slate-800 bg-slate-900/95 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]'
                       : 'flex gap-3 overflow-x-auto border-t border-slate-800 bg-slate-900/95 px-3 py-3'
                   "
                 >
@@ -1920,7 +1921,7 @@
                     v-for="tile in callFocusSidebarTiles"
                     :key="`focus-${displayedCall?.id}-${tile.email}`"
                     type="button"
-                    class="relative h-24 w-36 shrink-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 text-left transition hover:border-sky-300 sm:h-28 sm:w-44"
+                    class="relative h-20 w-28 shrink-0 overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 text-left transition hover:border-sky-300 sm:h-28 sm:w-44"
                     @click="focusCallTile(tile.email)"
                   >
                     <video
@@ -2358,6 +2359,7 @@ import {
   buildCallMediaConstraints,
   getCallFocusSidebarTiles,
   getCallFocusTile,
+  getInitialCallFocusEmail,
   getCallVideoGridClass,
   mergeCallMediaEntry,
   replacePeerConnectionsVideoTrack,
@@ -2475,6 +2477,7 @@ const startingScreenShare = ref(false)
 const remoteCallMedia = ref([])
 const callFocusMode = ref(false)
 const focusedCallParticipantEmail = ref('')
+const manuallyFocusedCallTile = ref(false)
 const mediaRecorder = ref(null)
 const recordingStream = ref(null)
 const recordingTimer = ref(null)
@@ -2493,6 +2496,8 @@ const aliceAnnouncementPendingMessageId = ref('')
 const aliceAnnouncementErrorMessageId = ref('')
 const isMobileLayout = ref(false)
 const mobileView = ref('list')
+const chatMobileViewportHeight = ref(0)
+const chatMobileViewportOffsetTop = ref(0)
 const swipeReplyState = ref({
   messageId: '',
   startX: 0,
@@ -2622,6 +2627,19 @@ const socketRecoveryMessage = computed(
 const mobileConversationMode = computed(
   () => isMobileLayout.value && mobileView.value === 'conversation',
 )
+const chatMobileViewportStyle = computed(() => {
+  if (!mobileConversationMode.value) {
+    return undefined
+  }
+
+  return {
+    '--chat-mobile-viewport-height': chatMobileViewportHeight.value
+      ? `${chatMobileViewportHeight.value}px`
+      : '100dvh',
+    '--chat-mobile-viewport-offset-top': `${chatMobileViewportOffsetTop.value}px`,
+    top: 'var(--chat-mobile-viewport-offset-top)',
+  }
+})
 const activeConversation = computed(() => chatStore.activeConversation)
 const activeMessages = computed(() => chatStore.activeConversationMessages)
 const activeMessagesLoaded = computed(
@@ -2982,9 +3000,15 @@ const openCallFocus = (email = '') => {
   callFocusMode.value = true
 }
 
+const openInitialCallFocus = () => {
+  manuallyFocusedCallTile.value = false
+  openCallFocus(getInitialCallFocusEmail(displayedCallMediaTiles.value, currentUserEmail.value))
+}
+
 const closeCallFocus = () => {
   callFocusMode.value = false
   focusedCallParticipantEmail.value = ''
+  manuallyFocusedCallTile.value = false
 }
 
 const focusCallTile = (email = '') => {
@@ -2992,6 +3016,7 @@ const focusCallTile = (email = '') => {
     return
   }
 
+  manuallyFocusedCallTile.value = true
   focusedCallParticipantEmail.value = email
   if (!callFocusMode.value) {
     callFocusMode.value = true
@@ -3237,12 +3262,27 @@ const resetSwipeReply = () => {
   }
 }
 
-const updateMobileLayout = () => {
+const updateChatMobileViewport = () => {
   if (typeof window === 'undefined') {
-    isMobileLayout.value = false
+    chatMobileViewportHeight.value = 0
+    chatMobileViewportOffsetTop.value = 0
     return
   }
 
+  const visualViewport = window.visualViewport
+  const viewportHeight = visualViewport?.height || window.innerHeight || 0
+  chatMobileViewportHeight.value = Math.max(320, Math.round(viewportHeight))
+  chatMobileViewportOffsetTop.value = Math.max(0, Math.round(visualViewport?.offsetTop || 0))
+}
+
+const updateMobileLayout = () => {
+  if (typeof window === 'undefined') {
+    isMobileLayout.value = false
+    updateChatMobileViewport()
+    return
+  }
+
+  updateChatMobileViewport()
   isMobileLayout.value = window.innerWidth < 640
   if (!isMobileLayout.value) {
     mobileView.value = 'conversation'
@@ -4052,7 +4092,7 @@ const startDisplayedCall = async () => {
     const call = await chatStore.startCall(activeConversation.value.id)
     await syncDisplayedCallPeers(call)
     broadcastLocalMediaState(call)
-    openCallFocus(currentUserEmail.value)
+    openInitialCallFocus()
   } catch (error) {
     callActionError.value = error?.message || 'Не удалось начать звонок'
     notifications.errorFrom(error, 'Не удалось начать звонок')
@@ -4081,7 +4121,7 @@ const joinDisplayedCall = async () => {
     })
     await syncDisplayedCallPeers(call)
     broadcastLocalMediaState(call)
-    openCallFocus(currentUserEmail.value)
+    openInitialCallFocus()
   } catch (error) {
     callActionError.value = error?.message || 'Не удалось подключиться к звонку'
     notifications.errorFrom(error, 'Не удалось подключиться к звонку')
@@ -5250,6 +5290,8 @@ onMounted(async () => {
       mobileMediaQuery.addListener(updateMobileLayout)
     }
     window.addEventListener('resize', updateMobileLayout)
+    window.visualViewport?.addEventListener?.('resize', updateChatMobileViewport)
+    window.visualViewport?.addEventListener?.('scroll', updateChatMobileViewport)
   }
   try {
     await chatStore.loadInitialState()
@@ -5472,7 +5514,26 @@ watch(
     )
     if (!focusedTileStillExists) {
       focusedCallParticipantEmail.value =
-        getCallFocusTile(displayedCallMediaTiles.value)?.email || ''
+        getInitialCallFocusEmail(displayedCallMediaTiles.value, currentUserEmail.value) || ''
+      return
+    }
+
+    const focusedLocalTile =
+      focusedCallParticipantEmail.value &&
+      focusedCallParticipantEmail.value === currentUserEmail.value
+    const nextInitialFocusEmail = getInitialCallFocusEmail(
+      displayedCallMediaTiles.value,
+      currentUserEmail.value,
+    )
+    if (
+      callFocusMode.value &&
+      focusedLocalTile &&
+      nextInitialFocusEmail &&
+      nextInitialFocusEmail !== focusedCallParticipantEmail.value &&
+      !manuallyFocusedCallTile.value &&
+      !localCallScreenSharing.value
+    ) {
+      focusedCallParticipantEmail.value = nextInitialFocusEmail
     }
   },
   { flush: 'post' },
@@ -5487,7 +5548,7 @@ watch(
     }
 
     if (isMobileLayout.value || !callFocusMode.value) {
-      openCallFocus(currentUserEmail.value)
+      openInitialCallFocus()
     }
   },
   { flush: 'post' },
@@ -5498,6 +5559,8 @@ onUnmounted(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateMobileLayout)
+    window.visualViewport?.removeEventListener?.('resize', updateChatMobileViewport)
+    window.visualViewport?.removeEventListener?.('scroll', updateChatMobileViewport)
   }
   if (mobileMediaQuery) {
     if (typeof mobileMediaQuery.removeEventListener === 'function') {
