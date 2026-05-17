@@ -649,7 +649,33 @@
                   </div>
                 </div>
                 <div
-                  v-else
+                  v-if="mobileConversationMode && (canInviteToActiveGroup || canDeleteActiveGroup)"
+                  class="flex flex-wrap gap-2"
+                >
+                  <button
+                    v-if="canInviteToActiveGroup"
+                    type="button"
+                    class="inline-flex min-h-8 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 px-3 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-100"
+                    title="Пригласить в чат"
+                    aria-label="Пригласить в чат"
+                    @click="openGroupInvitePanel"
+                  >
+                    Пригласить
+                  </button>
+                  <button
+                    v-if="canDeleteActiveGroup"
+                    type="button"
+                    class="inline-flex min-h-8 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 px-3 text-xs font-semibold text-rose-700 shadow-sm transition hover:border-rose-200 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="deletingGroup"
+                    title="Удалить чат"
+                    aria-label="Удалить чат"
+                    @click="deleteActiveGroup"
+                  >
+                    {{ deletingGroup ? 'Удаляем…' : 'Удалить чат' }}
+                  </button>
+                </div>
+                <div
+                  v-if="!mobileConversationMode"
                   class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
                 >
                   <div class="min-w-0">
@@ -712,6 +738,27 @@
                       @click="handleCallAction"
                     >
                       📞
+                    </button>
+                    <button
+                      v-if="canInviteToActiveGroup"
+                      type="button"
+                      class="inline-flex h-10 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 px-3 text-sm font-semibold text-sky-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-100"
+                      title="Пригласить в чат"
+                      aria-label="Пригласить в чат"
+                      @click="openGroupInvitePanel"
+                    >
+                      Пригласить
+                    </button>
+                    <button
+                      v-if="canDeleteActiveGroup"
+                      type="button"
+                      class="inline-flex h-10 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 px-3 text-sm font-semibold text-rose-700 shadow-sm transition hover:border-rose-200 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      :disabled="deletingGroup"
+                      title="Удалить чат"
+                      aria-label="Удалить чат"
+                      @click="deleteActiveGroup"
+                    >
+                      {{ deletingGroup ? 'Удаляем…' : 'Удалить чат' }}
                     </button>
                     <button
                       v-if="activeConversation?.type === 'group'"
@@ -2160,6 +2207,7 @@
 
             <section
               v-if="activeConversation.permissions?.canAddMembers"
+              ref="groupInviteSection"
               class="rounded-3xl border border-slate-200 bg-slate-50 p-4"
             >
               <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -2261,7 +2309,7 @@
               :disabled="deletingGroup"
               @click="deleteActiveGroup"
             >
-              {{ deletingGroup ? 'Удаляем…' : 'Удалить группу' }}
+              {{ deletingGroup ? 'Удаляем…' : 'Удалить чат' }}
             </button>
           </section>
         </div>
@@ -2453,6 +2501,7 @@ const groupModalOpen = ref(false)
 const groupSettingsOpen = ref(false)
 const forwardPickerOpen = ref(false)
 const messagesScroller = ref(null)
+const groupInviteSection = ref(null)
 const isRecordingAudio = ref(false)
 const recordingSeconds = ref(0)
 const recordedAudioDuration = ref(0)
@@ -2743,6 +2792,16 @@ const otherUsers = computed(() =>
 )
 const activeGroupMemberEmails = computed(
   () => new Set((activeConversation.value?.members || []).map((member) => member.email)),
+)
+const canInviteToActiveGroup = computed(
+  () =>
+    activeConversation.value?.type === 'group' &&
+    Boolean(activeConversation.value.permissions?.canAddMembers),
+)
+const canDeleteActiveGroup = computed(
+  () =>
+    activeConversation.value?.type === 'group' &&
+    Boolean(activeConversation.value.permissions?.canDelete),
 )
 const groupInviteUsers = computed(() =>
   otherUsers.value.filter((user) => !activeGroupMemberEmails.value.has(user.email)),
@@ -5038,6 +5097,16 @@ const openGroupSettings = () => {
   groupSettingsOpen.value = true
 }
 
+const openGroupInvitePanel = async () => {
+  if (!canInviteToActiveGroup.value) {
+    return
+  }
+
+  openGroupSettings()
+  await nextTick()
+  groupInviteSection.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+}
+
 const closeGroupSettings = () => {
   groupSettingsOpen.value = false
   groupSettingsForm.value = { title: '', memberEmails: [] }
@@ -5083,9 +5152,10 @@ const deleteActiveGroup = async () => {
   try {
     await chatStore.deleteGroupConversation(activeConversation.value.id)
     closeGroupSettings()
-    notifications.success('Группа удалена')
+    openChatsScreen()
+    notifications.success('Чат удалён')
   } catch (error) {
-    notifications.errorFrom(error, 'Не удалось удалить группу')
+    notifications.errorFrom(error, 'Не удалось удалить чат')
   } finally {
     deletingGroup.value = false
   }

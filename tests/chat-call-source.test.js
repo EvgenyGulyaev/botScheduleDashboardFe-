@@ -62,3 +62,14 @@ test('mobile chat list inputs use a 16px font to prevent ios focus zoom', () => 
   assert.match(source, /chatCenterSearchInputClass/)
   assert.match(source, /text-base[^']*sm:text-sm/)
 })
+
+test('group chat header exposes invite and delete actions', () => {
+  const source = chatSource()
+
+  assert.match(source, /canInviteToActiveGroup/)
+  assert.match(source, /canDeleteActiveGroup/)
+  assert.match(source, /openGroupInvitePanel/)
+  assert.match(source, /Пригласить/)
+  assert.match(source, /Удалить чат/)
+  assert.match(source, /deleteActiveGroup/)
+})
