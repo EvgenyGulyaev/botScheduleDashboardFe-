@@ -34,3 +34,16 @@ test('mobile call focus keeps participant thumbnails visible', () => {
   assert.match(source, /mobileConversationMode\s*\?\s*'flex/)
   assert.doesNotMatch(source, /mobileConversationMode\s*\?\s*'hidden'/)
 })
+
+test('mobile composer is constrained to viewport width without horizontal scrolling', () => {
+  const source = chatSource()
+
+  assert.match(source, /composerPanelClass/)
+  assert.match(source, /composerFormClass/)
+  assert.match(source, /composerInputShellClass/)
+  assert.match(source, /composerTextareaClass/)
+  assert.match(source, /composerToolButtonClass/)
+  assert.match(source, /max-w-full overflow-x-hidden/)
+  assert.match(source, /flex min-w-0 max-w-full items-start gap-1\.5/)
+  assert.match(source, /static inline-flex h-8 w-8 shrink-0/)
+})

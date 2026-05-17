@@ -3,7 +3,7 @@
     :style="chatMobileViewportStyle"
     :class="
       mobileConversationMode
-        ? 'fixed inset-x-0 top-0 z-40 overflow-hidden bg-white [height:var(--chat-mobile-viewport-height)]'
+        ? 'fixed inset-x-0 top-0 z-40 w-screen max-w-full overflow-x-hidden overflow-y-hidden overscroll-x-none bg-white [height:var(--chat-mobile-viewport-height)]'
         : 'min-h-screen overflow-x-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100 xl:h-[calc(100vh-5rem)] xl:min-h-[calc(100vh-5rem)] xl:overflow-hidden'
     "
   >
@@ -1099,7 +1099,7 @@
                         <template v-if="item.message">
                           <div
                             :ref="setMessageElement(item.message.id)"
-                            class="relative min-w-0 max-w-[88vw] rounded-3xl border px-3 py-2.5 transition sm:max-w-[82%] sm:px-4 sm:py-3"
+                            class="relative min-w-0 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-3xl border px-3 py-2.5 transition [overflow-wrap:anywhere] sm:max-w-[82%] sm:px-4 sm:py-3"
                             :class="[
                               item.message.senderEmail === currentUserEmail
                                 ? 'border-emerald-100 bg-emerald-50/80'
@@ -1455,13 +1455,15 @@
                                   </button>
                                 </div>
                               </div>
-                              <div class="mt-2.5 flex items-center gap-2.5 text-xs text-slate-500">
+                              <div
+                                class="mt-2.5 flex min-w-0 flex-wrap items-center gap-2.5 text-xs text-slate-500"
+                              >
                                 <span>{{ formatMessageTime(message.createdAt) }}</span>
                                 <span v-if="message.editedAt">изменено</span>
                                 <button
                                   v-if="message.aliceAnnounced && canUseAlice"
                                   type="button"
-                                  class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-200 disabled:cursor-wait disabled:opacity-70"
+                                  class="max-w-full truncate whitespace-nowrap rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-200 disabled:cursor-wait disabled:opacity-70"
                                   :disabled="aliceAnnouncementPendingMessageId === message.id"
                                   :title="
                                     aliceAnnouncementPendingMessageId === message.id
@@ -1500,13 +1502,7 @@
                 </div>
 
                 <div
-                  :class="
-                    showCallFocusLayout
-                      ? 'border-t border-slate-200 bg-white px-3 py-3'
-                      : mobileConversationMode
-                        ? 'sticky bottom-0 z-10 shrink-0 border-t border-slate-200 bg-white px-2.5 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.35rem)]'
-                        : 'border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
-                  "
+                  :class="composerPanelClass"
                 >
                   <div
                     v-if="selectedMessageActionState.selectedCount"
@@ -1548,7 +1544,7 @@
                     </button>
                   </div>
                   <form
-                    :class="mobileConversationMode ? 'space-y-2.5' : 'space-y-3'"
+                    :class="composerFormClass"
                     @submit.prevent="sendCurrentMessage"
                   >
                     <div
@@ -1587,7 +1583,7 @@
                     </div>
                     <div
                       v-if="activeMentionMembers.length"
-                      class="flex flex-wrap items-center gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-3 py-2"
+                      class="flex max-w-full flex-wrap items-center gap-2 overflow-hidden rounded-2xl border border-sky-100 bg-sky-50 px-3 py-2"
                     >
                       <span class="text-[11px] font-semibold uppercase tracking-wide text-sky-600">
                         Упомянуть
@@ -1604,12 +1600,12 @@
                     </div>
                     <div
                       ref="emojiPickerRoot"
-                      class="relative rounded-2xl transition"
-                      :class="
+                      :class="[
+                        composerInputShellClass,
                         composerDropActive
                           ? 'bg-sky-50/70 ring-2 ring-sky-300 ring-offset-2 ring-offset-white'
-                          : ''
-                      "
+                          : '',
+                      ]"
                       @dragenter="handleComposerDragEnter"
                       @dragover="handleComposerDragOver"
                       @dragleave="handleComposerDragLeave"
@@ -1632,7 +1628,7 @@
                         ref="composerTextarea"
                         v-model="composerText"
                         :rows="mobileConversationMode ? 2 : 3"
-                        class="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-36 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white sm:pr-44"
+                        :class="composerTextareaClass"
                         placeholder="Напиши сообщение"
                         @keydown="handleComposerKeydown"
                         @blur="stopComposerTyping"
@@ -1645,7 +1641,12 @@
                       </div>
                       <button
                         type="button"
-                        class="absolute right-[7.75rem] top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 sm:right-[9rem] sm:h-9 sm:w-9 sm:text-lg"
+                        :class="[
+                          mobileConversationMode
+                            ? composerToolButtonClass
+                            : 'absolute right-[7.75rem] top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border text-base shadow-sm transition sm:right-[9rem] sm:h-9 sm:w-9 sm:text-lg',
+                          'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100',
+                        ]"
                         aria-label="Прикрепить файл"
                         :disabled="!activeConversation || sendingFile"
                         @click="triggerFilePicker"
@@ -1654,7 +1655,12 @@
                       </button>
                       <button
                         type="button"
-                        class="absolute right-[5.25rem] top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 sm:right-[6.25rem] sm:h-9 sm:w-9 sm:text-lg"
+                        :class="[
+                          mobileConversationMode
+                            ? composerToolButtonClass
+                            : 'absolute right-[5.25rem] top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border text-base shadow-sm transition sm:right-[6.25rem] sm:h-9 sm:w-9 sm:text-lg',
+                          'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100',
+                        ]"
                         aria-label="Выбрать изображение"
                         :disabled="!activeConversation || sendingImage"
                         @click="triggerImagePicker"
@@ -1663,7 +1669,12 @@
                       </button>
                       <button
                         type="button"
-                        class="absolute right-11 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 sm:right-14 sm:h-9 sm:w-9 sm:text-lg"
+                        :class="[
+                          mobileConversationMode
+                            ? composerToolButtonClass
+                            : 'absolute right-11 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border text-base shadow-sm transition sm:right-14 sm:h-9 sm:w-9 sm:text-lg',
+                          'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100',
+                        ]"
                         aria-label="Выбрать смайлик"
                         :aria-expanded="emojiPickerOpen"
                         @click="toggleEmojiPicker"
@@ -1672,12 +1683,14 @@
                       </button>
                       <button
                         type="button"
-                        class="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border text-base shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9 sm:text-lg"
-                        :class="
+                        :class="[
+                          mobileConversationMode
+                            ? composerToolButtonClass
+                            : 'absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl border text-base shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9 sm:text-lg',
                           isRecordingAudio
                             ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
-                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100'
-                        "
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100',
+                        ]"
                         :aria-label="audioRecorderLabel"
                         :title="audioRecorderLabel"
                         :disabled="!activeConversation || sendingAudio"
@@ -1688,7 +1701,7 @@
 
                       <div
                         v-if="emojiPickerOpen"
-                        class="absolute bottom-full right-0 z-20 mb-2 w-72 rounded-3xl border border-slate-200 bg-white p-3 shadow-xl"
+                        class="absolute bottom-full right-0 z-20 mb-2 w-[min(18rem,calc(100vw-1.5rem))] rounded-3xl border border-slate-200 bg-white p-3 shadow-xl"
                       >
                         <div
                           class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500"
@@ -2856,6 +2869,34 @@ const shouldAutoOpenCallFocus = computed(() =>
 const showCallFocusLayout = computed(() =>
   Boolean(callFocusMode.value && displayedCall.value?.joinable && focusedCallTile.value),
 )
+const composerPanelClass = computed(() => {
+  if (showCallFocusLayout.value) {
+    return 'max-w-full overflow-x-hidden border-t border-slate-200 bg-white px-3 py-3'
+  }
+
+  if (mobileConversationMode.value) {
+    return 'sticky bottom-0 z-10 max-w-full shrink-0 overflow-x-hidden border-t border-slate-200 bg-white px-2.5 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.35rem)]'
+  }
+
+  return 'border-t border-slate-200 px-3 py-4 sm:px-6 sm:py-5 xl:px-5 xl:py-4'
+})
+const composerFormClass = computed(() =>
+  mobileConversationMode.value
+    ? 'min-w-0 max-w-full space-y-2.5 overflow-x-hidden'
+    : 'space-y-3',
+)
+const composerInputShellClass = computed(() =>
+  mobileConversationMode.value
+    ? 'relative flex min-w-0 max-w-full items-start gap-1.5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-2 transition focus-within:border-indigo-300 focus-within:bg-white'
+    : 'relative rounded-2xl transition',
+)
+const composerTextareaClass = computed(() =>
+  mobileConversationMode.value
+    ? 'min-h-10 min-w-0 flex-1 resize-none border-0 bg-transparent px-1 py-1 text-sm text-slate-950 outline-none placeholder:text-slate-400'
+    : 'w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 pr-36 text-sm text-slate-950 outline-none transition focus:border-indigo-300 focus:bg-white sm:pr-44',
+)
+const composerToolButtonClass =
+  'static inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-base shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50'
 const replyingToMessage = computed(() => {
   if (!replyingToMessageId.value) {
     return null
