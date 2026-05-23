@@ -605,6 +605,7 @@
                       📌
                     </button>
                     <button
+                      v-if="!isSystemConversation"
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-rose-100 bg-white text-base text-rose-600 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                       :disabled="
@@ -628,6 +629,7 @@
                       🔎
                     </button>
                     <button
+                      v-if="!isSystemConversation"
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                       :disabled="!activeConversation"
@@ -638,6 +640,7 @@
                       👥
                     </button>
                     <button
+                      v-if="!isSystemConversation"
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-slate-200 bg-white text-base text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                       :disabled="!activeConversation"
@@ -691,6 +694,7 @@
                       📌
                     </button>
                     <button
+                      v-if="!isSystemConversation"
                       type="button"
                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-100 bg-white text-lg text-rose-600 shadow-sm transition hover:border-rose-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                       :disabled="
@@ -714,6 +718,7 @@
                       🔎
                     </button>
                     <button
+                      v-if="!isSystemConversation"
                       type="button"
                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                       :disabled="!activeConversation"
@@ -724,6 +729,7 @@
                       👥
                     </button>
                     <button
+                      v-if="!isSystemConversation"
                       type="button"
                       class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                       :disabled="!activeConversation"
@@ -833,7 +839,7 @@
             </div>
 
             <div
-              v-if="displayedCall && !showCallFocusLayout"
+              v-if="displayedCall && !showCallFocusLayout && !isSystemConversation"
               :class="
                 mobileConversationMode
                   ? 'border-b border-slate-200 bg-slate-50/80 px-3 py-3'
@@ -1060,7 +1066,11 @@
                         : 'flex h-full min-h-[24rem] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500'
                     "
                   >
-                    Пока сообщений нет. Напиши первое сообщение внизу.
+                    {{
+                      isSystemConversation
+                        ? 'Пока системных уведомлений нет.'
+                        : 'Пока сообщений нет. Напиши первое сообщение внизу.'
+                    }}
                   </div>
 
                   <div
@@ -1153,7 +1163,10 @@
                                     📌
                                   </span>
                                 </div>
-                                <div class="flex shrink-0 items-center gap-1.5">
+                                <div
+                                  v-if="canUseMessageActions(message)"
+                                  class="flex shrink-0 items-center gap-1.5"
+                                >
                                   <button
                                     type="button"
                                     class="inline-flex h-7 w-7 items-center justify-center rounded-full border text-sm transition"
@@ -1359,7 +1372,10 @@
                                 </span>
                               </div>
                               <div
-                                v-if="messageReactionGroups(message).length"
+                                v-if="
+                                  canUseMessageActions(message) &&
+                                  messageReactionGroups(message).length
+                                "
                                 class="mt-2.5 flex flex-wrap gap-1.5 sm:gap-2"
                               >
                                 <button
@@ -1393,6 +1409,7 @@
                                 </button>
                               </div>
                               <div
+                                v-if="canUseMessageActions(message)"
                                 class="mt-2.5 flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-slate-500 sm:gap-2 sm:text-[11px]"
                               >
                                 <button
@@ -1424,7 +1441,10 @@
                                 </button>
                               </div>
                               <div
-                                v-if="reactionPickerMessageId === message.id"
+                                v-if="
+                                  canUseMessageActions(message) &&
+                                  reactionPickerMessageId === message.id
+                                "
                                 class="mt-2.5 rounded-2xl border border-slate-200 bg-white/90 px-3 py-3"
                               >
                                 <div
@@ -1445,7 +1465,10 @@
                                 </div>
                               </div>
                               <div
-                                v-if="reminderPickerMessageId === message.id"
+                                v-if="
+                                  canUseMessageActions(message) &&
+                                  reminderPickerMessageId === message.id
+                                "
                                 class="mt-2.5 rounded-2xl border border-rose-100 bg-white/90 px-3 py-3"
                               >
                                 <div
@@ -1471,7 +1494,11 @@
                                 <span>{{ formatMessageTime(message.createdAt) }}</span>
                                 <span v-if="message.editedAt">изменено</span>
                                 <button
-                                  v-if="message.aliceAnnounced && canUseAlice"
+                                  v-if="
+                                    canUseMessageActions(message) &&
+                                    message.aliceAnnounced &&
+                                    canUseAlice
+                                  "
                                   type="button"
                                   class="max-w-full truncate whitespace-nowrap rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 transition hover:bg-violet-200 disabled:cursor-wait disabled:opacity-70"
                                   :disabled="aliceAnnouncementPendingMessageId === message.id"
@@ -1512,6 +1539,7 @@
                 </div>
 
                 <div
+                  v-if="!isSystemConversation"
                   :class="composerPanelClass"
                 >
                   <div
@@ -1878,6 +1906,19 @@
                       {{ sendingMessage ? 'Отправляем…' : 'Отправить' }}
                     </button>
                   </form>
+                </div>
+                <div
+                  v-else
+                  :class="composerPanelClass"
+                >
+                  <div
+                    class="rounded-2xl border border-sky-100 bg-sky-50 px-3 py-3 text-sm text-sky-800"
+                  >
+                    <div class="font-semibold">Системные уведомления</div>
+                    <div class="mt-1 text-sky-700">
+                      Этот диалог доступен только для чтения.
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2695,6 +2736,7 @@ const chatCenterSearchInputClass =
   'w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-950 outline-none transition focus:border-indigo-300 sm:text-sm'
 const activeConversation = computed(() => chatStore.activeConversation)
 const activeMessages = computed(() => chatStore.activeConversationMessages)
+const isSystemConversation = computed(() => activeConversation.value?.type === 'system')
 const activeMessagesLoaded = computed(
   () =>
     Boolean(chatStore.activeConversationId) &&
@@ -2756,11 +2798,18 @@ const messageFilterOptions = computed(() => [
   },
 ])
 const selectedMessageActionState = computed(() =>
-  getSelectedChatMessagesActionState({
-    selectedMessageIds: selectedMessageIds.value,
-    messages: activeMessages.value,
-    currentUserEmail: currentUserEmail.value,
-  }),
+  isSystemConversation.value
+    ? {
+        selectedCount: 0,
+        canFavorite: false,
+        canForward: false,
+        canDelete: false,
+      }
+    : getSelectedChatMessagesActionState({
+        selectedMessageIds: selectedMessageIds.value,
+        messages: activeMessages.value,
+        currentUserEmail: currentUserEmail.value,
+      }),
 )
 const selectedMessages = computed(() => {
   const selectedIds = new Set(selectedMessageIds.value)
@@ -2981,9 +3030,11 @@ const groupMemberActionState = (member) =>
     member,
     currentUserEmail: currentUserEmail.value,
   })
+const canUseMessageActions = (message) =>
+  Boolean(message?.id && !isSystemConversation.value && message.type !== 'system')
 const isMessageSelected = (message) => selectedMessageIds.value.includes(message?.id)
 const toggleMessageSelected = (message) => {
-  if (!message?.id) {
+  if (!canUseMessageActions(message)) {
     return
   }
 
@@ -3133,6 +3184,10 @@ const formatAudioDuration = (value) => {
 }
 
 const conversationPreview = (conversation) => {
+  if (conversation.type === 'system') {
+    return conversation.lastMessageText || 'Системные уведомления'
+  }
+
   const typingLabel = getTypingIndicatorLabel(
     chatStore.activeTypersByConversation[conversation.id] || [],
   )
@@ -3237,6 +3292,7 @@ const messageStatusClass = (message) => {
 }
 
 const messageCanRetryText = (message) =>
+  !isSystemConversation.value &&
   message?.type === 'text' &&
   message?.senderEmail === currentUserEmail.value &&
   message?.deliveryStatus === 'failed' &&
@@ -3262,7 +3318,8 @@ const messageReactionGroups = (message) => groupChatReactions(message?.reactions
 const currentUserReactionEmoji = (message) =>
   getCurrentUserReactionEmoji(message?.reactions || [], currentUserEmail.value)
 
-const canEditMessage = (message) => isChatMessageEditable(message, currentUserEmail.value)
+const canEditMessage = (message) =>
+  canUseMessageActions(message) && isChatMessageEditable(message, currentUserEmail.value)
 
 const resolveReplyPreview = (message) => {
   if (message?.replyPreview?.id) {
@@ -3381,7 +3438,11 @@ const updateMobileLayout = () => {
 }
 
 const startSwipeReplyGesture = (message, event) => {
-  if (!isMobileLayout.value || !message?.id || editingMessageId.value === message.id) {
+  if (
+    !isMobileLayout.value ||
+    !canUseMessageActions(message) ||
+    editingMessageId.value === message.id
+  ) {
     return
   }
 
@@ -3495,7 +3556,7 @@ const clearReplyState = () => {
 }
 
 const startReply = async (message) => {
-  if (!message?.id) {
+  if (!canUseMessageActions(message)) {
     return
   }
 
@@ -3524,7 +3585,7 @@ const cancelEditing = () => {
 
 const saveEditing = async (message) => {
   const text = editingMessageText.value.trim()
-  if (!activeConversation.value || !message?.id || !text) {
+  if (!activeConversation.value || !canUseMessageActions(message) || !text) {
     return
   }
 
@@ -3541,7 +3602,7 @@ const saveEditing = async (message) => {
 }
 
 const removeMessage = async (message) => {
-  if (!activeConversation.value || !message?.id) {
+  if (!activeConversation.value || !canUseMessageActions(message)) {
     return
   }
 
@@ -3568,7 +3629,7 @@ const removeMessage = async (message) => {
 }
 
 const toggleReactionPicker = (message) => {
-  if (!message?.id) {
+  if (!canUseMessageActions(message)) {
     return
   }
 
@@ -3579,7 +3640,7 @@ const toggleReactionPicker = (message) => {
 const reminderPresetOptions = () => getChatReminderPresetOptions(new Date())
 
 const toggleReminderPicker = (message) => {
-  if (!message?.id) {
+  if (!canUseMessageActions(message)) {
     return
   }
 
@@ -3588,7 +3649,7 @@ const toggleReminderPicker = (message) => {
 }
 
 const setMessageReminder = async (message, option) => {
-  if (!activeConversation.value || !message?.id || !option?.remindAt) {
+  if (!activeConversation.value || !canUseMessageActions(message) || !option?.remindAt) {
     return
   }
 
@@ -3606,7 +3667,7 @@ const setMessageReminder = async (message, option) => {
 }
 
 const selectReaction = async (message, emoji) => {
-  if (!activeConversation.value || !message?.id || !emoji) {
+  if (!activeConversation.value || !canUseMessageActions(message) || !emoji) {
     return
   }
 
@@ -3630,7 +3691,7 @@ const selectReaction = async (message, emoji) => {
 }
 
 const toggleMessagePin = async (message) => {
-  if (!activeConversation.value || !message?.id) {
+  if (!activeConversation.value || !canUseMessageActions(message)) {
     return
   }
 
@@ -3666,7 +3727,7 @@ const jumpToReplySource = async (message) => {
 }
 
 const clearActivePin = async () => {
-  if (!activeConversation.value) {
+  if (!activeConversation.value || isSystemConversation.value) {
     return
   }
 
@@ -3680,6 +3741,7 @@ const clearActivePin = async () => {
 const clearActiveConversationMessages = async () => {
   if (
     !activeConversation.value ||
+    isSystemConversation.value ||
     !activeMessages.value.length ||
     clearingConversationMessages.value
   ) {
@@ -4371,6 +4433,10 @@ const toggleCallScreenShare = async () => {
 }
 
 const handleCallAction = async () => {
+  if (isSystemConversation.value) {
+    return
+  }
+
   if (!displayedCall.value) {
     await startDisplayedCall()
     return
@@ -4390,7 +4456,12 @@ const handleCallAction = async () => {
 }
 
 const joinCallFromMessage = async (message) => {
-  if (!message?.call?.id || !message.call.joinable || !activeConversation.value) {
+  if (
+    isSystemConversation.value ||
+    !message?.call?.id ||
+    !message.call.joinable ||
+    !activeConversation.value
+  ) {
     return
   }
   if (displayedCall.value?.id !== message.call.id) {
@@ -4555,6 +4626,10 @@ const stopAudioRecording = () => {
 }
 
 const toggleAudioRecording = () => {
+  if (isSystemConversation.value) {
+    return
+  }
+
   if (isRecordingAudio.value) {
     stopAudioRecording()
     return
@@ -4564,10 +4639,18 @@ const toggleAudioRecording = () => {
 }
 
 const triggerImagePicker = () => {
+  if (isSystemConversation.value) {
+    return
+  }
+
   imageInput.value?.click()
 }
 
 const triggerFilePicker = () => {
+  if (isSystemConversation.value) {
+    return
+  }
+
   fileInput.value?.click()
 }
 
@@ -4734,7 +4817,7 @@ const startAudioRecording = async () => {
 }
 
 const sendCurrentAudio = async () => {
-  if (!activeConversation.value || !recordedAudioBlob.value) {
+  if (isSystemConversation.value || !activeConversation.value || !recordedAudioBlob.value) {
     return
   }
 
@@ -4755,7 +4838,7 @@ const sendCurrentAudio = async () => {
 }
 
 const sendCurrentImage = async () => {
-  if (!activeConversation.value || !selectedImageBlob.value) {
+  if (isSystemConversation.value || !activeConversation.value || !selectedImageBlob.value) {
     return
   }
 
@@ -4775,7 +4858,7 @@ const sendCurrentImage = async () => {
 }
 
 const sendCurrentFile = async () => {
-  if (!activeConversation.value || !selectedFileBlob.value) {
+  if (isSystemConversation.value || !activeConversation.value || !selectedFileBlob.value) {
     return
   }
 
@@ -5068,7 +5151,7 @@ const closeGroupModal = () => {
 }
 
 const openChatActions = () => {
-  if (!activeConversation.value) {
+  if (!activeConversation.value || isSystemConversation.value) {
     return
   }
 
@@ -5317,7 +5400,7 @@ const scheduleComposerTypingStop = () => {
 
 const sendCurrentMessage = async () => {
   const text = composerText.value.trim()
-  if (!text || !activeConversation.value) {
+  if (!text || !activeConversation.value || isSystemConversation.value) {
     return
   }
 
