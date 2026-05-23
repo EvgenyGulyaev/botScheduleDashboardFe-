@@ -74,3 +74,12 @@ test('chat header opens one people action modal for invites and deletion', () =>
   assert.match(source, /deleteActiveConversation/)
   assert.doesNotMatch(source, /openGroupInvitePanel/)
 })
+
+test('system conversations are rendered read-only without composer', () => {
+  const source = chatSource()
+
+  assert.match(source, /isSystemConversation/)
+  assert.match(source, /v-if="!isSystemConversation"[\s\S]*:class="composerPanelClass"/)
+  assert.match(source, /Системные уведомления/)
+  assert.match(source, /canUseMessageActions/)
+})

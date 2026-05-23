@@ -352,6 +352,36 @@ test('normalizes conversation and message payloads', () => {
   assert.equal(callMessage.call.participants[1].muted, true)
 })
 
+test('normalizes system conversation and message payloads', () => {
+  const conversation = normalizeChatConversation(
+    {
+      id: 'system|alice@example.com',
+      type: 'system',
+      title: 'Система',
+      last_message_text: 'Заявка сформирована',
+      members: [{ email: 'alice@example.com', login: 'alice' }],
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(conversation.type, 'system')
+  assert.equal(conversation.title, 'Система')
+  assert.equal(conversation.lastMessageText, 'Заявка сформирована')
+
+  const message = normalizeChatMessage({
+    id: 'msg-system',
+    conversation_id: conversation.id,
+    type: 'system',
+    sender_email: 'system@dashboard.local',
+    sender_login: 'Система',
+    text: 'В другой системе сформировалась заявка #123',
+  })
+
+  assert.equal(message.type, 'system')
+  assert.equal(message.senderLogin, 'Система')
+  assert.equal(message.text, 'В другой системе сформировалась заявка #123')
+})
+
 test('normalizes message reconciliation and delivery metadata', () => {
   const message = normalizeChatMessage({
     id: 'msg-1',
