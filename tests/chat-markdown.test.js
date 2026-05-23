@@ -32,3 +32,20 @@ test('preserves line breaks in markdown output', () => {
 
   assert.match(html, /first line<br>second line/)
 })
+
+test('renders phone numbers as tel links with a call icon', () => {
+  const html = renderChatMarkdown(
+    'Сформировалась заявка по услугам\nИмя: авыпавп\nТелефон: +79896283132',
+  )
+
+  assert.match(html, /Телефон: <a href="tel:\+79896283132"/)
+  assert.match(html, /aria-label="Call \+79896283132"/)
+  assert.match(html, />&#128222; \+79896283132<\/a>/)
+})
+
+test('normalizes formatted russian phone numbers for tel href', () => {
+  const html = renderChatMarkdown('Телефон: +7 (989) 628-31-32')
+
+  assert.match(html, /href="tel:\+79896283132"/)
+  assert.match(html, />&#128222; \+7 \(989\) 628-31-32<\/a>/)
+})
