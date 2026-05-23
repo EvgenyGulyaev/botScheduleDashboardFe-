@@ -7,6 +7,10 @@ const normalizeIso = (value) => (value ? String(value) : null)
 export const CHAT_TYPING_TTL_MS = 6000
 
 const sortByDateThenId = (left, right) => {
+  if (left.type === 'system' || right.type === 'system') {
+    return Number(right.type === 'system') - Number(left.type === 'system')
+  }
+
   const leftTime = left.lastMessageAt || left.updatedAt || left.createdAt || ''
   const rightTime = right.lastMessageAt || right.updatedAt || right.createdAt || ''
 

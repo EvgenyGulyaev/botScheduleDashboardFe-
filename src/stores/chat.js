@@ -97,6 +97,10 @@ const normalizeSearchResults = (results = []) =>
 
 const sortConversations = (conversations) =>
   [...conversations].sort((left, right) => {
+    if (left.type === 'system' || right.type === 'system') {
+      return Number(right.type === 'system') - Number(left.type === 'system')
+    }
+
     const leftTime = left.lastMessageAt || left.updatedAt || left.createdAt || ''
     const rightTime = right.lastMessageAt || right.updatedAt || right.createdAt || ''
 

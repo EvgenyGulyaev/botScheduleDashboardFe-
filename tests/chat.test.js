@@ -382,6 +382,52 @@ test('normalizes system conversation and message payloads', () => {
   assert.equal(message.text, 'В другой системе сформировалась заявка #123')
 })
 
+test('chat store pins system conversations above recent regular conversations', async () => {
+  setActivePinia(createPinia())
+  globalThis.localStorage = createStorageMock()
+
+  const fakeApi = createFakeApi()
+  fakeApi.get = (url) => {
+    fakeApi.calls.push(['get', url])
+    if (url === '/chat/conversations') {
+      return Promise.resolve({
+        data: [
+          {
+            id: 'group-1',
+            type: 'group',
+            title: 'Team',
+            updated_at: '2026-05-23T12:00:00Z',
+            members: [{ email: 'alice@example.com', login: 'alice' }],
+          },
+          {
+            id: 'system|alice@example.com',
+            type: 'system',
+            title: 'Система',
+            updated_at: '2026-01-01T12:00:00Z',
+            members: [{ email: 'alice@example.com', login: 'alice' }],
+          },
+        ],
+      })
+    }
+    return Promise.resolve({ data: [] })
+  }
+
+  const authStore = useAuthStore()
+  authStore.api = fakeApi
+  authStore.user = { email: 'alice@example.com', login: 'alice' }
+
+  const notifications = useNotificationsStore()
+  notifications.errorFrom = () => {}
+
+  const chatStore = useChatStore()
+  await chatStore.loadConversations()
+
+  assert.equal(chatStore.conversations[0].id, 'system|alice@example.com')
+  assert.equal(chatStore.conversations[1].id, 'group-1')
+
+  delete globalThis.localStorage
+})
+
 test('normalizes message reconciliation and delivery metadata', () => {
   const message = normalizeChatMessage({
     id: 'msg-1',
@@ -456,6 +502,64 @@ test('applies message_persisted into conversations and messages', () => {
   assert.equal(state.conversations[0].title, 'bob')
   assert.equal(state.conversations[0].members[1].login, 'bob')
   assert.equal(state.messagesByConversation['direct-1'][0].text, 'hello')
+})
+
+test('message persisted keeps system conversation pinned above regular chats', () => {
+  const state = {
+    conversations: [
+      normalizeChatConversation(
+        {
+          id: 'system|alice@example.com',
+          type: 'system',
+          title: 'Система',
+          updated_at: '2026-01-01T12:00:00Z',
+          members: [{ email: 'alice@example.com', login: 'alice' }],
+        },
+        'alice@example.com',
+      ),
+      normalizeChatConversation(
+        {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          updated_at: '2026-01-01T12:00:00Z',
+          members: [{ email: 'alice@example.com', login: 'alice' }],
+        },
+        'alice@example.com',
+      ),
+    ],
+    messagesByConversation: {},
+    activeConversationId: null,
+  }
+
+  applyChatSocketEvent(
+    state,
+    {
+      event: 'message_persisted',
+      data: {
+        conversation: {
+          id: 'group-1',
+          type: 'group',
+          title: 'Team',
+          updated_at: '2026-05-23T12:00:00Z',
+          members: [{ email: 'alice@example.com', login: 'alice' }],
+        },
+        members: [{ email: 'alice@example.com', login: 'alice' }],
+        message: {
+          id: 'msg-new',
+          conversation_id: 'group-1',
+          sender_email: 'alice@example.com',
+          sender_login: 'alice',
+          text: 'new regular chat message',
+          created_at: '2026-05-23T12:00:00Z',
+        },
+      },
+    },
+    'alice@example.com',
+  )
+
+  assert.equal(state.conversations[0].id, 'system|alice@example.com')
+  assert.equal(state.conversations[1].id, 'group-1')
 })
 
 test('message_persisted without unread metadata keeps and increments unread count', () => {
