@@ -83,3 +83,12 @@ test('system conversations are rendered read-only without composer', () => {
   assert.match(source, /Системные уведомления/)
   assert.match(source, /canUseMessageActions/)
 })
+
+test('composer wires pasted images to the image send flow', () => {
+  const source = chatSource()
+
+  assert.match(source, /getClipboardImageFile/)
+  assert.match(source, /@paste="handleComposerPaste"/)
+  assert.match(source, /handleComposerPaste/)
+  assert.match(source, /sendImageMessage/)
+})

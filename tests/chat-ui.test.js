@@ -6,6 +6,7 @@ import {
   filterChatUsersForSearch,
   getAudioMessageButtonLabel,
   getChatSwipeReplyState,
+  getClipboardImageFile,
   getFileMessageButtonLabel,
   getDroppedImageFile,
   getChatMessageSenderLabel,
@@ -311,6 +312,38 @@ test('falls back to dropped files and ignores non-image payloads', () => {
   assert.equal(
     getDroppedImageFile({
       files: [{ name: 'report.pdf', type: 'application/pdf' }],
+    }),
+    null,
+  )
+})
+
+test('extracts the first image file from pasted clipboard items', () => {
+  const image = { name: 'clipboard.png', type: 'image/png' }
+
+  assert.equal(
+    getClipboardImageFile({
+      items: [
+        { kind: 'string', getAsFile: () => null },
+        { kind: 'file', getAsFile: () => ({ name: 'doc.txt', type: 'text/plain' }) },
+        { kind: 'file', getAsFile: () => image },
+      ],
+    }),
+    image,
+  )
+})
+
+test('falls back to pasted files and ignores non-image clipboard payloads', () => {
+  const image = { name: 'screenshot.jpeg', type: 'image/jpeg' }
+
+  assert.equal(
+    getClipboardImageFile({
+      files: [{ name: 'note.txt', type: 'text/plain' }, image],
+    }),
+    image,
+  )
+  assert.equal(
+    getClipboardImageFile({
+      files: [{ name: 'note.txt', type: 'text/plain' }],
     }),
     null,
   )

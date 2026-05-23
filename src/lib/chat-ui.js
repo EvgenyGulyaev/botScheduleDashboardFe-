@@ -487,8 +487,8 @@ export const getChatSwipeReplyState = ({
   }
 }
 
-export const getDroppedImageFile = (dataTransfer = null) => {
-  const itemFile = Array.from(dataTransfer?.items || [])
+const getTransferImageFile = (transfer = null) => {
+  const itemFile = Array.from(transfer?.items || [])
     .filter((item) => item?.kind === 'file')
     .map((item) => (typeof item?.getAsFile === 'function' ? item.getAsFile() : null))
     .find((file) => String(file?.type || '').startsWith('image/'))
@@ -498,11 +498,15 @@ export const getDroppedImageFile = (dataTransfer = null) => {
   }
 
   return (
-    Array.from(dataTransfer?.files || []).find((file) =>
+    Array.from(transfer?.files || []).find((file) =>
       String(file?.type || '').startsWith('image/'),
     ) || null
   )
 }
+
+export const getDroppedImageFile = (dataTransfer = null) => getTransferImageFile(dataTransfer)
+
+export const getClipboardImageFile = (clipboardData = null) => getTransferImageFile(clipboardData)
 
 export const extractChatMentions = (text = '', members = []) => {
   const source = String(text || '')

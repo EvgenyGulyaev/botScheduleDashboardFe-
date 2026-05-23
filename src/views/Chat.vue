@@ -1669,6 +1669,7 @@
                         :class="composerTextareaClass"
                         placeholder="Напиши сообщение"
                         @keydown="handleComposerKeydown"
+                        @paste="handleComposerPaste"
                         @blur="stopComposerTyping"
                       ></textarea>
                       <div
@@ -2489,6 +2490,7 @@ import {
   getGroupMemberActionState,
   getSelectedChatMessagesActionState,
   getConversationMembersSummary,
+  getClipboardImageFile,
   getDroppedImageFile,
   getCurrentUserReactionEmoji,
   getRecentChatItems,
@@ -4744,6 +4746,35 @@ const handleComposerDrop = (event) => {
   }
 
   applySelectedImageFile(imageFile)
+}
+
+const handleComposerPaste = async (event) => {
+  const imageFile = getClipboardImageFile(event?.clipboardData)
+  if (!imageFile) {
+    return
+  }
+
+  event.preventDefault()
+  if (isSystemConversation.value || !activeConversation.value) {
+    return
+  }
+  if (sendingImage.value) {
+    notifications.info('Дождись отправки изображения')
+    return
+  }
+
+  sendingImage.value = true
+  try {
+    await chatStore.sendImageMessage({
+      conversationId: activeConversation.value.id,
+      imageBlob: imageFile,
+      filename: imageFile.name || 'clipboard-image.png',
+    })
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось отправить изображение')
+  } finally {
+    sendingImage.value = false
+  }
 }
 
 const startAudioRecording = async () => {
