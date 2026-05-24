@@ -1,10 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   buildWeddingCsv,
   normalizeWeddingRSVPs,
   summarizeWeddingRSVPs,
 } from '../src/lib/wedding.js'
+
+const weddingViewSource = () =>
+  readFileSync(new URL('../src/views/Wedding.vue', import.meta.url), 'utf8')
 
 test('normalizes wedding rsvps from backend payload', () => {
   const items = normalizeWeddingRSVPs([
@@ -85,4 +89,13 @@ test('builds excel-friendly csv with utf bom and escaped values', () => {
     csv,
     '\uFEFF"Дата";"Имя";"Статус";"Напитки";"Другое";"Композиция"\n"24.05.2026, 10:00";"Анна ""Аня"" Иванова";"Буду";"Белое сухое, Другое";"Сидр";"ABBA; Dancing Queen"',
   )
+})
+
+test('wedding admin exposes rsvp delete action', () => {
+  const source = weddingViewSource()
+
+  assert.match(source, /deleteWeddingRSVP/)
+  assert.match(source, /deleteRSVP/)
+  assert.match(source, /Удалить/)
+  assert.match(source, /confirm/)
 })

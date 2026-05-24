@@ -65,6 +65,7 @@
                   <th class="px-4 py-3">Напитки</th>
                   <th class="px-4 py-3">Другое</th>
                   <th class="px-4 py-3">Композиция</th>
+                  <th class="px-4 py-3 text-right">Действия</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
@@ -88,6 +89,16 @@
                   </td>
                   <td class="px-4 py-4 text-slate-600">{{ item.otherDrink || '—' }}</td>
                   <td class="px-4 py-4 text-slate-600">{{ item.song || '—' }}</td>
+                  <td class="whitespace-nowrap px-4 py-4 text-right">
+                    <button
+                      type="button"
+                      class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-100 disabled:cursor-wait disabled:opacity-50"
+                      :disabled="deletingRSVPId === item.id"
+                      @click="deleteRSVP(item)"
+                    >
+                      {{ deletingRSVPId === item.id ? 'Удаляем...' : 'Удалить' }}
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -152,6 +163,7 @@ const rsvps = ref([])
 const drinkOptionsText = ref('')
 const loading = ref(false)
 const savingSettings = ref(false)
+const deletingRSVPId = ref('')
 
 const summary = computed(() => summarizeWeddingRSVPs(rsvps.value))
 
@@ -193,6 +205,27 @@ const saveSettings = async () => {
     notifications.errorFrom(error, 'Не удалось сохранить напитки')
   } finally {
     savingSettings.value = false
+  }
+}
+
+const deleteRSVP = async (item) => {
+  if (!item?.id) {
+    return
+  }
+  const confirmed = window.confirm(`Удалить заявку гостя «${item.fullName || 'без имени'}»?`)
+  if (!confirmed) {
+    return
+  }
+
+  deletingRSVPId.value = item.id
+  try {
+    await authStore.deleteWeddingRSVP(item.id)
+    rsvps.value = rsvps.value.filter((rsvp) => rsvp.id !== item.id)
+    notifications.success('Заявка удалена')
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось удалить заявку')
+  } finally {
+    deletingRSVPId.value = ''
   }
 }
 

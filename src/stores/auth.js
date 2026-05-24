@@ -279,6 +279,11 @@ export const useAuthStore = defineStore('auth', {
       return normalizeWeddingSettings(response.data)
     },
 
+    async deleteWeddingRSVP(id = '') {
+      const api = this.api
+      return api.delete(`/wedding/rsvps/${encodeURIComponent(id)}`)
+    },
+
     async deletePushSubscription(endpoint = '') {
       const api = this.api
       return api.delete('/profile/push-subscriptions', {
