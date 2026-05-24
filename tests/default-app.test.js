@@ -12,4 +12,5 @@ test('resolves known default app values to routes', () => {
   assert.equal(resolveDefaultAppRoute('messages'), '/messages')
   assert.equal(resolveDefaultAppRoute('geo3d'), '/geo3d')
   assert.equal(resolveDefaultAppRoute('short-links'), '/short-links')
+  assert.equal(resolveDefaultAppRoute('wedding'), '/wedding')
 })

@@ -4,6 +4,7 @@ export const DEFAULT_APP_OPTIONS = [
   { value: 'messages', label: 'Бот Расписание', path: '/messages' },
   { value: 'geo3d', label: '3D Модели', path: '/geo3d' },
   { value: 'short-links', label: 'Короткие ссылки', path: '/short-links' },
+  { value: 'wedding', label: 'Свадьба', path: '/wedding' },
   { value: 'alice', label: 'Алиса', path: '/alice' },
 ]
 

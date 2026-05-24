@@ -28,6 +28,13 @@ const APP_MENU_ITEMS = [
     adminOnly: false,
   },
   {
+    key: 'wedding',
+    to: '/wedding',
+    label: 'Свадьба',
+    icon: '💍',
+    adminOnly: false,
+  },
+  {
     key: 'alice',
     to: '/alice',
     label: 'Алиса',

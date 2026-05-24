@@ -74,6 +74,12 @@ const routes = [
     component: () => import('../views/ShortLinks.vue'),
     meta: { requiresAuth: true, appKey: 'short-links' },
   },
+  {
+    path: '/wedding',
+    name: 'Wedding',
+    component: () => import('../views/Wedding.vue'),
+    meta: { requiresAuth: true, appKey: 'wedding' },
+  },
   { path: '/', redirect: '/login' },
 ]
 

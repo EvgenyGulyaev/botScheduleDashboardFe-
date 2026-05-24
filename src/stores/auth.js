@@ -12,6 +12,7 @@ import { buildAliceAnnouncementPayload, normalizeAliceAccountResources } from '.
 import { normalizeAuditEntries } from '../lib/admin-audit.js'
 import { resolveDefaultAppRoute } from '../lib/default-app.js'
 import { isUnauthorizedError, redirectToLogin } from '../lib/auth-session.js'
+import { normalizeWeddingRSVPs, normalizeWeddingSettings } from '../lib/wedding.js'
 
 const REFRESHED_TOKEN_HEADER = 'x-auth-token'
 
@@ -258,6 +259,24 @@ export const useAuthStore = defineStore('auth', {
       const api = this.api
       const response = await api.get('/admin/audit')
       return normalizeAuditEntries(response.data?.items)
+    },
+
+    async fetchWeddingRSVPs() {
+      const api = this.api
+      const response = await api.get('/wedding/rsvps')
+      return normalizeWeddingRSVPs(response.data?.items)
+    },
+
+    async fetchWeddingSettings() {
+      const api = this.api
+      const response = await api.get('/wedding/settings')
+      return normalizeWeddingSettings(response.data)
+    },
+
+    async updateWeddingSettings(payload = {}) {
+      const api = this.api
+      const response = await api.patch('/wedding/settings', payload)
+      return normalizeWeddingSettings(response.data)
     },
 
     async deletePushSubscription(endpoint = '') {

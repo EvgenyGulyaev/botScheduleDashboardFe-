@@ -68,6 +68,11 @@ test('allows navigation when route matches auth state', () => {
     appPermissions: ['chat', 'alice'],
     to: { path: '/alice', meta: { requiresAuth: true, appKey: 'alice' } },
   })
+  const weddingResult = resolveAuthRedirect({
+    isAuthenticated: true,
+    appPermissions: ['chat', 'wedding'],
+    to: { path: '/wedding', meta: { requiresAuth: true, appKey: 'wedding' } },
+  })
   const superAdminResult = resolveAuthRedirect({
     isAuthenticated: true,
     isAdmin: true,
@@ -78,5 +83,6 @@ test('allows navigation when route matches auth state', () => {
   assert.equal(guestResult, true)
   assert.equal(authResult, true)
   assert.equal(adminResult, true)
+  assert.equal(weddingResult, true)
   assert.equal(superAdminResult, true)
 })

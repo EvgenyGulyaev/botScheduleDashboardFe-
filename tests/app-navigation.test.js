@@ -25,6 +25,19 @@ test('shows alice app for users with alice permission', () => {
   })
 })
 
+test('shows wedding app for users with wedding permission', () => {
+  const weddingItem = getAppMenuItems({
+    isAdmin: false,
+    appPermissions: ['chat', 'wedding'],
+  }).find((item) => item.to === '/wedding')
+
+  assert.deepEqual(weddingItem, {
+    to: '/wedding',
+    label: 'Свадьба',
+    icon: '💍',
+  })
+})
+
 test('filters app menu by user app permissions', () => {
   const items = getAppMenuItems({
     isAdmin: true,
