@@ -22,12 +22,16 @@ export const normalizeWeddingRSVP = (item = {}) => {
 export const normalizeWeddingRSVPs = (items = []) =>
   (Array.isArray(items) ? items : []).map((item) => normalizeWeddingRSVP(item))
 
+const normalizeStringList = (items = []) =>
+  (Array.isArray(items) ? items : [])
+    .filter((item) => typeof item === 'string' && item.trim())
+    .map((item) => item.trim())
+
 export const normalizeWeddingSettings = (payload = {}) => ({
-  drinkOptions: Array.isArray(payload?.drink_options)
-    ? payload.drink_options.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim())
-    : Array.isArray(payload?.drinkOptions)
-      ? payload.drinkOptions.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim())
-      : [],
+  drinkOptions: normalizeStringList(payload?.drink_options ?? payload?.drinkOptions),
+  accessCodeEnabled: Boolean(payload?.access_code_enabled ?? payload?.accessCodeEnabled),
+  accessCode: String(payload?.access_code ?? payload?.accessCode ?? ''),
+  accessCodeVersion: String(payload?.access_code_version ?? payload?.accessCodeVersion ?? ''),
 })
 
 export const summarizeWeddingRSVPs = (items = []) => {

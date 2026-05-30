@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   buildWeddingCsv,
+  normalizeWeddingSettings,
   normalizeWeddingRSVPs,
   summarizeWeddingRSVPs,
 } from '../src/lib/wedding.js'
@@ -98,4 +99,41 @@ test('wedding admin exposes rsvp delete action', () => {
   assert.match(source, /deleteRSVP/)
   assert.match(source, /Удалить/)
   assert.match(source, /confirm/)
+})
+
+test('wedding admin exposes rsvp edit modal and update action', () => {
+  const source = weddingViewSource()
+
+  assert.match(source, /editRSVP/)
+  assert.match(source, /editingRSVP/)
+  assert.match(source, /updateWeddingRSVP/)
+  assert.match(source, /Редактировать заявку/)
+  assert.match(source, /Сохранить изменения/)
+  assert.match(source, /aria-label="Редактировать заявку/)
+})
+
+test('normalizes wedding access settings from backend payload', () => {
+  const settings = normalizeWeddingSettings({
+    drink_options: ['Вино'],
+    access_code_enabled: true,
+    access_code: '171026',
+    access_code_version: 'v7',
+  })
+
+  assert.deepEqual(settings, {
+    drinkOptions: ['Вино'],
+    accessCodeEnabled: true,
+    accessCode: '171026',
+    accessCodeVersion: 'v7',
+  })
+})
+
+test('wedding admin exposes access code controls', () => {
+  const source = weddingViewSource()
+
+  assert.match(source, /accessCodeEnabled/)
+  assert.match(source, /accessCode/)
+  assert.match(source, /Защита приглашения/)
+  assert.match(source, /access_code_enabled/)
+  assert.match(source, /access_code/)
 })

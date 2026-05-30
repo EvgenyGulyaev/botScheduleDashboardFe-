@@ -279,6 +279,12 @@ export const useAuthStore = defineStore('auth', {
       return normalizeWeddingSettings(response.data)
     },
 
+    async updateWeddingRSVP(id = '', payload = {}) {
+      const api = this.api
+      const response = await api.patch(`/wedding/rsvps/${encodeURIComponent(id)}`, payload)
+      return normalizeWeddingRSVPs([response.data])[0]
+    },
+
     async deleteWeddingRSVP(id = '') {
       const api = this.api
       return api.delete(`/wedding/rsvps/${encodeURIComponent(id)}`)
