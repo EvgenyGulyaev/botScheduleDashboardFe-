@@ -46,7 +46,7 @@ test('filters app menu by user app permissions', () => {
 
   assert.deepEqual(
     items.map((item) => item.to),
-    ['/chat', '/alice'],
+    ['/chat', '/drawing', '/alice'],
   )
 })
 

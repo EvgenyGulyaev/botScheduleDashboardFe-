@@ -80,6 +80,12 @@ const routes = [
     component: () => import('../views/Wedding.vue'),
     meta: { requiresAuth: true, appKey: 'wedding' },
   },
+  {
+    path: '/drawing',
+    name: 'Drawing',
+    component: () => import('../views/Drawing.vue'),
+    meta: { requiresAuth: true },
+  },
   { path: '/', redirect: '/login' },
 ]
 

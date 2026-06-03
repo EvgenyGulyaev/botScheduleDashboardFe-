@@ -35,6 +35,14 @@ const APP_MENU_ITEMS = [
     adminOnly: false,
   },
   {
+    key: 'drawing',
+    to: '/drawing',
+    label: 'Рисовалка',
+    icon: '🎨',
+    adminOnly: false,
+    alwaysVisible: true,
+  },
+  {
     key: 'alice',
     to: '/alice',
     label: 'Алиса',
@@ -89,11 +97,14 @@ export const getAppMenuItems = (options = false) => {
     if (item.permissionOnly && !permissionSet.has(item.key)) {
       return false
     }
+    if (item.alwaysVisible) {
+      return true
+    }
     if (shouldFilterPermissions && !permissionSet.has(item.key)) {
       return false
     }
     return true
-  }).map(({ key, adminOnly, permissionOnly, ...item }) => item)
+  }).map(({ key, adminOnly, permissionOnly, alwaysVisible, ...item }) => item)
 }
 
 export const getAdminMenuItems = (isSuperAdmin = false) =>

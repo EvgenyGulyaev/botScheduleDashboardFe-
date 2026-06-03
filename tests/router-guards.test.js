@@ -86,3 +86,25 @@ test('allows navigation when route matches auth state', () => {
   assert.equal(weddingResult, true)
   assert.equal(superAdminResult, true)
 })
+
+test('redirects guests away from /drawing', () => {
+  const result = resolveAuthRedirect({
+    isAuthenticated: false,
+    to: { path: '/drawing', meta: { requiresAuth: true } },
+  })
+
+  assert.equal(result, '/login')
+})
+
+test('allows any authenticated user to access /drawing without drawing permission', () => {
+  const result = resolveAuthRedirect({
+    isAuthenticated: true,
+    isAdmin: false,
+    isSuperAdmin: false,
+    appPermissions: ['chat'],
+    defaultRoute: '/chat',
+    to: { path: '/drawing', meta: { requiresAuth: true } },
+  })
+
+  assert.equal(result, true)
+})
