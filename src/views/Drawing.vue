@@ -167,7 +167,7 @@
               aria-label="Отменить"
               title="Отменить"
               class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="!canUndo.value"
+              :disabled="!canUndo"
               @click="undo"
             >
               ↶
@@ -177,7 +177,7 @@
               aria-label="Повторить"
               title="Повторить"
               class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="!canRedo.value"
+              :disabled="!canRedo"
               @click="redo"
             >
               ↷
@@ -459,6 +459,7 @@ const redo = () => {
 const onNew = () => {
   selected.value = null
   titleInput.value = ''
+  hasCanvasContent.value = false
   widthInput.value = DRAWING_DEFAULT_CANVAS_WIDTH
   heightInput.value = DRAWING_DEFAULT_CANVAS_HEIGHT
   nextTick(() => {
@@ -549,6 +550,7 @@ const confirmDeleteAction = async () => {
   try {
     await store.deleteImage(id)
     selected.value = null
+    hasCanvasContent.value = false
     titleInput.value = ''
     await nextTick()
     fillCanvasBackground()
@@ -593,6 +595,7 @@ const applyResize = (width, height) => {
   redoStack.clear()
   undoCount.value = 0
   redoCount.value = 0
+  hasCanvasContent.value = false
   nextTick(() => {
     fillCanvasBackground()
   })
