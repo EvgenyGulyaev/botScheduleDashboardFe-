@@ -1,5 +1,3 @@
-const ATTENDANCE_LABELS_PLACEHOLDER = null
-
 export const normalizeDrawingImage = (payload = {}) => ({
   id: String(payload?.id ?? ''),
   title: String(payload?.title ?? ''),
@@ -18,6 +16,3 @@ export const normalizeDrawingImages = (items = []) =>
 
 export const DRAWING_DEFAULT_CANVAS_WIDTH = 1600
 export const DRAWING_DEFAULT_CANVAS_HEIGHT = 1000
-
-const _attendanceLabelsPlaceholder = ATTENDANCE_LABELS_PLACEHOLDER
-void _attendanceLabelsPlaceholder
