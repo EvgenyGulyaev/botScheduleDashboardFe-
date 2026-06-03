@@ -5,6 +5,7 @@ export const DEFAULT_APP_OPTIONS = [
   { value: 'geo3d', label: '3D Модели', path: '/geo3d' },
   { value: 'short-links', label: 'Короткие ссылки', path: '/short-links' },
   { value: 'wedding', label: 'Свадьба', path: '/wedding' },
+  { value: 'drawing', label: 'Рисовалка', path: '/drawing' },
   { value: 'alice', label: 'Алиса', path: '/alice' },
 ]
 

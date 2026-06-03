@@ -13,4 +13,10 @@ test('resolves known default app values to routes', () => {
   assert.equal(resolveDefaultAppRoute('geo3d'), '/geo3d')
   assert.equal(resolveDefaultAppRoute('short-links'), '/short-links')
   assert.equal(resolveDefaultAppRoute('wedding'), '/wedding')
+  assert.equal(resolveDefaultAppRoute('drawing'), '/drawing')
+})
+
+test('drawing can be a default app independent of access permission', () => {
+  assert.equal(resolveDefaultAppValue('drawing'), 'drawing')
+  assert.equal(resolveDefaultAppRoute('drawing'), '/drawing')
 })
