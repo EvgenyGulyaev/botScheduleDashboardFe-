@@ -167,7 +167,7 @@
               aria-label="Отменить"
               title="Отменить"
               class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="!undoStack.canUndo()"
+              :disabled="!canUndo.value"
               @click="undo"
             >
               ↶
@@ -177,7 +177,7 @@
               aria-label="Повторить"
               title="Повторить"
               class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="!redoStack.canUndo()"
+              :disabled="!canRedo.value"
               @click="redo"
             >
               ↷
@@ -308,6 +308,13 @@ const pendingResize = ref(null)
 
 const undoStack = createUndoStack()
 const redoStack = createUndoStack()
+const undoCount = ref(0)
+const redoCount = ref(0)
+const hasCanvasContent = ref(false)
+
+
+const canUndo = computed(() => undoCount.value > 0)
+const canRedo = computed(() => redoCount.value > 0)
 
 const tools = [
   { key: 'pencil', label: 'Карандаш', icon: '✏️' },
@@ -351,7 +358,9 @@ const pushUndo = () => {
   const snap = snapshotCanvas()
   if (snap) {
     undoStack.push(snap)
+    undoCount.value = undoStack.size()
     redoStack.clear()
+    redoCount.value = 0
   }
 }
 
@@ -397,6 +406,7 @@ const onPointerDown = (event) => {
   drawing.value = true
   lastPoint = point
   drawSegment(point, point)
+    hasCanvasContent.value = true
 }
 
 const onPointerMove = (event) => {
@@ -431,6 +441,8 @@ const undo = () => {
   const prev = undoStack.pop()
   if (!prev) return
   if (current) redoStack.push(current)
+  redoCount.value = redoStack.size()
+  undoCount.value = undoStack.size()
   restoreSnapshot(prev)
 }
 
@@ -439,6 +451,8 @@ const redo = () => {
   const next = redoStack.pop()
   if (!next) return
   if (current) undoStack.push(current)
+  undoCount.value = undoStack.size()
+  redoCount.value = redoStack.size()
   restoreSnapshot(next)
 }
 
@@ -486,6 +500,8 @@ const onSelect = async (item) => {
   }
   undoStack.clear()
   redoStack.clear()
+  undoCount.value = 0
+  redoCount.value = 0
 }
 
 const onSave = async () => {
@@ -563,7 +579,7 @@ const requestResize = (width, height) => {
   if (dim.width === canvasWidth.value && dim.height === canvasHeight.value) {
     return
   }
-  if (undoStack.canUndo()) {
+  if (hasCanvasContent.value) {
     pendingResize.value = { width: dim.width, height: dim.height }
     return
   }
@@ -575,6 +591,8 @@ const applyResize = (width, height) => {
   canvasHeight.value = height
   undoStack.clear()
   redoStack.clear()
+  undoCount.value = 0
+  redoCount.value = 0
   nextTick(() => {
     fillCanvasBackground()
   })
