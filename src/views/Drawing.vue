@@ -96,7 +96,8 @@
                 <input
                   v-model.number="canvasWidth"
                   type="number"
-                  min="50"
+                  :min="DRAWING_CANVAS_MIN"
+                  :max="DRAWING_CANVAS_MAX"
                   class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
                 />
               </label>
@@ -107,7 +108,8 @@
                 <input
                   v-model.number="canvasHeight"
                   type="number"
-                  min="50"
+                  :min="DRAWING_CANVAS_MIN"
+                  :max="DRAWING_CANVAS_MAX"
                   class="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
                 />
               </label>

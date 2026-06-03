@@ -4,6 +4,8 @@ export const DRAWING_BRUSH_MIN = 1
 export const DRAWING_BRUSH_MAX = 80
 export const DRAWING_UNDO_STACK_MAX = 50
 export const DRAWING_DEFAULT_BACKGROUND = '#ffffff'
+export const DRAWING_CANVAS_MIN = 50
+export const DRAWING_CANVAS_MAX = 4096
 
 export const normalizeDrawingTitle = (value = '') => {
   const trimmed = String(value ?? '').trim()
@@ -22,9 +24,32 @@ export const clampBrushSize = (value) => {
   return Math.round(num)
 }
 
+export const clampCanvasDimension = (value) => {
+  const num = Math.floor(Number(value))
+  if (!Number.isFinite(num)) return DRAWING_CANVAS_MIN
+  if (num < DRAWING_CANVAS_MIN) return DRAWING_CANVAS_MIN
+  if (num > DRAWING_CANVAS_MAX) return DRAWING_CANVAS_MAX
+  return num
+}
+
+export const validateCanvasDimensions = (width, height) => {
+  const w = Math.floor(Number(width))
+  const h = Math.floor(Number(height))
+  if (!Number.isFinite(w) || !Number.isFinite(h)) {
+    return { ok: false, message: 'Ширина и высота должны быть числами' }
+  }
+  if (w < DRAWING_CANVAS_MIN || h < DRAWING_CANVAS_MIN) {
+    return { ok: false, message: `Минимальный размер ${DRAWING_CANVAS_MIN}×${DRAWING_CANVAS_MIN}` }
+  }
+  if (w > DRAWING_CANVAS_MAX || h > DRAWING_CANVAS_MAX) {
+    return { ok: false, message: `Максимальный размер ${DRAWING_CANVAS_MAX}×${DRAWING_CANVAS_MAX}` }
+  }
+  return { ok: true, width: w, height: h }
+}
+
 export const createBlankCanvasState = (width = 0, height = 0) => ({
-  width: Math.max(1, Number(width) || 0),
-  height: Math.max(1, Number(height) || 0),
+  width: clampCanvasDimension(width),
+  height: clampCanvasDimension(height),
   background: DRAWING_DEFAULT_BACKGROUND,
 })
 

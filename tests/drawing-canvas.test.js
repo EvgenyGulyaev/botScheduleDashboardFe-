@@ -2,13 +2,17 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   clampBrushSize,
+  clampCanvasDimension,
   createBlankCanvasState,
   createUndoStack,
   DRAWING_BRUSH_MAX,
   DRAWING_BRUSH_MIN,
+  DRAWING_CANVAS_MAX,
+  DRAWING_CANVAS_MIN,
   DRAWING_TITLE_MAX_LENGTH,
   DRAWING_UNDO_STACK_MAX,
   normalizeDrawingTitle,
+  validateCanvasDimensions,
 } from '../src/lib/drawing-canvas.js'
 
 test('normalizeDrawingTitle trims and caps length', () => {
@@ -36,8 +40,8 @@ test('createBlankCanvasState keeps positive dimensions', () => {
   assert.equal(state.height, 600)
   assert.equal(state.background, '#ffffff')
   const empty = createBlankCanvasState(0, 0)
-  assert.equal(empty.width, 1)
-  assert.equal(empty.height, 1)
+  assert.equal(empty.width, DRAWING_CANVAS_MIN)
+  assert.equal(empty.height, DRAWING_CANVAS_MIN)
 })
 
 test('undo stack caps at max length and supports pop/clear', () => {
@@ -71,4 +75,21 @@ test('undo stack ignores null and undefined pushes', () => {
   stack.push(null)
   stack.push(undefined)
   assert.equal(stack.size(), 0)
+})
+
+test('validateCanvasDimensions enforces min and max', () => {
+  assert.deepEqual(validateCanvasDimensions(100, 100), { ok: true, width: 100, height: 100 })
+  const tooSmall = validateCanvasDimensions(10, 10)
+  assert.equal(tooSmall.ok, false)
+  const tooBig = validateCanvasDimensions(9999, 9999)
+  assert.equal(tooBig.ok, false)
+  const nan = validateCanvasDimensions("foo", 100)
+  assert.equal(nan.ok, false)
+})
+
+test('clampCanvasDimension rounds and bounds', () => {
+  assert.equal(clampCanvasDimension(100), 100)
+  assert.equal(clampCanvasDimension(10), DRAWING_CANVAS_MIN)
+  assert.equal(clampCanvasDimension(99999), DRAWING_CANVAS_MAX)
+  assert.equal(clampCanvasDimension(100.7), 100)
 })
