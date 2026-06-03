@@ -434,7 +434,11 @@ const onSelect = async (item) => {
   fillCanvasBackground()
   try {
     const blob = await store.fetchImageContent(item.id)
-    await loadImageToCanvas(canvasRef.value, blob)
+    const dims = await loadImageToCanvas(canvasRef.value, blob)
+    if (dims) {
+      canvasWidth.value = dims.width
+      canvasHeight.value = dims.height
+    }
   } catch (err) {
     // ignore — fresh canvas remains
   }
@@ -488,7 +492,8 @@ const confirmDeleteAction = async () => {
     await store.deleteImage(id)
     selected.value = null
     titleInput.value = ''
-    onNew()
+    await nextTick()
+    fillCanvasBackground()
   } finally {
     saving.value = false
   }
