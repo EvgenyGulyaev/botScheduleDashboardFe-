@@ -277,9 +277,12 @@ import {
   canvasToPngBlob,
   clampBrushSize,
   createUndoStack,
+  DRAWING_CANVAS_MAX,
+  DRAWING_CANVAS_MIN,
   DRAWING_TITLE_MAX_LENGTH,
   loadImageToCanvas,
   normalizeDrawingTitle,
+  validateCanvasDimensions,
 } from '../lib/drawing-canvas.js'
 import {
   DRAWING_DEFAULT_CANVAS_HEIGHT,
