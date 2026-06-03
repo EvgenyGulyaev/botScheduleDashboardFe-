@@ -41,3 +41,9 @@ test('new drawing resets canvas without preserving old undo history', () => {
   assert.match(resetBody, /undoStack\.clear\(\)/)
   assert.match(resetBody, /redoStack\.clear\(\)/)
 })
+
+test('clear canvas button uses eraser icon instead of ambiguous cross', () => {
+  assert.match(drawingVue, /aria-label="Очистить холст"/)
+  assert.match(drawingVue, /<svg[\s\S]*?<path d="m7 21-4-4/)
+  assert.doesNotMatch(drawingVue, />\s*×\s*</)
+})

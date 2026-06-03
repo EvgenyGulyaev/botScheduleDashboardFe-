@@ -166,7 +166,22 @@
           "
           @click="activeTool = tool.key"
         >
-          {{ tool.icon }}
+          <svg
+            v-if="tool.icon === 'eraser'"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m7 21-4-4 11-11a2.8 2.8 0 0 1 4 0l2 2a2.8 2.8 0 0 1 0 4L9 21H7Z" />
+            <path d="m11 10 6 6" />
+            <path d="M17 21h4" />
+          </svg>
+          <span v-else aria-hidden="true">{{ tool.icon }}</span>
         </button>
 
         <div class="mx-1 h-6 w-px shrink-0 bg-slate-200" />
@@ -222,12 +237,25 @@
         </button>
         <button
           type="button"
-          aria-label="Очистить"
-          title="Очистить"
+          aria-label="Очистить холст"
+          title="Очистить холст"
           class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-rose-200 bg-white text-base text-rose-600 transition hover:bg-rose-50"
           @click="clearCanvas"
         >
-          ×
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="m7 21-4-4 11-11a2.8 2.8 0 0 1 4 0l2 2a2.8 2.8 0 0 1 0 4L9 21H7Z" />
+            <path d="m11 10 6 6" />
+            <path d="M17 21h4" />
+          </svg>
         </button>
       </div>
 
@@ -364,7 +392,7 @@ const canRedo = computed(() => redoCount.value > 0)
 
 const tools = [
   { key: 'pencil', label: 'Карандаш', icon: '✎' },
-  { key: 'eraser', label: 'Ластик', icon: '⌫' },
+  { key: 'eraser', label: 'Ластик', icon: 'eraser' },
 ]
 
 const items = computed(() => store.items)
