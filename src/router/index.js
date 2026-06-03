@@ -84,7 +84,7 @@ const routes = [
     path: '/drawing',
     name: 'Drawing',
     component: () => import('../views/Drawing.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, appKey: 'drawing' },
   },
   { path: '/', redirect: '/login' },
 ]

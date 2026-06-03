@@ -39,8 +39,7 @@ const APP_MENU_ITEMS = [
     to: '/drawing',
     label: 'Рисовалка',
     icon: '🎨',
-    adminOnly: false,
-    alwaysVisible: true,
+    permissionOnly: true,
   },
   {
     key: 'alice',

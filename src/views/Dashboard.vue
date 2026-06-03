@@ -69,6 +69,7 @@
               <option value="geo3d">Сервис для 3d городов</option>
               <option value="alice-speaker-service">Сервис для Алисы</option>
               <option value="lawyer-backend">Сайт юриста</option>
+              <option value="drawing-service">Рисовалка</option>
             </select>
           </div>
 
@@ -671,6 +672,7 @@ const services = [
   'dashboard-chat',
   'alice-speaker-service',
   'lawyer-backend',
+  'drawing-service',
 ]
 const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdatedAt.value))
 const botStatus = computed(() => selectedStatus.value.status)

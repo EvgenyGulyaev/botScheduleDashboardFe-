@@ -2,38 +2,31 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { getAppMenuItems } from '../src/lib/app-navigation.js'
 
-test('shows drawing app to authenticated user without drawing permission', () => {
+test('hides drawing app without drawing permission', () => {
   const drawingItem = getAppMenuItems({
     isAdmin: false,
     isSuperAdmin: false,
     appPermissions: ['chat'],
   }).find((item) => item.to === '/drawing')
 
-  assert.deepEqual(drawingItem, {
-    to: '/drawing',
-    label: 'Рисовалка',
-    icon: '🎨',
-  })
+  assert.equal(drawingItem, undefined)
 })
 
-test('keeps drawing in menu when user has no app permissions', () => {
+test('hides drawing when user has no app permissions', () => {
   const items = getAppMenuItems({
     isAdmin: false,
     isSuperAdmin: false,
     appPermissions: [],
   })
 
-  assert.ok(
-    items.some((item) => item.to === '/drawing'),
-    'drawing must be visible to every authenticated user',
-  )
+  assert.equal(items.some((item) => item.to === '/drawing'), false)
 })
 
-test('keeps drawing in menu when user has non-empty app permissions without drawing', () => {
+test('shows drawing when user has drawing permission', () => {
   const items = getAppMenuItems({
     isAdmin: true,
     isSuperAdmin: false,
-    appPermissions: ['chat', 'wedding'],
+    appPermissions: ['chat', 'drawing', 'wedding'],
   })
 
   const paths = items.map((item) => item.to)
@@ -46,7 +39,7 @@ test('does not leak alwaysVisible field on drawing item', () => {
   const items = getAppMenuItems({
     isAdmin: false,
     isSuperAdmin: false,
-    appPermissions: ['chat'],
+    appPermissions: ['drawing'],
   })
   const drawingItem = items.find((item) => item.to === '/drawing')
 
