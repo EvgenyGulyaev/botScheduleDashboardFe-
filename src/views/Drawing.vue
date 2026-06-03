@@ -364,6 +364,13 @@ const pushUndo = () => {
   }
 }
 
+const resetHistory = () => {
+  undoStack.clear()
+  redoStack.clear()
+  undoCount.value = 0
+  redoCount.value = 0
+}
+
 const pointFromEvent = (event) => {
   const canvas = canvasRef.value
   if (!canvas) return null
@@ -406,7 +413,7 @@ const onPointerDown = (event) => {
   drawing.value = true
   lastPoint = point
   drawSegment(point, point)
-    hasCanvasContent.value = true
+  hasCanvasContent.value = true
 }
 
 const onPointerMove = (event) => {
@@ -459,11 +466,15 @@ const redo = () => {
 const onNew = () => {
   selected.value = null
   titleInput.value = ''
+  pendingResize.value = null
+  canvasWidth.value = DRAWING_DEFAULT_CANVAS_WIDTH
+  canvasHeight.value = DRAWING_DEFAULT_CANVAS_HEIGHT
   hasCanvasContent.value = false
+  resetHistory()
   widthInput.value = DRAWING_DEFAULT_CANVAS_WIDTH
   heightInput.value = DRAWING_DEFAULT_CANVAS_HEIGHT
   nextTick(() => {
-    clearCanvas()
+    fillCanvasBackground()
   })
 }
 
@@ -495,14 +506,13 @@ const onSelect = async (item) => {
     if (dims) {
       canvasWidth.value = dims.width
       canvasHeight.value = dims.height
+      hasCanvasContent.value = true
     }
   } catch (err) {
     // ignore — fresh canvas remains
+    hasCanvasContent.value = false
   }
-  undoStack.clear()
-  redoStack.clear()
-  undoCount.value = 0
-  redoCount.value = 0
+  resetHistory()
 }
 
 const onSave = async () => {
@@ -552,6 +562,7 @@ const confirmDeleteAction = async () => {
     selected.value = null
     hasCanvasContent.value = false
     titleInput.value = ''
+    resetHistory()
     await nextTick()
     fillCanvasBackground()
   } finally {
@@ -591,10 +602,7 @@ const requestResize = (width, height) => {
 const applyResize = (width, height) => {
   canvasWidth.value = width
   canvasHeight.value = height
-  undoStack.clear()
-  redoStack.clear()
-  undoCount.value = 0
-  redoCount.value = 0
+  resetHistory()
   hasCanvasContent.value = false
   nextTick(() => {
     fillCanvasBackground()
