@@ -3,7 +3,10 @@
     <AppNotifications />
 
     <!-- Навигация (только после логина) -->
-    <nav v-if="$route.meta.requiresAuth" class="bg-white shadow-sm border-b">
+    <nav
+      v-if="$route.meta.requiresAuth && route.name !== 'Drawing'"
+      class="bg-white shadow-sm border-b"
+    >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <!-- Логотип -->
@@ -165,10 +168,7 @@
       </div>
     </nav>
 
-    <div
-      v-if="showInstallPrompt"
-      class="mx-auto mt-3 max-w-7xl px-4 sm:px-6 lg:px-8"
-    >
+    <div v-if="showInstallPrompt" class="mx-auto mt-3 max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -238,17 +238,19 @@ const appMenuItems = computed(() =>
 )
 const adminMenuItems = computed(() => getAdminMenuItems(Boolean(authStore.user?.isSuperAdmin)))
 const iosInstallSteps = getIOSInstallSteps()
-const showInstallPrompt = computed(() =>
-  shouldShowPwaInstallPrompt({
-    isAuthenticated: authStore.isAuthenticated,
-    isStandalone: isStandaloneDisplayMode(window),
-    dismissed: installPromptDismissed.value,
-    isMobileOrTablet: isMobileOrTabletInstallContext(window),
-  }),
+const showInstallPrompt = computed(
+  () =>
+    route.name !== 'Drawing' &&
+    shouldShowPwaInstallPrompt({
+      isAuthenticated: authStore.isAuthenticated,
+      isStandalone: isStandaloneDisplayMode(window),
+      dismissed: installPromptDismissed.value,
+      isMobileOrTablet: isMobileOrTabletInstallContext(window),
+    }),
 )
 
 const contentWrapperClass = computed(() => {
-  if (route.name === 'Chat') {
+  if (route.name === 'Chat' || route.name === 'Drawing') {
     return 'pt-0 pb-0'
   }
 
