@@ -37,3 +37,6 @@ __screenshots__/
 
 # Local worktrees
 .worktrees/
+
+# Superpowers visual companion scratch files
+.superpowers/
