@@ -94,7 +94,7 @@
                   Ширина
                 </span>
                 <input
-                  v-model.number="canvasWidth"
+                  v-model.number="widthInput"
                   type="number"
                   :min="DRAWING_CANVAS_MIN"
                   :max="DRAWING_CANVAS_MAX"
@@ -106,7 +106,7 @@
                   Высота
                 </span>
                 <input
-                  v-model.number="canvasHeight"
+                  v-model.number="heightInput"
                   type="number"
                   :min="DRAWING_CANVAS_MIN"
                   :max="DRAWING_CANVAS_MAX"
@@ -239,6 +239,34 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="pendingResize"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4"
+    >
+      <div class="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+        <h3 class="text-lg font-bold text-slate-950">Изменить размер холста?</h3>
+        <p class="mt-2 text-sm text-slate-600">
+          Изменение размеров очистит нарисованное. Отменить будет нельзя.
+        </p>
+        <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            @click="cancelResize"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            class="rounded-2xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+            @click="confirmResizeAction"
+          >
+            Очистить и изменить
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -264,6 +292,8 @@ const titleMaxLength = DRAWING_TITLE_MAX_LENGTH
 const canvasRef = ref(null)
 const canvasWidth = ref(DRAWING_DEFAULT_CANVAS_WIDTH)
 const canvasHeight = ref(DRAWING_DEFAULT_CANVAS_HEIGHT)
+const widthInput = ref(DRAWING_DEFAULT_CANVAS_WIDTH)
+const heightInput = ref(DRAWING_DEFAULT_CANVAS_HEIGHT)
 const activeTool = ref('pencil')
 const brushColor = ref('#0f172a')
 const brushSize = ref(4)
@@ -271,6 +301,7 @@ const titleInput = ref('')
 const selected = ref(null)
 const saving = ref(false)
 const confirmDelete = ref(false)
+const pendingResize = ref(null)
 
 const undoStack = createUndoStack()
 const redoStack = createUndoStack()
@@ -411,6 +442,8 @@ const redo = () => {
 const onNew = () => {
   selected.value = null
   titleInput.value = ''
+  widthInput.value = DRAWING_DEFAULT_CANVAS_WIDTH
+  heightInput.value = DRAWING_DEFAULT_CANVAS_HEIGHT
   nextTick(() => {
     clearCanvas()
   })
@@ -430,8 +463,12 @@ const onSelect = async (item) => {
   if (!item) return
   selected.value = item
   titleInput.value = item.title || ''
-  canvasWidth.value = item.width || DRAWING_DEFAULT_CANVAS_WIDTH
-  canvasHeight.value = item.height || DRAWING_DEFAULT_CANVAS_HEIGHT
+  const w = item.width || DRAWING_DEFAULT_CANVAS_WIDTH
+  const h = item.height || DRAWING_DEFAULT_CANVAS_HEIGHT
+  canvasWidth.value = w
+  canvasHeight.value = h
+  widthInput.value = w
+  heightInput.value = h
   await nextTick()
   fillCanvasBackground()
   try {
@@ -510,6 +547,56 @@ const formatSize = (bytes) => {
 
 watch(brushSize, (value) => {
   brushSize.value = clampBrushSize(value)
+})
+
+const requestResize = (width, height) => {
+  const dim = validateCanvasDimensions(width, height)
+  if (!dim.ok) {
+    store.setError(dim.message)
+    widthInput.value = canvasWidth.value
+    heightInput.value = canvasHeight.value
+    return
+  }
+  if (dim.width === canvasWidth.value && dim.height === canvasHeight.value) {
+    return
+  }
+  if (undoStack.canUndo()) {
+    pendingResize.value = { width: dim.width, height: dim.height }
+    return
+  }
+  applyResize(dim.width, dim.height)
+}
+
+const applyResize = (width, height) => {
+  canvasWidth.value = width
+  canvasHeight.value = height
+  undoStack.clear()
+  redoStack.clear()
+  nextTick(() => {
+    fillCanvasBackground()
+  })
+}
+
+const cancelResize = () => {
+  if (pendingResize.value) {
+    widthInput.value = canvasWidth.value
+    heightInput.value = canvasHeight.value
+  }
+  pendingResize.value = null
+}
+
+const confirmResizeAction = () => {
+  if (!pendingResize.value) return
+  const { width, height } = pendingResize.value
+  pendingResize.value = null
+  applyResize(width, height)
+}
+
+watch(widthInput, (value) => {
+  requestResize(value, heightInput.value)
+})
+watch(heightInput, (value) => {
+  requestResize(widthInput.value, value)
 })
 
 onMounted(async () => {
