@@ -3,6 +3,9 @@ import assert from 'node:assert/strict'
 import {
   normalizeDrawingStamp,
   normalizeDrawingStamps,
+  resolveStampPriority,
+  resolveStampText,
+  shouldShowStampPriorityControls,
   validateDrawingStampDraft,
 } from '../src/lib/drawing-stamps.js'
 
@@ -30,9 +33,18 @@ test('normalizeDrawingStamps handles non arrays', () => {
   assert.deepEqual(normalizeDrawingStamps(null), [])
 })
 
-test('validateDrawingStampDraft requires matching priority content', () => {
+test('validateDrawingStampDraft allows text-only stamps without an image', () => {
   assert.equal(validateDrawingStampDraft({ name: '', textValue: 'x', priority: 'text', hasImage: false }).ok, false)
-  assert.equal(validateDrawingStampDraft({ name: 'x', textValue: '', priority: 'text', hasImage: false }).ok, false)
-  assert.equal(validateDrawingStampDraft({ name: 'x', textValue: 'x', priority: 'image', hasImage: false }).ok, false)
+  assert.deepEqual(validateDrawingStampDraft({ name: 'x', textValue: '', priority: 'text', hasImage: false }), { ok: true })
+  assert.deepEqual(validateDrawingStampDraft({ name: 'x', textValue: 'x', priority: 'image', hasImage: false }), { ok: true })
   assert.deepEqual(validateDrawingStampDraft({ name: 'x', textValue: 'x', priority: 'text', hasImage: false }), { ok: true })
+})
+
+test('stamp helpers derive text and priority from available content', () => {
+  assert.equal(resolveStampText({ name: 'Евгений', textValue: '' }), 'Евгений')
+  assert.equal(resolveStampText({ name: 'Евгений', textValue: 'Жених' }), 'Жених')
+  assert.equal(resolveStampPriority({ name: 'Евгений', textValue: '', priority: 'image', hasImage: false }), 'text')
+  assert.equal(resolveStampPriority({ name: 'Евгений', textValue: '', priority: 'image', hasImage: true }), 'image')
+  assert.equal(shouldShowStampPriorityControls({ name: 'Евгений', textValue: '', hasImage: false }), false)
+  assert.equal(shouldShowStampPriorityControls({ name: 'Евгений', textValue: '', hasImage: true }), true)
 })

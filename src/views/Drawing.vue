@@ -551,7 +551,7 @@
               @change="onStampFileChange"
             />
           </label>
-          <div class="flex flex-wrap items-center gap-2">
+          <div v-if="showStampPriority" class="flex flex-wrap items-center gap-2">
             <span class="text-xs font-semibold uppercase text-slate-500">Приоритет</span>
             <button
               type="button"
@@ -569,10 +569,11 @@
             >
               Картинка
             </button>
+          </div>
+          <div v-if="editingStamp?.hasImage" class="flex justify-end">
             <button
-              v-if="editingStamp?.hasImage"
               type="button"
-              class="ml-auto text-sm font-semibold text-rose-500"
+              class="text-sm font-semibold text-rose-500"
               @click="stampDraft.removeImage = true"
             >
               Удалить картинку
@@ -623,6 +624,9 @@ import {
   DRAWING_STAMP_SIZE_MAX,
   DRAWING_STAMP_SIZE_MIN,
   priorityLabel,
+  resolveStampPriority,
+  resolveStampText,
+  shouldShowStampPriorityControls,
   STAMP_PRIORITY_IMAGE,
   STAMP_PRIORITY_TEXT,
   validateDrawingStampDraft,
@@ -684,6 +688,12 @@ const items = computed(() => store.items)
 const stamps = computed(() => stampsStore.items)
 const selectedStamp = computed(() => stamps.value.find((stamp) => stamp.id === selectedStampId.value) || null)
 const isStampTool = computed(() => activeTool.value === 'stamp')
+const stampDraftHasImage = computed(() =>
+  Boolean(stampImageFile.value || (editingStamp.value?.hasImage && !stampDraft.value.removeImage)),
+)
+const showStampPriority = computed(() =>
+  shouldShowStampPriorityControls({ ...stampDraft.value, hasImage: stampDraftHasImage.value }),
+)
 const sliderLabel = computed(() => (isStampTool.value ? 'Размер' : 'Кисть'))
 const sliderValue = computed(() => (isStampTool.value ? stampSize.value : brushSize.value))
 const sliderMin = computed(() => (isStampTool.value ? DRAWING_STAMP_SIZE_MIN : 1))
@@ -1014,7 +1024,7 @@ const onStampFileChange = (event) => {
 }
 
 const saveStamp = async () => {
-  const hasImage = Boolean(stampImageFile.value || (editingStamp.value?.hasImage && !stampDraft.value.removeImage))
+  const hasImage = stampDraftHasImage.value
   const validation = validateDrawingStampDraft({ ...stampDraft.value, hasImage })
   if (!validation.ok) {
     stampsStore.setError(validation.message)
@@ -1022,9 +1032,10 @@ const saveStamp = async () => {
   }
   const payload = {
     name: stampDraft.value.name,
-    textValue: stampDraft.value.textValue,
-    priority: stampDraft.value.priority,
+    textValue: resolveStampText(stampDraft.value),
+    priority: resolveStampPriority({ ...stampDraft.value, hasImage }),
     removeImage: stampDraft.value.removeImage,
+    hasImage,
     file: stampImageFile.value,
     filename: stampImageFile.value?.name || 'stamp.png',
   }

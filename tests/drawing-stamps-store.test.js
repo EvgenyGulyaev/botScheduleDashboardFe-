@@ -63,6 +63,27 @@ test('createStamp posts multipart payload', async () => {
   assert.equal(store.items[0].id, 's1')
 })
 
+test('createStamp uses stamp name as text when image is omitted', async () => {
+  const { store, mock } = setupStore()
+  mock.on('post', ({ payload }) => {
+    const metadata = JSON.parse(payload.get('metadata'))
+    assert.deepEqual(metadata, {
+      name: 'Евгений',
+      textValue: 'Евгений',
+      priority: 'text',
+      removeImage: false,
+    })
+    return { data: { id: 's2', name: 'Евгений', textValue: 'Евгений', priority: 'text' } }
+  })
+
+  await store.createStamp({
+    name: 'Евгений',
+    textValue: '',
+    priority: 'image',
+    hasImage: false,
+  })
+})
+
 test('fetchStampContent returns blob response', async () => {
   const { store, mock } = setupStore()
   const blob = new Blob(['png'], { type: 'image/png' })

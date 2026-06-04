@@ -26,6 +26,27 @@ export const normalizeDrawingStamps = (items = []) =>
 export const priorityLabel = (priority = '') =>
   priority === STAMP_PRIORITY_IMAGE ? 'Картинка' : 'Имя'
 
+export const resolveStampText = ({ name = '', textValue = '' } = {}) =>
+  String(textValue || name || '').trim()
+
+export const hasStampText = (payload = {}) => Boolean(resolveStampText(payload))
+
+export const shouldShowStampPriorityControls = (payload = {}) =>
+  hasStampText(payload) && Boolean(payload?.hasImage)
+
+export const resolveStampPriority = ({
+  name = '',
+  textValue = '',
+  priority = STAMP_PRIORITY_TEXT,
+  hasImage = false,
+} = {}) => {
+  const hasText = hasStampText({ name, textValue })
+  if (hasText && hasImage) {
+    return priority === STAMP_PRIORITY_IMAGE ? STAMP_PRIORITY_IMAGE : STAMP_PRIORITY_TEXT
+  }
+  return hasImage && !hasText ? STAMP_PRIORITY_IMAGE : STAMP_PRIORITY_TEXT
+}
+
 export const clampStampSize = (value) => {
   const num = Number(value)
   if (!Number.isFinite(num)) return DRAWING_STAMP_SIZE_DEFAULT
@@ -37,21 +58,13 @@ export const clampStampSize = (value) => {
 export const validateDrawingStampDraft = ({
   name = '',
   textValue = '',
-  priority = STAMP_PRIORITY_TEXT,
   hasImage = false,
 } = {}) => {
   if (!String(name).trim()) {
     return { ok: false, message: 'Название обязательно' }
   }
-  const text = String(textValue).trim()
-  if (!text && !hasImage) {
+  if (!hasStampText({ name, textValue }) && !hasImage) {
     return { ok: false, message: 'Укажи имя или загрузи картинку' }
-  }
-  if (priority === STAMP_PRIORITY_TEXT && !text) {
-    return { ok: false, message: 'Для приоритета Имя нужен текст' }
-  }
-  if (priority === STAMP_PRIORITY_IMAGE && !hasImage) {
-    return { ok: false, message: 'Для приоритета Картинка нужна картинка' }
   }
   return { ok: true }
 }

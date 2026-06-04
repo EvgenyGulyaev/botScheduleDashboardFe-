@@ -1,5 +1,10 @@
 import { defineStore, getActivePinia } from 'pinia'
-import { normalizeDrawingStamp, normalizeDrawingStamps } from '../lib/drawing-stamps.js'
+import {
+  normalizeDrawingStamp,
+  normalizeDrawingStamps,
+  resolveStampPriority,
+  resolveStampText,
+} from '../lib/drawing-stamps.js'
 import { useAuthStore } from './auth.js'
 
 export const useDrawingStampsStore = defineStore('drawing-stamps', {
@@ -53,16 +58,18 @@ export const useDrawingStampsStore = defineStore('drawing-stamps', {
       textValue,
       priority,
       removeImage = false,
+      hasImage = false,
       file = null,
       filename = 'stamp.png',
     }) {
+      const nextHasImage = Boolean(file || (hasImage && !removeImage))
       const formData = new FormData()
       formData.append(
         'metadata',
         JSON.stringify({
           name: String(name ?? '').trim(),
-          textValue: String(textValue ?? '').trim(),
-          priority,
+          textValue: resolveStampText({ name, textValue }),
+          priority: resolveStampPriority({ name, textValue, priority, hasImage: nextHasImage }),
           removeImage: Boolean(removeImage),
         }),
       )

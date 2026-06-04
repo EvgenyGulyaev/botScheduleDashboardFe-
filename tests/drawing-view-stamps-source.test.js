@@ -26,3 +26,8 @@ test('drawing view switches brush slider to stamp size', () => {
   assert.match(drawingVue, /sliderLabel/)
   assert.match(drawingVue, /Размер/)
 })
+
+test('stamp form shows priority only when text and image are both available', () => {
+  assert.match(drawingVue, /showStampPriority/)
+  assert.match(drawingVue, /v-if="showStampPriority"/)
+})
