@@ -990,8 +990,9 @@ const onNew = async () => {
 }
 
 const openExisting = async (item) => {
-  await onSelect(item)
   viewMode.value = 'editor'
+  await nextTick()
+  await onSelect(item)
 }
 
 const openGallery = async () => {

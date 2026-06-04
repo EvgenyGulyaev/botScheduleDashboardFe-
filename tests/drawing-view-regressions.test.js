@@ -27,6 +27,19 @@ test('selecting an existing drawing marks canvas as containing content', () => {
   )
 })
 
+test('opening an existing drawing mounts editor before loading canvas content', () => {
+  const body = functionBody('openExisting')
+  const editorIndex = body.indexOf("viewMode.value = 'editor'")
+  const selectIndex = body.indexOf('onSelect(item)')
+
+  assert.notEqual(editorIndex, -1, 'openExisting must switch to editor view')
+  assert.notEqual(selectIndex, -1, 'openExisting must load selected drawing')
+  assert.ok(
+    editorIndex < selectIndex,
+    'openExisting must mount the editor canvas before loading image content',
+  )
+})
+
 test('new drawing resets canvas without preserving old undo history', () => {
   const body = functionBody('onNew')
 
