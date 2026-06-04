@@ -238,249 +238,234 @@
 
     <section v-else-if="viewMode === 'editor'" class="flex h-full min-h-0 flex-col overflow-hidden">
       <div
-        class="flex min-h-12 shrink-0 items-center justify-between border-b border-slate-200 bg-white/90 px-3 backdrop-blur sm:px-5"
+        class="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-[#f8fafc] px-3 py-2 sm:px-5"
+        role="toolbar"
+        aria-label="Инструменты рисовалки"
       >
-        <div class="flex items-center gap-2">
+        <div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-contain">
           <button
             type="button"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-full text-lg text-slate-700 transition hover:bg-slate-100"
-            aria-label="Назад"
-            title="Назад"
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+            aria-label="Назад к изображениям"
+            title="Назад к изображениям"
             @click="openGallery"
           >
             ←
           </button>
+
+          <div class="mx-1 h-6 w-px shrink-0 bg-slate-200" />
+
+          <button
+            v-for="tool in tools"
+            :key="tool.key"
+            type="button"
+            :aria-label="tool.label"
+            :title="tool.label"
+            :aria-pressed="activeTool === tool.key"
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full border text-base transition"
+            :class="
+              activeTool === tool.key
+                ? 'border-slate-950 bg-slate-950 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            "
+            @click="activeTool = tool.key"
+          >
+            <svg
+              v-if="tool.icon === 'eraser'"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m7 21-4-4 11-11a2.8 2.8 0 0 1 4 0l2 2a2.8 2.8 0 0 1 0 4L9 21H7Z" />
+              <path d="m11 10 6 6" />
+              <path d="M17 21h4" />
+            </svg>
+            <svg
+              v-else-if="tool.icon === 'hand'"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M18 11V6a2 2 0 0 0-4 0v5" />
+              <path d="M14 10V4a2 2 0 0 0-4 0v10" />
+              <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
+              <path d="M6 14v-2a2 2 0 0 0-4 0v3a7 7 0 0 0 7 7h3a8 8 0 0 0 8-8v-3a2 2 0 1 0-4 0" />
+            </svg>
+            <span v-else aria-hidden="true">{{ tool.icon }}</span>
+          </button>
+
+          <div class="relative shrink-0">
+            <button
+              ref="stampButtonRef"
+              type="button"
+              :aria-pressed="activeTool === 'stamp'"
+              :title="selectedStamp ? `Штамп: ${selectedStamp.name}` : 'Штамп'"
+              class="inline-flex h-10 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition"
+              :class="
+                activeTool === 'stamp'
+                  ? 'border-slate-950 bg-slate-950 text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              "
+              @click="toggleStampDropdown"
+            >
+              ▣
+              <span class="max-w-28 truncate">{{ selectedStamp?.name || 'Штамп' }}</span>
+              <span aria-hidden="true">▾</span>
+            </button>
+            <div
+              v-if="stampDropdownOpen"
+              class="fixed z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+              :style="stampDropdownStyle"
+            >
+              <div class="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase text-slate-400">
+                Штампы
+              </div>
+              <button
+                v-for="stamp in stamps"
+                :key="stamp.id"
+                type="button"
+                class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-50"
+                @click="selectStamp(stamp)"
+              >
+                <span class="min-w-0 truncate font-semibold text-slate-800">{{ stamp.name }}</span>
+                <span class="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
+                  {{ stampPriorityLabel(stamp.priority) }}
+                </span>
+              </button>
+              <div v-if="!stamps.length" class="px-3 py-4 text-sm text-slate-500">
+                Штампов пока нет
+              </div>
+              <button
+                type="button"
+                class="w-full border-t border-slate-100 px-3 py-3 text-left text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
+                @click="openStampsScreen"
+              >
+                Управление кистями
+              </button>
+            </div>
+          </div>
+
+          <div class="mx-1 h-6 w-px shrink-0 bg-slate-200" />
+
+          <label
+            class="flex shrink-0 items-center gap-2 text-xs font-semibold uppercase text-slate-500"
+          >
+            Цвет
+            <input
+              v-model="brushColor"
+              type="color"
+              class="h-8 w-8 cursor-pointer rounded border border-slate-200 bg-white"
+            />
+          </label>
+
+          <label
+            class="flex shrink-0 items-center gap-2 text-xs font-semibold uppercase text-slate-500"
+          >
+            {{ sliderLabel }}
+            <input
+              :value="sliderValue"
+              type="range"
+              :min="sliderMin"
+              :max="sliderMax"
+              class="h-2 w-28 cursor-pointer accent-slate-950 sm:w-40"
+              @input="onSliderInput"
+            />
+            <span class="w-6 text-right text-sm font-medium text-slate-700 tabular-nums">{{
+              sliderValue
+            }}</span>
+          </label>
+
+          <div class="mx-1 h-6 w-px shrink-0 bg-slate-200" />
+
           <button
             type="button"
-            class="rounded-full px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            @click="openGallery"
+            aria-label="Подогнать холст под экран"
+            title="Подогнать холст под экран"
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-base text-slate-700 transition hover:bg-slate-50"
+            @click="resizeCanvasToViewport"
           >
-            Изображения
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M8 3H3v5" />
+              <path d="M3 3l7 7" />
+              <path d="M16 3h5v5" />
+              <path d="M21 3l-7 7" />
+              <path d="M8 21H3v-5" />
+              <path d="M3 21l7-7" />
+              <path d="M16 21h5v-5" />
+              <path d="M21 21l-7-7" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Отменить"
+            title="Отменить"
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-base text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            :disabled="!canUndo"
+            @click="undo"
+          >
+            ↶
           </button>
           <button
             type="button"
-            class="rounded-full px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            @click="openStampsScreen"
+            aria-label="Повторить"
+            title="Повторить"
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-base text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            :disabled="!canRedo"
+            @click="redo"
           >
-            Кисти
+            ↷
+          </button>
+          <button
+            type="button"
+            aria-label="Очистить холст"
+            title="Очистить холст"
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-rose-200 bg-white text-base text-rose-600 transition hover:bg-rose-50"
+            @click="clearCanvas"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m7 21-4-4 11-11a2.8 2.8 0 0 1 4 0l2 2a2.8 2.8 0 0 1 0 4L9 21H7Z" />
+              <path d="m11 10 6 6" />
+              <path d="M17 21h4" />
+            </svg>
           </button>
         </div>
+
         <button
           type="button"
-          class="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          class="shrink-0 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="saving"
           @click="openSaveModal"
         >
           {{ saving ? 'Сохраняем...' : 'Сохранить' }}
-        </button>
-      </div>
-
-      <div
-        class="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-200 bg-[#f8fafc] px-3 py-2 sm:px-5"
-        role="toolbar"
-        aria-label="Инструменты рисовалки"
-      >
-        <button
-          v-for="tool in tools"
-          :key="tool.key"
-          type="button"
-          :aria-label="tool.label"
-          :title="tool.label"
-          :aria-pressed="activeTool === tool.key"
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-full border text-base transition"
-          :class="
-            activeTool === tool.key
-              ? 'border-slate-950 bg-slate-950 text-white'
-              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-          "
-          @click="activeTool = tool.key"
-        >
-          <svg
-            v-if="tool.icon === 'eraser'"
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            class="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="m7 21-4-4 11-11a2.8 2.8 0 0 1 4 0l2 2a2.8 2.8 0 0 1 0 4L9 21H7Z" />
-            <path d="m11 10 6 6" />
-            <path d="M17 21h4" />
-          </svg>
-          <svg
-            v-else-if="tool.icon === 'hand'"
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            class="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M18 11V6a2 2 0 0 0-4 0v5" />
-            <path d="M14 10V4a2 2 0 0 0-4 0v10" />
-            <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
-            <path d="M6 14v-2a2 2 0 0 0-4 0v3a7 7 0 0 0 7 7h3a8 8 0 0 0 8-8v-3a2 2 0 1 0-4 0" />
-          </svg>
-          <span v-else aria-hidden="true">{{ tool.icon }}</span>
-        </button>
-
-        <div class="relative shrink-0">
-          <button
-            ref="stampButtonRef"
-            type="button"
-            :aria-pressed="activeTool === 'stamp'"
-            :title="selectedStamp ? `Штамп: ${selectedStamp.name}` : 'Штамп'"
-            class="inline-flex h-10 items-center gap-2 rounded-full border px-3 text-sm font-semibold transition"
-            :class="
-              activeTool === 'stamp'
-                ? 'border-slate-950 bg-slate-950 text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-            "
-            @click="toggleStampDropdown"
-          >
-            ▣
-            <span class="max-w-28 truncate">{{ selectedStamp?.name || 'Штамп' }}</span>
-            <span aria-hidden="true">▾</span>
-          </button>
-          <div
-            v-if="stampDropdownOpen"
-            class="fixed z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
-            :style="stampDropdownStyle"
-          >
-            <div class="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase text-slate-400">
-              Штампы
-            </div>
-            <button
-              v-for="stamp in stamps"
-              :key="stamp.id"
-              type="button"
-              class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-50"
-              @click="selectStamp(stamp)"
-            >
-              <span class="min-w-0 truncate font-semibold text-slate-800">{{ stamp.name }}</span>
-              <span class="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">
-                {{ stampPriorityLabel(stamp.priority) }}
-              </span>
-            </button>
-            <div v-if="!stamps.length" class="px-3 py-4 text-sm text-slate-500">
-              Штампов пока нет
-            </div>
-            <button
-              type="button"
-              class="w-full border-t border-slate-100 px-3 py-3 text-left text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
-              @click="openStampsScreen"
-            >
-              Управление кистями
-            </button>
-          </div>
-        </div>
-
-        <div class="mx-1 h-6 w-px shrink-0 bg-slate-200" />
-
-        <label
-          class="flex shrink-0 items-center gap-2 text-xs font-semibold uppercase text-slate-500"
-        >
-          Цвет
-          <input
-            v-model="brushColor"
-            type="color"
-            class="h-8 w-8 cursor-pointer rounded border border-slate-200 bg-white"
-          />
-        </label>
-
-        <label
-          class="flex shrink-0 items-center gap-2 text-xs font-semibold uppercase text-slate-500"
-        >
-          {{ sliderLabel }}
-          <input
-            :value="sliderValue"
-            type="range"
-            :min="sliderMin"
-            :max="sliderMax"
-            class="h-2 w-28 cursor-pointer accent-slate-950 sm:w-40"
-            @input="onSliderInput"
-          />
-          <span class="w-6 text-right text-sm font-medium text-slate-700 tabular-nums">{{
-            sliderValue
-          }}</span>
-        </label>
-
-        <div class="mx-1 h-6 w-px shrink-0 bg-slate-200" />
-
-        <button
-          type="button"
-          aria-label="Подогнать холст под экран"
-          title="Подогнать холст под экран"
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-base text-slate-700 transition hover:bg-slate-50"
-          @click="resizeCanvasToViewport"
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            class="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M8 3H3v5" />
-            <path d="M3 3l7 7" />
-            <path d="M16 3h5v5" />
-            <path d="M21 3l-7 7" />
-            <path d="M8 21H3v-5" />
-            <path d="M3 21l7-7" />
-            <path d="M16 21h5v-5" />
-            <path d="M21 21l-7-7" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          aria-label="Отменить"
-          title="Отменить"
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-base text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-          :disabled="!canUndo"
-          @click="undo"
-        >
-          ↶
-        </button>
-        <button
-          type="button"
-          aria-label="Повторить"
-          title="Повторить"
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-base text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-          :disabled="!canRedo"
-          @click="redo"
-        >
-          ↷
-        </button>
-        <button
-          type="button"
-          aria-label="Очистить холст"
-          title="Очистить холст"
-          class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-rose-200 bg-white text-base text-rose-600 transition hover:bg-rose-50"
-          @click="clearCanvas"
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            class="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="m7 21-4-4 11-11a2.8 2.8 0 0 1 4 0l2 2a2.8 2.8 0 0 1 0 4L9 21H7Z" />
-            <path d="m11 10 6 6" />
-            <path d="M17 21h4" />
-          </svg>
         </button>
       </div>
 

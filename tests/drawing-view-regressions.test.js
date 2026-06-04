@@ -100,3 +100,17 @@ test('new drawing measures the mounted editor stage before sizing canvas', () =>
   assert.ok(viewModeIndex < tickIndex)
   assert.ok(tickIndex < sizeIndex)
 })
+
+test('editor actions live in one compact toolbar', () => {
+  const editorStart = drawingVue.indexOf(`v-else-if="viewMode === 'editor'"`)
+  const modalStart = drawingVue.indexOf('v-if="saveModalOpen"', editorStart)
+  const editorTemplate = drawingVue.slice(editorStart, modalStart)
+
+  assert.match(editorTemplate, /role="toolbar"/)
+  assert.match(editorTemplate, /aria-label="Назад к изображениям"/)
+  assert.match(editorTemplate, /@click="openSaveModal"/)
+  assert.match(editorTemplate, /class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto/)
+  assert.match(editorTemplate, /class="shrink-0 rounded-full bg-slate-950/)
+  assert.doesNotMatch(editorTemplate, />\s*Изображения\s*</)
+  assert.doesNotMatch(editorTemplate, />\s*Кисти\s*</)
+})
