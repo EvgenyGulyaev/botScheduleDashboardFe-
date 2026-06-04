@@ -68,3 +68,14 @@ test('drawing view handles keyboard shortcuts for undo and redo', () => {
   assert.match(drawingVue, /event\.key\.toLowerCase\(\) === 'y'/)
   assert.match(drawingVue, /window\.addEventListener\('keydown', handleEditorKeydown\)/)
 })
+
+test('drawing view can resize current canvas to viewport without clearing content', () => {
+  assert.match(drawingVue, /aria-label="Подогнать холст под экран"/)
+  const body = functionBody('resizeCanvasToViewport')
+
+  assert.match(body, /viewportCanvasSize\(\)/)
+  assert.match(body, /pushUndo\(\)/)
+  assert.match(body, /drawImage\(previous/)
+  assert.match(body, /stampObjects\.value = stampObjects\.value\.map/)
+  assert.match(body, /renderCanvas\(\)/)
+})

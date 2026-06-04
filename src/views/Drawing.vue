@@ -408,6 +408,34 @@
 
         <button
           type="button"
+          aria-label="Подогнать холст под экран"
+          title="Подогнать холст под экран"
+          class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-base text-slate-700 transition hover:bg-slate-50"
+          @click="resizeCanvasToViewport"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M8 3H3v5" />
+            <path d="M3 3l7 7" />
+            <path d="M16 3h5v5" />
+            <path d="M21 3l-7 7" />
+            <path d="M8 21H3v-5" />
+            <path d="M3 21l7-7" />
+            <path d="M16 21h5v-5" />
+            <path d="M21 21l-7-7" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
           aria-label="Отменить"
           title="Отменить"
           class="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-base text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
@@ -1249,6 +1277,49 @@ const fillCanvasBackground = () => {
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, base.width, base.height)
   ctx.restore()
+  renderCanvas()
+}
+
+const resizeCanvasToViewport = async () => {
+  const canvas = canvasRef.value
+  if (!canvas || typeof document === 'undefined') return
+  const nextSize = viewportCanvasSize()
+  const currentWidth = canvas.width || canvasWidth.value
+  const currentHeight = canvas.height || canvasHeight.value
+  if (currentWidth === nextSize.width && currentHeight === nextSize.height) return
+  const base = ensureBaseCanvasForVisible()
+  if (!base) return
+
+  pushUndo()
+  const previous = document.createElement('canvas')
+  previous.width = base.width
+  previous.height = base.height
+  previous.getContext('2d')?.drawImage(base, 0, 0)
+
+  const scaleX = nextSize.width / Math.max(currentWidth, 1)
+  const scaleY = nextSize.height / Math.max(currentHeight, 1)
+  const sizeScale = Math.min(scaleX, scaleY)
+
+  canvasWidth.value = nextSize.width
+  canvasHeight.value = nextSize.height
+  await nextTick()
+
+  const nextBase = resizeBaseCanvas(nextSize.width, nextSize.height)
+  const ctx = getBaseContext()
+  if (!nextBase || !ctx) return
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, nextBase.width, nextBase.height)
+  ctx.drawImage(previous, 0, 0, previous.width, previous.height, 0, 0, nextBase.width, nextBase.height)
+  ctx.restore()
+
+  stampObjects.value = stampObjects.value.map((object) => ({
+    ...object,
+    x: object.x * scaleX,
+    y: object.y * scaleY,
+    size: Math.max(1, object.size * sizeScale),
+  }))
   renderCanvas()
 }
 
