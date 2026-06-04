@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div :class="appShellClass">
     <AppNotifications />
 
     <!-- Навигация (только после логина) -->
@@ -262,8 +262,20 @@ const showInstallPrompt = computed(
     }),
 )
 
+const appShellClass = computed(() => {
+  if (route.name === 'Drawing') {
+    return 'h-[100dvh] overflow-hidden bg-gray-50'
+  }
+
+  return 'min-h-screen bg-gray-50'
+})
+
 const contentWrapperClass = computed(() => {
-  if (route.name === 'Chat' || route.name === 'Drawing') {
+  if (route.name === 'Drawing') {
+    return 'h-full overflow-hidden pt-0 pb-0'
+  }
+
+  if (route.name === 'Chat') {
     return 'pt-0 pb-0'
   }
 
