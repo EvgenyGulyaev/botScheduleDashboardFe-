@@ -31,3 +31,9 @@ test('stamp form shows priority only when text and image are both available', ()
   assert.match(drawingVue, /showStampPriority/)
   assert.match(drawingVue, /v-if="showStampPriority"/)
 })
+
+test('stamp dropdown is positioned outside clipped toolbar overflow', () => {
+  assert.match(drawingVue, /ref="stampButtonRef"/)
+  assert.match(drawingVue, /stampDropdownStyle/)
+  assert.match(drawingVue, /class="fixed[\s\S]*?Штампы/)
+})

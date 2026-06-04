@@ -309,6 +309,7 @@
 
         <div class="relative shrink-0">
           <button
+            ref="stampButtonRef"
             type="button"
             :aria-pressed="activeTool === 'stamp'"
             :title="selectedStamp ? `Штамп: ${selectedStamp.name}` : 'Штамп'"
@@ -326,7 +327,8 @@
           </button>
           <div
             v-if="stampDropdownOpen"
-            class="absolute left-0 top-12 z-30 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            class="fixed z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            :style="stampDropdownStyle"
           >
             <div class="border-b border-slate-100 px-3 py-2 text-xs font-semibold uppercase text-slate-400">
               Штампы
@@ -645,6 +647,8 @@ const activeTool = ref('pencil')
 const brushColor = ref('#0f172a')
 const brushSize = ref(4)
 const stampSize = ref(DRAWING_STAMP_SIZE_DEFAULT)
+const stampButtonRef = ref(null)
+const stampDropdownStyle = ref({})
 const selectedStampId = ref('')
 const stampDropdownOpen = ref(false)
 const stampFormOpen = ref(false)
@@ -803,9 +807,34 @@ const drawSegment = (from, to) => {
   ctx.globalCompositeOperation = 'source-over'
 }
 
+const updateStampDropdownPosition = () => {
+  if (typeof window === 'undefined') {
+    stampDropdownStyle.value = {}
+    return
+  }
+  const rect = stampButtonRef.value?.getBoundingClientRect()
+  if (!rect) {
+    stampDropdownStyle.value = {}
+    return
+  }
+  const width = Math.min(256, Math.max(220, window.innerWidth - 24))
+  const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - width - 12))
+  stampDropdownStyle.value = {
+    left: `${left}px`,
+    top: `${rect.bottom + 8}px`,
+    width: `${width}px`,
+    maxWidth: 'calc(100vw - 24px)',
+  }
+}
+
 const toggleStampDropdown = async () => {
   activeTool.value = 'stamp'
-  stampDropdownOpen.value = !stampDropdownOpen.value
+  if (stampDropdownOpen.value) {
+    stampDropdownOpen.value = false
+    return
+  }
+  updateStampDropdownPosition()
+  stampDropdownOpen.value = true
   if (!stamps.value.length && !stampsStore.loading) {
     try {
       await stampsStore.fetchStamps()
@@ -813,6 +842,8 @@ const toggleStampDropdown = async () => {
       // error already exposed
     }
   }
+  await nextTick()
+  updateStampDropdownPosition()
 }
 
 const selectStamp = (stamp) => {
