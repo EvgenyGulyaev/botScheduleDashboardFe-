@@ -3,11 +3,7 @@
     aria-live="polite"
     class="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4 sm:justify-end"
   >
-    <TransitionGroup
-      name="toast"
-      tag="div"
-      class="flex w-full max-w-md flex-col gap-3"
-    >
+    <TransitionGroup name="toast" tag="div" class="flex w-full max-w-md flex-col gap-3">
       <div
         v-for="item in notifications.items"
         :key="item.id"
@@ -90,7 +86,6 @@ const toastTitle = (type) => {
 </script>
 
 <style scoped>
-.toast-enter-active,
 .toast-leave-active {
   transition:
     opacity 0.2s ease,
@@ -104,6 +99,6 @@ const toastTitle = (type) => {
 }
 
 .toast-move {
-  transition: transform 0.2s ease;
+  transition: transform 0.1s ease;
 }
 </style>
