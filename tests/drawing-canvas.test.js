@@ -13,6 +13,7 @@ import {
   DRAWING_SAVE_SHAPE_RECT,
   DRAWING_TITLE_MAX_LENGTH,
   DRAWING_UNDO_STACK_MAX,
+  imageBlobToCircularPngBlob,
   normalizeDrawingSaveShape,
   normalizeDrawingTitle,
   validateCanvasDimensions,
@@ -41,6 +42,7 @@ test('normalizes drawing save shape for export', () => {
   assert.equal(normalizeDrawingSaveShape(DRAWING_SAVE_SHAPE_RECT), DRAWING_SAVE_SHAPE_RECT)
   assert.equal(normalizeDrawingSaveShape(DRAWING_SAVE_SHAPE_CIRCLE), DRAWING_SAVE_SHAPE_CIRCLE)
   assert.equal(normalizeDrawingSaveShape('unknown'), DRAWING_SAVE_SHAPE_RECT)
+  assert.equal(typeof imageBlobToCircularPngBlob, 'function')
 })
 
 test('createBlankCanvasState keeps positive dimensions', () => {

@@ -621,6 +621,33 @@
               @change="onStampFileChange"
             />
           </label>
+          <div v-if="stampDraftHasImage" class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-semibold uppercase text-slate-500">Форма картинки</span>
+            <button
+              type="button"
+              class="rounded-full px-3 py-2 text-sm font-semibold transition"
+              :class="
+                stampImageShape === DRAWING_SAVE_SHAPE_RECT
+                  ? 'bg-slate-950 text-white'
+                  : 'bg-slate-100 text-slate-700'
+              "
+              @click="stampImageShape = DRAWING_SAVE_SHAPE_RECT"
+            >
+              Обычная
+            </button>
+            <button
+              type="button"
+              class="rounded-full px-3 py-2 text-sm font-semibold transition"
+              :class="
+                stampImageShape === DRAWING_SAVE_SHAPE_CIRCLE
+                  ? 'bg-slate-950 text-white'
+                  : 'bg-slate-100 text-slate-700'
+              "
+              @click="stampImageShape = DRAWING_SAVE_SHAPE_CIRCLE"
+            >
+              Круг
+            </button>
+          </div>
           <div v-if="showStampPriority" class="flex flex-wrap items-center gap-2">
             <span class="text-xs font-semibold uppercase text-slate-500">Приоритет</span>
             <button
@@ -685,6 +712,7 @@ import {
   DRAWING_SAVE_SHAPE_CIRCLE,
   DRAWING_SAVE_SHAPE_RECT,
   DRAWING_TITLE_MAX_LENGTH,
+  imageBlobToCircularPngBlob,
   loadImageToCanvas,
   normalizeDrawingSaveShape,
   normalizeDrawingTitle,
@@ -726,6 +754,7 @@ const stampDropdownOpen = ref(false)
 const stampFormOpen = ref(false)
 const editingStamp = ref(null)
 const stampImageFile = ref(null)
+const stampImageShape = ref(DRAWING_SAVE_SHAPE_RECT)
 const stampDraft = ref({
   name: '',
   textValue: '',
@@ -1400,6 +1429,7 @@ const openGallery = async () => {
 const openStampForm = (stamp = null) => {
   editingStamp.value = stamp
   stampImageFile.value = null
+  stampImageShape.value = DRAWING_SAVE_SHAPE_RECT
   stampDraft.value = {
     name: stamp?.name || '',
     textValue: stamp?.textValue || '',
@@ -1416,6 +1446,36 @@ const onStampFileChange = (event) => {
   }
 }
 
+const circularStampFilename = (filename = '') => {
+  const source = String(filename || 'stamp.png').trim() || 'stamp.png'
+  const base = source.replace(/\.[^.]+$/, '') || 'stamp'
+  return `${base}-circle.png`
+}
+
+const prepareStampImageFile = async () => {
+  const shape = normalizeDrawingSaveShape(stampImageShape.value)
+  if (shape !== DRAWING_SAVE_SHAPE_CIRCLE) {
+    return {
+      file: stampImageFile.value,
+      filename: stampImageFile.value?.name || 'stamp.png',
+    }
+  }
+
+  let source = stampImageFile.value
+  if (!source && editingStamp.value?.hasImage && !stampDraft.value.removeImage) {
+    source = await stampsStore.fetchStampContent(editingStamp.value.id)
+  }
+  if (!source) {
+    return { file: null, filename: 'stamp.png' }
+  }
+
+  const file = await imageBlobToCircularPngBlob(source)
+  return {
+    file,
+    filename: circularStampFilename(stampImageFile.value?.name || editingStamp.value?.name),
+  }
+}
+
 const saveStamp = async () => {
   const hasImage = stampDraftHasImage.value
   const validation = validateDrawingStampDraft({ ...stampDraft.value, hasImage })
@@ -1423,14 +1483,21 @@ const saveStamp = async () => {
     stampsStore.setError(validation.message)
     return
   }
+  let preparedImage
+  try {
+    preparedImage = await prepareStampImageFile()
+  } catch (err) {
+    stampsStore.setError('Не удалось подготовить картинку кисти')
+    return
+  }
   const payload = {
     name: stampDraft.value.name,
     textValue: resolveStampText(stampDraft.value),
     priority: resolveStampPriority({ ...stampDraft.value, hasImage }),
     removeImage: stampDraft.value.removeImage,
-    hasImage,
-    file: stampImageFile.value,
-    filename: stampImageFile.value?.name || 'stamp.png',
+    hasImage: Boolean(preparedImage.file || hasImage),
+    file: preparedImage.file,
+    filename: preparedImage.filename,
   }
   try {
     if (editingStamp.value) {

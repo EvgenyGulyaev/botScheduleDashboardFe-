@@ -105,6 +105,64 @@ const createCircularMaskedCanvas = (canvas) => {
   return output
 }
 
+const pngBlobFromCanvas = async (canvas) =>
+  new Promise((resolve, reject) => {
+    if (typeof canvas.toBlob !== 'function') {
+      reject(new Error('canvas.toBlob is not available'))
+      return
+    }
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('failed to encode canvas to PNG'))
+        return
+      }
+      resolve(blob)
+    }, 'image/png')
+  })
+
+const imageFromBlob = async (blob) => {
+  const url = URL.createObjectURL(blob)
+  try {
+    return await new Promise((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => resolve(image)
+      image.onerror = () => reject(new Error('failed to decode image'))
+      image.src = url
+    })
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+export const imageBlobToCircularPngBlob = async (blob) => {
+  if (!blob) {
+    throw new Error('blob is required')
+  }
+  if (typeof document === 'undefined') {
+    throw new Error('document is required for circular export')
+  }
+  const image = await imageFromBlob(blob)
+  const naturalWidth = image.naturalWidth || image.width
+  const naturalHeight = image.naturalHeight || image.height
+  const sourceSize = Math.min(naturalWidth, naturalHeight)
+  const sourceX = Math.max(0, (naturalWidth - sourceSize) / 2)
+  const sourceY = Math.max(0, (naturalHeight - sourceSize) / 2)
+  const output = document.createElement('canvas')
+  output.width = sourceSize
+  output.height = sourceSize
+  const ctx = output.getContext('2d')
+  if (!ctx) {
+    throw new Error('2d context is not available')
+  }
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(output.width / 2, output.height / 2, output.width / 2, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, output.width, output.height)
+  ctx.restore()
+  return pngBlobFromCanvas(output)
+}
+
 export const canvasToPngBlob = async (canvas, { shape = DRAWING_SAVE_SHAPE_RECT } = {}) => {
   if (!canvas) {
     throw new Error('canvas is required')
@@ -115,15 +173,7 @@ export const canvasToPngBlob = async (canvas, { shape = DRAWING_SAVE_SHAPE_RECT 
   if (typeof outputCanvas.toBlob !== 'function') {
     throw new Error('canvas.toBlob is not available')
   }
-  return new Promise((resolve, reject) => {
-    outputCanvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error('failed to encode canvas to PNG'))
-        return
-      }
-      resolve(blob)
-    }, 'image/png')
-  })
+  return pngBlobFromCanvas(outputCanvas)
 }
 
 export const loadImageToCanvas = async (canvas, blob) => {

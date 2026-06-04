@@ -127,3 +127,12 @@ test('save modal can export drawing as a circle', () => {
   assert.match(drawingVue, /normalizeDrawingSaveShape\(saveShape\.value\)/)
   assert.match(drawingVue, /canvasToPngBlob\(canvasRef\.value, \{ shape \}\)/)
 })
+
+test('stamp form can circularize uploaded stamp images', () => {
+  assert.match(drawingVue, />\s*Форма картинки\s*</)
+  assert.match(drawingVue, /stampImageShape = ref\(DRAWING_SAVE_SHAPE_RECT\)/)
+  assert.match(drawingVue, /stampImageShape === DRAWING_SAVE_SHAPE_CIRCLE/)
+  assert.match(drawingVue, /prepareStampImageFile/)
+  assert.match(drawingVue, /imageBlobToCircularPngBlob\(source\)/)
+  assert.match(drawingVue, /stampsStore\.fetchStampContent\(editingStamp\.value\.id\)/)
+})
