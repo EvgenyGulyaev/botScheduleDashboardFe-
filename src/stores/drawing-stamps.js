@@ -7,6 +7,26 @@ import {
 } from '../lib/drawing-stamps.js'
 import { useAuthStore } from './auth.js'
 
+const stampNameKey = (value = '') => String(value ?? '').trim().toLocaleLowerCase()
+
+const replaceStampRemovingDuplicateNames = (items = [], stamp) => {
+  const key = stampNameKey(stamp?.name)
+  let replaced = false
+  const next = items.reduce((acc, item) => {
+    if (item.id === stamp.id) {
+      replaced = true
+      acc.push(stamp)
+      return acc
+    }
+    if (stampNameKey(item.name) === key) {
+      return acc
+    }
+    acc.push(item)
+    return acc
+  }, [])
+  return replaced ? next : [stamp, ...next]
+}
+
 export const useDrawingStampsStore = defineStore('drawing-stamps', {
   state: () => ({
     items: [],
@@ -85,7 +105,7 @@ export const useDrawingStampsStore = defineStore('drawing-stamps', {
         const formData = this.buildFormData(payload)
         const response = await this.api().post('/drawing/stamps', formData)
         const created = normalizeDrawingStamp(response.data)
-        this.items = [created, ...this.items]
+        this.items = replaceStampRemovingDuplicateNames(this.items, created)
         return created
       } catch (err) {
         this.error = err.response?.data?.message || 'Не удалось сохранить кисть'
@@ -104,7 +124,7 @@ export const useDrawingStampsStore = defineStore('drawing-stamps', {
         const formData = this.buildFormData(payload)
         const response = await this.api().put(`/drawing/stamps/${encodeURIComponent(id)}`, formData)
         const updated = normalizeDrawingStamp(response.data)
-        this.items = this.items.map((item) => (item.id === updated.id ? updated : item))
+        this.items = replaceStampRemovingDuplicateNames(this.items, updated)
         return updated
       } catch (err) {
         this.error = err.response?.data?.message || 'Не удалось обновить кисть'

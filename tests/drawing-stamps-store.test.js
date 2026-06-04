@@ -84,6 +84,45 @@ test('createStamp uses stamp name as text when image is omitted', async () => {
   })
 })
 
+test('createStamp removes local duplicate names', async () => {
+  const { store, mock } = setupStore()
+  store.items = [
+    { id: 'old', name: ' Антон ', textValue: 'old', priority: 'text' },
+    { id: 'other', name: 'Женя', textValue: 'Женя', priority: 'text' },
+  ]
+  mock.on('post', () => ({ data: { id: 'new', name: 'антон', textValue: 'new', priority: 'text' } }))
+
+  await store.createStamp({
+    name: 'антон',
+    textValue: 'new',
+    priority: 'text',
+  })
+
+  assert.deepEqual(store.items.map((item) => item.id), ['new', 'other'])
+})
+
+test('updateStamp removes local duplicate names', async () => {
+  const { store, mock } = setupStore()
+  store.items = [
+    { id: 'first', name: 'Первый', textValue: 'first', priority: 'text' },
+    { id: 'duplicate', name: ' seal ', textValue: 'dup', priority: 'text' },
+    { id: 'target', name: 'Печать', textValue: 'old', priority: 'text' },
+    { id: 'other', name: 'Женя', textValue: 'Женя', priority: 'text' },
+  ]
+  mock.on('put', ({ url }) => {
+    assert.equal(url, '/drawing/stamps/target')
+    return { data: { id: 'target', name: 'Seal', textValue: 'new', priority: 'text' } }
+  })
+
+  await store.updateStamp('target', {
+    name: 'Seal',
+    textValue: 'new',
+    priority: 'text',
+  })
+
+  assert.deepEqual(store.items.map((item) => item.id), ['first', 'target', 'other'])
+})
+
 test('fetchStampContent returns blob response', async () => {
   const { store, mock } = setupStore()
   const blob = new Blob(['png'], { type: 'image/png' })
