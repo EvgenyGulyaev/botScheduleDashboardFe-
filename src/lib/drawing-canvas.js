@@ -8,6 +8,8 @@ export const DRAWING_CANVAS_MIN = 50
 export const DRAWING_CANVAS_MAX = 4096
 export const DRAWING_SAVE_SHAPE_RECT = 'rect'
 export const DRAWING_SAVE_SHAPE_CIRCLE = 'circle'
+export const DRAWING_STAMP_IMAGE_MAX_DIMENSION = 512
+export const DRAWING_STAMP_IMAGE_JPEG_QUALITY = 0.82
 
 export const normalizeDrawingTitle = (value = '') => {
   const trimmed = String(value ?? '').trim()
@@ -105,7 +107,7 @@ const createCircularMaskedCanvas = (canvas) => {
   return output
 }
 
-const pngBlobFromCanvas = async (canvas) =>
+const blobFromCanvas = async (canvas, mimeType = 'image/png', quality) =>
   new Promise((resolve, reject) => {
     if (typeof canvas.toBlob !== 'function') {
       reject(new Error('canvas.toBlob is not available'))
@@ -113,12 +115,14 @@ const pngBlobFromCanvas = async (canvas) =>
     }
     canvas.toBlob((blob) => {
       if (!blob) {
-        reject(new Error('failed to encode canvas to PNG'))
+        reject(new Error(`failed to encode canvas to ${mimeType}`))
         return
       }
       resolve(blob)
-    }, 'image/png')
+    }, mimeType, quality)
   })
+
+const pngBlobFromCanvas = async (canvas) => blobFromCanvas(canvas, 'image/png')
 
 const imageFromBlob = async (blob) => {
   const url = URL.createObjectURL(blob)
@@ -161,6 +165,63 @@ export const imageBlobToCircularPngBlob = async (blob) => {
   ctx.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, output.width, output.height)
   ctx.restore()
   return pngBlobFromCanvas(output)
+}
+
+export const imageBlobToCompressedStampBlob = async (
+  blob,
+  {
+    shape = DRAWING_SAVE_SHAPE_RECT,
+    maxDimension = DRAWING_STAMP_IMAGE_MAX_DIMENSION,
+    quality = DRAWING_STAMP_IMAGE_JPEG_QUALITY,
+  } = {},
+) => {
+  if (!blob) {
+    throw new Error('blob is required')
+  }
+  if (typeof document === 'undefined') {
+    throw new Error('document is required for image compression')
+  }
+
+  const image = await imageFromBlob(blob)
+  const naturalWidth = image.naturalWidth || image.width
+  const naturalHeight = image.naturalHeight || image.height
+  const normalizedShape = normalizeDrawingSaveShape(shape)
+
+  if (normalizedShape === DRAWING_SAVE_SHAPE_CIRCLE) {
+    const sourceSize = Math.min(naturalWidth, naturalHeight)
+    const targetSize = Math.max(1, Math.round(Math.min(sourceSize, maxDimension)))
+    const sourceX = Math.max(0, (naturalWidth - sourceSize) / 2)
+    const sourceY = Math.max(0, (naturalHeight - sourceSize) / 2)
+    const output = document.createElement('canvas')
+    output.width = targetSize
+    output.height = targetSize
+    const ctx = output.getContext('2d')
+    if (!ctx) {
+      throw new Error('2d context is not available')
+    }
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(targetSize / 2, targetSize / 2, targetSize / 2, 0, Math.PI * 2)
+    ctx.clip()
+    ctx.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, targetSize, targetSize)
+    ctx.restore()
+    return pngBlobFromCanvas(output)
+  }
+
+  const scale = Math.min(1, maxDimension / Math.max(naturalWidth, naturalHeight, 1))
+  const width = Math.max(1, Math.round(naturalWidth * scale))
+  const height = Math.max(1, Math.round(naturalHeight * scale))
+  const output = document.createElement('canvas')
+  output.width = width
+  output.height = height
+  const ctx = output.getContext('2d')
+  if (!ctx) {
+    throw new Error('2d context is not available')
+  }
+  ctx.fillStyle = DRAWING_DEFAULT_BACKGROUND
+  ctx.fillRect(0, 0, width, height)
+  ctx.drawImage(image, 0, 0, naturalWidth, naturalHeight, 0, 0, width, height)
+  return blobFromCanvas(output, 'image/jpeg', quality)
 }
 
 export const canvasToPngBlob = async (canvas, { shape = DRAWING_SAVE_SHAPE_RECT } = {}) => {

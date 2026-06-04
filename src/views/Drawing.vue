@@ -712,7 +712,7 @@ import {
   DRAWING_SAVE_SHAPE_CIRCLE,
   DRAWING_SAVE_SHAPE_RECT,
   DRAWING_TITLE_MAX_LENGTH,
-  imageBlobToCircularPngBlob,
+  imageBlobToCompressedStampBlob,
   loadImageToCanvas,
   normalizeDrawingSaveShape,
   normalizeDrawingTitle,
@@ -1446,17 +1446,18 @@ const onStampFileChange = (event) => {
   }
 }
 
-const circularStampFilename = (filename = '') => {
+const preparedStampFilename = (filename = '', file = null) => {
   const source = String(filename || 'stamp.png').trim() || 'stamp.png'
   const base = source.replace(/\.[^.]+$/, '') || 'stamp'
-  return `${base}-circle.png`
+  const extension = file?.type === 'image/jpeg' ? 'jpg' : 'png'
+  return `${base}-stamp.${extension}`
 }
 
 const prepareStampImageFile = async () => {
   const shape = normalizeDrawingSaveShape(stampImageShape.value)
-  if (shape !== DRAWING_SAVE_SHAPE_CIRCLE) {
+  if (!stampImageFile.value && shape !== DRAWING_SAVE_SHAPE_CIRCLE) {
     return {
-      file: stampImageFile.value,
+      file: null,
       filename: stampImageFile.value?.name || 'stamp.png',
     }
   }
@@ -1469,10 +1470,10 @@ const prepareStampImageFile = async () => {
     return { file: null, filename: 'stamp.png' }
   }
 
-  const file = await imageBlobToCircularPngBlob(source)
+  const file = await imageBlobToCompressedStampBlob(source, { shape })
   return {
     file,
-    filename: circularStampFilename(stampImageFile.value?.name || editingStamp.value?.name),
+    filename: preparedStampFilename(stampImageFile.value?.name || editingStamp.value?.name, file),
   }
 }
 

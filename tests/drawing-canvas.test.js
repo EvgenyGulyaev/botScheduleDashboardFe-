@@ -11,9 +11,12 @@ import {
   DRAWING_CANVAS_MIN,
   DRAWING_SAVE_SHAPE_CIRCLE,
   DRAWING_SAVE_SHAPE_RECT,
+  DRAWING_STAMP_IMAGE_JPEG_QUALITY,
+  DRAWING_STAMP_IMAGE_MAX_DIMENSION,
   DRAWING_TITLE_MAX_LENGTH,
   DRAWING_UNDO_STACK_MAX,
   imageBlobToCircularPngBlob,
+  imageBlobToCompressedStampBlob,
   normalizeDrawingSaveShape,
   normalizeDrawingTitle,
   validateCanvasDimensions,
@@ -43,6 +46,9 @@ test('normalizes drawing save shape for export', () => {
   assert.equal(normalizeDrawingSaveShape(DRAWING_SAVE_SHAPE_CIRCLE), DRAWING_SAVE_SHAPE_CIRCLE)
   assert.equal(normalizeDrawingSaveShape('unknown'), DRAWING_SAVE_SHAPE_RECT)
   assert.equal(typeof imageBlobToCircularPngBlob, 'function')
+  assert.equal(typeof imageBlobToCompressedStampBlob, 'function')
+  assert.equal(DRAWING_STAMP_IMAGE_MAX_DIMENSION, 512)
+  assert.equal(DRAWING_STAMP_IMAGE_JPEG_QUALITY, 0.82)
 })
 
 test('createBlankCanvasState keeps positive dimensions', () => {
