@@ -17,9 +17,13 @@
           <!-- Десктоп меню -->
           <div class="hidden md:flex flex-1 items-center justify-between pl-8">
             <div class="flex items-center space-x-4">
-              <div v-if="adminMenuItems.length" class="relative group">
+              <div v-if="adminMenuItems.length" class="relative">
                 <button
+                  type="button"
                   class="flex items-center px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900 focus:outline-none"
+                  aria-haspopup="menu"
+                  :aria-expanded="openDesktopMenu === 'dashboard'"
+                  @click="toggleDesktopMenu('dashboard')"
                 >
                   📊 Dashboard
                   <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -33,13 +37,15 @@
                 </button>
 
                 <div
-                  class="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+                  v-if="openDesktopMenu === 'dashboard'"
+                  class="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
                 >
                   <div class="py-1" role="menu" aria-orientation="vertical">
                     <router-link
                       v-for="item in adminMenuItems"
                       :key="item.to"
                       :to="item.to"
+                      @click="closeDesktopMenu"
                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       role="menuitem"
                     >
@@ -49,9 +55,13 @@
                 </div>
               </div>
               <!-- Dropdown Приложения -->
-              <div class="relative group">
+              <div class="relative">
                 <button
+                  type="button"
                   class="flex items-center px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-100 text-gray-700 hover:text-gray-900 focus:outline-none"
+                  aria-haspopup="menu"
+                  :aria-expanded="openDesktopMenu === 'apps'"
+                  @click="toggleDesktopMenu('apps')"
                 >
                   📦 Приложения
                   <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -66,13 +76,15 @@
 
                 <!-- Dropdown menu -->
                 <div
-                  class="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+                  v-if="openDesktopMenu === 'apps'"
+                  class="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
                 >
                   <div class="py-1" role="menu" aria-orientation="vertical">
                     <router-link
                       v-for="item in appMenuItems"
                       :key="item.to"
                       :to="item.to"
+                      @click="closeDesktopMenu"
                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       role="menuitem"
                     >
@@ -226,6 +238,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const isMobileMenuOpen = ref(false)
+const openDesktopMenu = ref(null)
 const deferredInstallPrompt = ref(null)
 const installPromptDismissed = ref(readInstallPromptDismissed())
 let removeAfterEachHook = null
@@ -260,6 +273,7 @@ const contentWrapperClass = computed(() => {
 // Toggle мобильного меню
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
+  closeDesktopMenu()
 }
 
 // Закрыть мобильное меню
@@ -267,17 +281,28 @@ const closeMobileMenu = () => {
   isMobileMenuOpen.value = false
 }
 
+const toggleDesktopMenu = (menu) => {
+  openDesktopMenu.value = openDesktopMenu.value === menu ? null : menu
+  closeMobileMenu()
+}
+
+const closeDesktopMenu = () => {
+  openDesktopMenu.value = null
+}
+
 // Закрыть меню при клике вне его
 const handleClickOutside = (event) => {
   const nav = document.querySelector('nav')
   if (nav && !nav.contains(event.target)) {
     closeMobileMenu()
+    closeDesktopMenu()
   }
 }
 
 // Закрыть меню при изменении роута
 const handleRouteChange = () => {
   closeMobileMenu()
+  closeDesktopMenu()
 }
 
 const logout = async () => {
