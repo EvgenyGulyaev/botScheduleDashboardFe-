@@ -471,7 +471,7 @@
 
       <div
         ref="editorStageRef"
-        class="flex min-h-0 flex-1 items-center justify-center overflow-hidden"
+        class="flex min-h-0 flex-1 items-start justify-center overflow-hidden"
       >
         <canvas
           ref="canvasRef"
