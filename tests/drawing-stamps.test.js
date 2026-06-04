@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  DRAWING_STAMP_SIZE_DEFAULT,
+  clampStampSize,
   normalizeDrawingStamp,
   normalizeDrawingStamps,
   resolveStampPriority,
@@ -8,6 +10,11 @@ import {
   shouldShowStampPriorityControls,
   validateDrawingStampDraft,
 } from '../src/lib/drawing-stamps.js'
+
+test('default stamp size starts compact', () => {
+  assert.equal(DRAWING_STAMP_SIZE_DEFAULT, 20)
+  assert.equal(clampStampSize(undefined), 20)
+})
 
 test('normalizeDrawingStamp maps backend stamp payload', () => {
   const stamp = normalizeDrawingStamp({

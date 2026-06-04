@@ -2,7 +2,7 @@ export const STAMP_PRIORITY_TEXT = 'text'
 export const STAMP_PRIORITY_IMAGE = 'image'
 export const DRAWING_STAMP_SIZE_MIN = 16
 export const DRAWING_STAMP_SIZE_MAX = 240
-export const DRAWING_STAMP_SIZE_DEFAULT = 72
+export const DRAWING_STAMP_SIZE_DEFAULT = 20
 
 export const normalizeDrawingStamp = (payload = {}) => ({
   id: String(payload?.id ?? ''),
