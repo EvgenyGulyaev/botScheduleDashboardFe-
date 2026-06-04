@@ -79,3 +79,24 @@ test('drawing view can resize current canvas to viewport without clearing conten
   assert.match(body, /stampObjects\.value = stampObjects\.value\.map/)
   assert.match(body, /renderCanvas\(\)/)
 })
+
+test('drawing view keeps editor inside one viewport on tablets', () => {
+  assert.match(drawingVue, /h-\[100dvh\] overflow-hidden/)
+  assert.match(drawingVue, /ref="editorStageRef"/)
+  assert.match(drawingVue, /class="flex h-full min-h-0 flex-col overflow-hidden"/)
+  assert.match(drawingVue, /maxHeight: '100%'/)
+  assert.doesNotMatch(drawingVue, /maxHeight: 'calc\(100vh - 10\.25rem\)'/)
+})
+
+test('new drawing measures the mounted editor stage before sizing canvas', () => {
+  const body = functionBody('onNew')
+  const viewModeIndex = body.indexOf("viewMode.value = 'editor'")
+  const tickIndex = body.indexOf('await nextTick()')
+  const sizeIndex = body.indexOf('const size = viewportCanvasSize()')
+
+  assert.notEqual(viewModeIndex, -1)
+  assert.notEqual(tickIndex, -1)
+  assert.notEqual(sizeIndex, -1)
+  assert.ok(viewModeIndex < tickIndex)
+  assert.ok(tickIndex < sizeIndex)
+})

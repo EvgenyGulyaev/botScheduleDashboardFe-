@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-[#f5f7fb] text-slate-950">
+  <div class="h-[100dvh] overflow-hidden bg-[#f5f7fb] text-slate-950">
     <div
       v-if="combinedError"
       class="fixed left-1/2 top-20 z-50 w-[min(92vw,520px)] -translate-x-1/2 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-700 shadow-lg"
@@ -9,7 +9,7 @@
 
     <section
       v-if="viewMode === 'gallery'"
-      class="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6"
+      class="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col px-4 py-4 sm:px-6"
     >
       <div class="flex min-h-11 items-center justify-between border-b border-slate-200/80 pb-3">
         <div class="flex items-center gap-2">
@@ -77,7 +77,10 @@
         </div>
       </div>
 
-      <div v-else class="grid grid-cols-1 gap-4 py-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div
+        v-else
+        class="grid min-h-0 flex-1 grid-cols-1 content-start gap-4 overflow-y-auto overscroll-contain py-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      >
         <article
           v-for="item in items"
           :key="item.id"
@@ -130,7 +133,7 @@
 
     <section
       v-else-if="viewMode === 'stamps'"
-      class="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 sm:px-6"
+      class="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col px-4 py-4 sm:px-6"
     >
       <div class="flex min-h-11 items-center justify-between border-b border-slate-200/80 pb-3">
         <div class="flex items-center gap-2">
@@ -177,7 +180,10 @@
           </button>
         </div>
       </div>
-      <div v-else class="grid grid-cols-1 gap-4 py-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div
+        v-else
+        class="grid min-h-0 flex-1 grid-cols-1 content-start gap-4 overflow-y-auto overscroll-contain py-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      >
         <article
           v-for="stamp in stamps"
           :key="stamp.id"
@@ -230,9 +236,9 @@
       </div>
     </section>
 
-    <section v-else-if="viewMode === 'editor'" class="flex min-h-screen flex-col">
+    <section v-else-if="viewMode === 'editor'" class="flex h-full min-h-0 flex-col overflow-hidden">
       <div
-        class="flex min-h-12 items-center justify-between border-b border-slate-200 bg-white/90 px-3 backdrop-blur sm:px-5"
+        class="flex min-h-12 shrink-0 items-center justify-between border-b border-slate-200 bg-white/90 px-3 backdrop-blur sm:px-5"
       >
         <div class="flex items-center gap-2">
           <button
@@ -270,7 +276,7 @@
       </div>
 
       <div
-        class="flex items-center gap-2 overflow-x-auto border-b border-slate-200 bg-[#f8fafc] px-3 py-2 sm:px-5"
+        class="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-200 bg-[#f8fafc] px-3 py-2 sm:px-5"
         role="toolbar"
         aria-label="Инструменты рисовалки"
       >
@@ -478,7 +484,10 @@
         </button>
       </div>
 
-      <div class="flex flex-1 items-center justify-center overflow-hidden px-3 py-3 sm:px-5">
+      <div
+        ref="editorStageRef"
+        class="flex min-h-0 flex-1 items-center justify-center overflow-hidden px-3 py-3 sm:px-5"
+      >
         <canvas
           ref="canvasRef"
           class="touch-none rounded-xl border border-slate-200 bg-white shadow-sm"
@@ -685,6 +694,7 @@ const router = useRouter()
 
 const titleMaxLength = DRAWING_TITLE_MAX_LENGTH
 const canvasRef = ref(null)
+const editorStageRef = ref(null)
 const saveTitleRef = ref(null)
 const canvasWidth = ref(DRAWING_DEFAULT_CANVAS_WIDTH)
 const canvasHeight = ref(DRAWING_DEFAULT_CANVAS_HEIGHT)
@@ -753,7 +763,7 @@ const canvasDisplayStyle = computed(() => ({
   aspectRatio: `${canvasWidth.value} / ${canvasHeight.value}`,
   width: `${canvasWidth.value}px`,
   maxWidth: '100%',
-  maxHeight: 'calc(100vh - 10.25rem)',
+  maxHeight: '100%',
 }))
 
 const drawing = ref(false)
@@ -789,6 +799,19 @@ const resetStampObjects = () => {
 }
 
 const viewportCanvasSize = () => {
+  const stage = editorStageRef.value
+  if (stage) {
+    const rect = stage.getBoundingClientRect()
+    const width = Math.min(
+      DRAWING_CANVAS_MAX,
+      Math.max(DRAWING_CANVAS_MIN, Math.floor(rect.width)),
+    )
+    const height = Math.min(
+      DRAWING_CANVAS_MAX,
+      Math.max(DRAWING_CANVAS_MIN, Math.floor(rect.height)),
+    )
+    return { width, height }
+  }
   if (typeof window === 'undefined') {
     return { width: DRAWING_DEFAULT_CANVAS_WIDTH, height: DRAWING_DEFAULT_CANVAS_HEIGHT }
   }
@@ -1327,13 +1350,14 @@ const onNew = async () => {
   selected.value = null
   titleInput.value = ''
   saveModalOpen.value = false
+  viewMode.value = 'editor'
+  await nextTick()
   const size = viewportCanvasSize()
   canvasWidth.value = size.width
   canvasHeight.value = size.height
   hasCanvasContent.value = false
   resetStampObjects()
   resetHistory()
-  viewMode.value = 'editor'
   await nextTick()
   resizeBaseCanvas(canvasWidth.value, canvasHeight.value)
   fillCanvasBackground()
