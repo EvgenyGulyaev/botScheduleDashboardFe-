@@ -60,3 +60,11 @@ test('clear canvas button uses eraser icon instead of ambiguous cross', () => {
   assert.match(drawingVue, /<svg[\s\S]*?<path d="m7 21-4-4/)
   assert.doesNotMatch(drawingVue, />\s*×\s*</)
 })
+
+test('drawing view handles keyboard shortcuts for undo and redo', () => {
+  assert.match(drawingVue, /handleEditorKeydown/)
+  assert.match(drawingVue, /event\.ctrlKey \|\| event\.metaKey/)
+  assert.match(drawingVue, /event\.key\.toLowerCase\(\) === 'z'/)
+  assert.match(drawingVue, /event\.key\.toLowerCase\(\) === 'y'/)
+  assert.match(drawingVue, /window\.addEventListener\('keydown', handleEditorKeydown\)/)
+})

@@ -304,6 +304,22 @@
             <path d="m11 10 6 6" />
             <path d="M17 21h4" />
           </svg>
+          <svg
+            v-else-if="tool.icon === 'hand'"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 11V6a2 2 0 0 0-4 0v5" />
+            <path d="M14 10V4a2 2 0 0 0-4 0v10" />
+            <path d="M10 10.5V6a2 2 0 0 0-4 0v8" />
+            <path d="M6 14v-2a2 2 0 0 0-4 0v3a7 7 0 0 0 7 7h3a8 8 0 0 0 8-8v-3a2 2 0 1 0-4 0" />
+          </svg>
           <span v-else aria-hidden="true">{{ tool.icon }}</span>
         </button>
 
@@ -438,6 +454,7 @@
         <canvas
           ref="canvasRef"
           class="touch-none rounded-xl border border-slate-200 bg-white shadow-sm"
+          :class="activeTool === 'hand' ? 'cursor-grab' : 'cursor-crosshair'"
           :style="canvasDisplayStyle"
           :width="canvasWidth"
           :height="canvasHeight"
@@ -686,12 +703,14 @@ const combinedError = computed(() => store.error || stampsStore.error)
 const tools = [
   { key: 'pencil', label: 'Карандаш', icon: '✎' },
   { key: 'eraser', label: 'Ластик', icon: 'eraser' },
+  { key: 'hand', label: 'Рука', icon: 'hand' },
 ]
 
 const items = computed(() => store.items)
 const stamps = computed(() => stampsStore.items)
 const selectedStamp = computed(() => stamps.value.find((stamp) => stamp.id === selectedStampId.value) || null)
 const isStampTool = computed(() => activeTool.value === 'stamp')
+const isHandTool = computed(() => activeTool.value === 'hand')
 const stampDraftHasImage = computed(() =>
   Boolean(stampImageFile.value || (editingStamp.value?.hasImage && !stampDraft.value.removeImage)),
 )
@@ -710,12 +729,36 @@ const canvasDisplayStyle = computed(() => ({
 }))
 
 const drawing = ref(false)
+const stampObjects = ref([])
+let baseCanvas = null
+let draggingStamp = null
 let lastPoint = null
+let stampObjectSeq = 0
+const stampImageCache = new Map()
 
 const isEraser = () => activeTool.value === 'eraser'
 const stampPriorityLabel = (priority) => priorityLabel(priority)
 
 const getContext = () => canvasRef.value?.getContext('2d')
+const getBaseCanvas = () => {
+  if (!baseCanvas && typeof document !== 'undefined') {
+    baseCanvas = document.createElement('canvas')
+  }
+  return baseCanvas
+}
+
+const getBaseContext = () => getBaseCanvas()?.getContext('2d')
+
+const cloneStampObjects = () =>
+  stampObjects.value.map((item) => ({
+    ...item,
+    stamp: { ...item.stamp },
+  }))
+
+const resetStampObjects = () => {
+  stampObjects.value = []
+  draggingStamp = null
+}
 
 const viewportCanvasSize = () => {
   if (typeof window === 'undefined') {
@@ -734,28 +777,126 @@ const viewportCanvasSize = () => {
   return { width, height }
 }
 
-const snapshotCanvas = () => {
+const resizeBaseCanvas = (width, height, preserve = false) => {
+  const base = getBaseCanvas()
+  if (!base) return null
+  const nextWidth = Math.max(1, Math.floor(Number(width) || DRAWING_DEFAULT_CANVAS_WIDTH))
+  const nextHeight = Math.max(1, Math.floor(Number(height) || DRAWING_DEFAULT_CANVAS_HEIGHT))
+  if (base.width === nextWidth && base.height === nextHeight) return base
+  let previous = null
+  if (preserve && base.width && base.height && typeof document !== 'undefined') {
+    previous = document.createElement('canvas')
+    previous.width = base.width
+    previous.height = base.height
+    previous.getContext('2d')?.drawImage(base, 0, 0)
+  }
+  base.width = nextWidth
+  base.height = nextHeight
+  if (previous) {
+    base.getContext('2d')?.drawImage(previous, 0, 0)
+  }
+  return base
+}
+
+const ensureBaseCanvasForVisible = () => {
   const canvas = canvasRef.value
   if (!canvas) return null
+  return resizeBaseCanvas(canvas.width, canvas.height, true)
+}
+
+const drawTextStampObject = (ctx, object) => {
+  const text = object.text || object.stamp?.textValue || object.stamp?.name
+  if (!ctx || !text) return
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.fillStyle = object.color || brushColor.value
+  ctx.font = `700 ${object.size}px system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, object.x, object.y)
+  ctx.restore()
+}
+
+const imageBoundsForStampObject = (object, image = null) => {
+  const naturalWidth = image?.naturalWidth || image?.width || object.stamp?.imageWidth || object.size
+  const naturalHeight = image?.naturalHeight || image?.height || object.stamp?.imageHeight || object.size
+  const scale = object.size / Math.max(naturalWidth, naturalHeight, 1)
+  return {
+    width: naturalWidth * scale,
+    height: naturalHeight * scale,
+  }
+}
+
+const drawImageStampObject = (ctx, object) => {
+  if (!ctx) return
+  const image = stampImageCache.get(object.stampId)
+  if (!image) {
+    drawTextStampObject(ctx, object)
+    return
+  }
+  const { width, height } = imageBoundsForStampObject(object, image)
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.drawImage(image, object.x - width / 2, object.y - height / 2, width, height)
+  ctx.restore()
+}
+
+const renderCanvas = () => {
+  const canvas = canvasRef.value
+  const ctx = getContext()
+  const base = ensureBaseCanvasForVisible()
+  if (!canvas || !ctx || !base) return
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(base, 0, 0)
+  stampObjects.value.forEach((object) => {
+    if (object.kind === 'image') {
+      drawImageStampObject(ctx, object)
+      return
+    }
+    drawTextStampObject(ctx, object)
+  })
+}
+
+const snapshotCanvas = () => {
+  const base = ensureBaseCanvasForVisible()
+  if (!base) return null
   try {
-    return canvas.toDataURL('image/png')
+    return {
+      base: base.toDataURL('image/png'),
+      width: base.width,
+      height: base.height,
+      stamps: cloneStampObjects(),
+      hasContent: hasCanvasContent.value,
+    }
   } catch (err) {
     return null
   }
 }
 
-const restoreSnapshot = (dataUrl) => {
-  if (!dataUrl) return
-  const canvas = canvasRef.value
-  if (!canvas) return
-  const ctx = getContext()
-  if (!ctx) return
+const restoreSnapshot = (snapshot) => {
+  if (!snapshot?.base) return
+  const base = getBaseCanvas()
+  if (!base) return
   const image = new Image()
   image.onload = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.drawImage(image, 0, 0)
+    canvasWidth.value = snapshot.width || image.naturalWidth || image.width
+    canvasHeight.value = snapshot.height || image.naturalHeight || image.height
+    resizeBaseCanvas(canvasWidth.value, canvasHeight.value)
+    const baseCtx = getBaseContext()
+    baseCtx?.clearRect(0, 0, base.width, base.height)
+    baseCtx?.drawImage(image, 0, 0)
+    stampObjects.value = snapshot.stamps || []
+    hasCanvasContent.value = Boolean(snapshot.hasContent)
+    nextTick(() => {
+      const canvas = canvasRef.value
+      if (canvas) {
+        canvas.width = canvasWidth.value
+        canvas.height = canvasHeight.value
+      }
+      renderCanvas()
+    })
   }
-  image.src = dataUrl
+  image.src = snapshot.base
 }
 
 const pushUndo = () => {
@@ -788,7 +929,8 @@ const pointFromEvent = (event) => {
 }
 
 const drawSegment = (from, to) => {
-  const ctx = getContext()
+  ensureBaseCanvasForVisible()
+  const ctx = getBaseContext()
   if (!ctx) return
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
@@ -805,6 +947,7 @@ const drawSegment = (from, to) => {
   ctx.lineTo(to.x, to.y)
   ctx.stroke()
   ctx.globalCompositeOperation = 'source-over'
+  renderCanvas()
 }
 
 const updateStampDropdownPosition = () => {
@@ -869,16 +1012,14 @@ const closeStampsScreen = () => {
 }
 
 const drawTextStamp = (point, stamp) => {
-  const ctx = getContext()
-  if (!ctx) return
-  ctx.save()
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.fillStyle = brushColor.value
-  ctx.font = `700 ${stampSize.value}px system-ui, sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(stamp.textValue || stamp.name, point.x, point.y)
-  ctx.restore()
+  drawTextStampObject(getContext(), {
+    x: point.x,
+    y: point.y,
+    size: stampSize.value,
+    color: brushColor.value,
+    text: stamp.textValue || stamp.name,
+    stamp,
+  })
 }
 
 const imageFromBlob = async (blob) => {
@@ -897,19 +1038,43 @@ const imageFromBlob = async (blob) => {
 }
 
 const drawImageStamp = async (point, stamp) => {
-  const ctx = getContext()
-  if (!ctx) return
+  await ensureStampImage(stamp)
+  drawImageStampObject(getContext(), {
+    x: point.x,
+    y: point.y,
+    size: stampSize.value,
+    stampId: stamp.id,
+    stamp,
+  })
+}
+
+const ensureStampImage = async (stamp) => {
+  if (!stamp?.id || !stamp.hasImage) return null
+  if (stampImageCache.has(stamp.id)) {
+    return stampImageCache.get(stamp.id)
+  }
   const blob = await stampsStore.fetchStampContent(stamp.id)
   const image = await imageFromBlob(blob)
-  const naturalWidth = image.naturalWidth || image.width || stamp.imageWidth || stampSize.value
-  const naturalHeight = image.naturalHeight || image.height || stamp.imageHeight || stampSize.value
-  const scale = stampSize.value / Math.max(naturalWidth, naturalHeight)
-  const width = naturalWidth * scale
-  const height = naturalHeight * scale
-  ctx.save()
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.drawImage(image, point.x - width / 2, point.y - height / 2, width, height)
-  ctx.restore()
+  stampImageCache.set(stamp.id, image)
+  return image
+}
+
+const createStampObject = async (point, stamp) => {
+  const kind = stamp.priority === STAMP_PRIORITY_IMAGE && stamp.hasImage ? 'image' : 'text'
+  if (kind === 'image') {
+    await ensureStampImage(stamp)
+  }
+  return {
+    id: `stamp-${Date.now()}-${++stampObjectSeq}`,
+    stampId: stamp.id,
+    kind,
+    x: point.x,
+    y: point.y,
+    size: stampSize.value,
+    color: brushColor.value,
+    text: stamp.textValue || stamp.name,
+    stamp: { ...stamp },
+  }
 }
 
 const placeStamp = async (point) => {
@@ -920,15 +1085,65 @@ const placeStamp = async (point) => {
   }
   pushUndo()
   try {
-    if (stamp.priority === STAMP_PRIORITY_IMAGE && stamp.hasImage) {
-      await drawImageStamp(point, stamp)
-    } else {
-      drawTextStamp(point, stamp)
-    }
+    const object = await createStampObject(point, stamp)
+    stampObjects.value = [...stampObjects.value, object]
+    renderCanvas()
     hasCanvasContent.value = true
   } catch (err) {
     store.setError('Не удалось поставить штамп')
   }
+}
+
+const stampObjectBounds = (object) => {
+  const ctx = getContext()
+  if (object.kind === 'image') {
+    const image = stampImageCache.get(object.stampId)
+    const { width, height } = imageBoundsForStampObject(object, image)
+    return {
+      left: object.x - width / 2,
+      right: object.x + width / 2,
+      top: object.y - height / 2,
+      bottom: object.y + height / 2,
+    }
+  }
+  const text = object.text || object.stamp?.textValue || object.stamp?.name || ''
+  if (ctx) {
+    ctx.save()
+    ctx.font = `700 ${object.size}px system-ui, sans-serif`
+    const width = Math.max(ctx.measureText(text).width, object.size)
+    ctx.restore()
+    const height = object.size * 1.25
+    return {
+      left: object.x - width / 2,
+      right: object.x + width / 2,
+      top: object.y - height / 2,
+      bottom: object.y + height / 2,
+    }
+  }
+  const width = Math.max(text.length * object.size * 0.6, object.size)
+  const height = object.size * 1.25
+  return {
+    left: object.x - width / 2,
+    right: object.x + width / 2,
+    top: object.y - height / 2,
+    bottom: object.y + height / 2,
+  }
+}
+
+const findStampObjectAt = (point) => {
+  for (let index = stampObjects.value.length - 1; index >= 0; index -= 1) {
+    const object = stampObjects.value[index]
+    const bounds = stampObjectBounds(object)
+    if (
+      point.x >= bounds.left &&
+      point.x <= bounds.right &&
+      point.y >= bounds.top &&
+      point.y <= bounds.bottom
+    ) {
+      return object
+    }
+  }
+  return null
 }
 
 const onPointerDown = (event) => {
@@ -940,6 +1155,18 @@ const onPointerDown = (event) => {
     void placeStamp(point)
     return
   }
+  if (isHandTool.value) {
+    const object = findStampObjectAt(point)
+    if (!object) return
+    canvasRef.value.setPointerCapture?.(event.pointerId)
+    pushUndo()
+    draggingStamp = {
+      id: object.id,
+      offsetX: point.x - object.x,
+      offsetY: point.y - object.y,
+    }
+    return
+  }
   canvasRef.value.setPointerCapture?.(event.pointerId)
   pushUndo()
   drawing.value = true
@@ -949,6 +1176,17 @@ const onPointerDown = (event) => {
 }
 
 const onPointerMove = (event) => {
+  if (draggingStamp) {
+    const point = pointFromEvent(event)
+    if (!point) return
+    stampObjects.value = stampObjects.value.map((object) =>
+      object.id === draggingStamp.id
+        ? { ...object, x: point.x - draggingStamp.offsetX, y: point.y - draggingStamp.offsetY }
+        : object,
+    )
+    renderCanvas()
+    return
+  }
   if (!drawing.value) return
   const point = pointFromEvent(event)
   if (!point || !lastPoint) return
@@ -957,6 +1195,11 @@ const onPointerMove = (event) => {
 }
 
 const onPointerUp = (event) => {
+  if (draggingStamp) {
+    draggingStamp = null
+    canvasRef.value?.releasePointerCapture?.(event.pointerId)
+    return
+  }
   if (!drawing.value) return
   drawing.value = false
   lastPoint = null
@@ -964,15 +1207,17 @@ const onPointerUp = (event) => {
 }
 
 const clearCanvas = () => {
-  const ctx = getContext()
-  const canvas = canvasRef.value
-  if (!ctx || !canvas) return
+  const base = ensureBaseCanvasForVisible()
+  const ctx = getBaseContext()
+  if (!ctx || !base) return
   pushUndo()
   ctx.save()
   ctx.globalCompositeOperation = 'source-over'
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillRect(0, 0, base.width, base.height)
   ctx.restore()
+  resetStampObjects()
+  renderCanvas()
   hasCanvasContent.value = false
 }
 
@@ -997,13 +1242,14 @@ const redo = () => {
 }
 
 const fillCanvasBackground = () => {
-  const ctx = getContext()
-  const canvas = canvasRef.value
-  if (!ctx || !canvas) return
+  const base = ensureBaseCanvasForVisible()
+  const ctx = getBaseContext()
+  if (!ctx || !base) return
   ctx.save()
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillRect(0, 0, base.width, base.height)
   ctx.restore()
+  renderCanvas()
 }
 
 const onNew = async () => {
@@ -1014,9 +1260,11 @@ const onNew = async () => {
   canvasWidth.value = size.width
   canvasHeight.value = size.height
   hasCanvasContent.value = false
+  resetStampObjects()
   resetHistory()
   viewMode.value = 'editor'
   await nextTick()
+  resizeBaseCanvas(canvasWidth.value, canvasHeight.value)
   fillCanvasBackground()
 }
 
@@ -1120,14 +1368,18 @@ const onSelect = async (item) => {
   )
   canvasWidth.value = dim.ok ? dim.width : DRAWING_DEFAULT_CANVAS_WIDTH
   canvasHeight.value = dim.ok ? dim.height : DRAWING_DEFAULT_CANVAS_HEIGHT
+  resetStampObjects()
   await nextTick()
+  resizeBaseCanvas(canvasWidth.value, canvasHeight.value)
   fillCanvasBackground()
   try {
     const blob = await store.fetchImageContent(item.id)
-    const dims = await loadImageToCanvas(canvasRef.value, blob)
+    const dims = await loadImageToCanvas(getBaseCanvas(), blob)
     if (dims) {
       canvasWidth.value = dims.width
       canvasHeight.value = dims.height
+      await nextTick()
+      renderCanvas()
       hasCanvasContent.value = true
     }
   } catch (err) {
@@ -1155,6 +1407,7 @@ const confirmSave = async () => {
   }
   saving.value = true
   try {
+    renderCanvas()
     const blob = await canvasToPngBlob(canvasRef.value)
     const width = canvasRef.value?.width || canvasWidth.value
     const height = canvasRef.value?.height || canvasHeight.value
@@ -1202,6 +1455,30 @@ const confirmDeleteAction = async () => {
     deleteTarget.value = null
   } finally {
     saving.value = false
+  }
+}
+
+const isEditableKeyboardTarget = (target) => {
+  const tag = String(target?.tagName || '').toLowerCase()
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || Boolean(target?.isContentEditable)
+}
+
+const handleEditorKeydown = (event) => {
+  if (viewMode.value !== 'editor' || saveModalOpen.value || stampFormOpen.value) return
+  if (isEditableKeyboardTarget(event.target)) return
+  if (!(event.ctrlKey || event.metaKey)) return
+  if (event.key.toLowerCase() === 'z') {
+    event.preventDefault()
+    if (event.shiftKey) {
+      redo()
+      return
+    }
+    undo()
+    return
+  }
+  if (event.key.toLowerCase() === 'y') {
+    event.preventDefault()
+    redo()
   }
 }
 
@@ -1303,6 +1580,7 @@ watch(
 )
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleEditorKeydown)
   try {
     await Promise.all([store.fetchImages(), stampsStore.fetchStamps()])
   } catch (err) {
@@ -1311,6 +1589,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleEditorKeydown)
   Object.values(galleryThumbs.value).forEach((url) => URL.revokeObjectURL(url))
   Object.values(stampThumbs.value).forEach((url) => URL.revokeObjectURL(url))
   store.clearError()

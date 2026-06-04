@@ -37,3 +37,10 @@ test('stamp dropdown is positioned outside clipped toolbar overflow', () => {
   assert.match(drawingVue, /stampDropdownStyle/)
   assert.match(drawingVue, /class="fixed[\s\S]*?Штампы/)
 })
+
+test('drawing view exposes a hand tool for moving placed stamps', () => {
+  assert.match(drawingVue, /key: 'hand'/)
+  assert.match(drawingVue, /label: 'Рука'/)
+  assert.match(drawingVue, /draggingStamp/)
+  assert.match(drawingVue, /findStampObjectAt/)
+})
