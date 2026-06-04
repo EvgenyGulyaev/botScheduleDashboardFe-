@@ -29,6 +29,13 @@
           >
             Новый
           </button>
+          <button
+            type="button"
+            class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+            @click="openStampsScreen"
+          >
+            Кисти
+          </button>
         </div>
         <div class="text-sm font-semibold text-slate-500">
           {{ items.length ? `${items.length} изображ.` : 'Изображения' }}
@@ -59,6 +66,13 @@
             @click="onNew"
           >
             Новый холст
+          </button>
+          <button
+            type="button"
+            class="mt-3 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+            @click="openStampsScreen"
+          >
+            Кисти
           </button>
         </div>
       </div>
@@ -125,7 +139,7 @@
             class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-lg text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
             aria-label="Назад"
             title="Назад"
-            @click="viewMode = 'editor'"
+            @click="closeStampsScreen"
           >
             ←
           </button>
@@ -236,6 +250,13 @@
             @click="openGallery"
           >
             Изображения
+          </button>
+          <button
+            type="button"
+            class="rounded-full px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            @click="openStampsScreen"
+          >
+            Кисти
           </button>
         </div>
         <button
@@ -638,6 +659,7 @@ const confirmDelete = ref(false)
 const deleteTarget = ref(null)
 const saveModalOpen = ref(false)
 const viewMode = ref('gallery')
+const stampsReturnMode = ref('gallery')
 const galleryThumbs = ref({})
 const galleryThumbLoading = ref({})
 const stampThumbs = ref({})
@@ -791,6 +813,7 @@ const selectStamp = (stamp) => {
 
 const openStampsScreen = async () => {
   stampDropdownOpen.value = false
+  stampsReturnMode.value = viewMode.value === 'editor' ? 'editor' : 'gallery'
   viewMode.value = 'stamps'
   try {
     await stampsStore.fetchStamps()
@@ -798,6 +821,10 @@ const openStampsScreen = async () => {
   } catch (err) {
     // error already exposed
   }
+}
+
+const closeStampsScreen = () => {
+  viewMode.value = stampsReturnMode.value === 'editor' ? 'editor' : 'gallery'
 }
 
 const drawTextStamp = (point, stamp) => {

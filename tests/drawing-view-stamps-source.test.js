@@ -13,6 +13,15 @@ test('drawing view includes separate stamps management screen', () => {
   assert.match(drawingVue, /Управление кистями/)
 })
 
+test('gallery header exposes visible stamps entry point', () => {
+  const galleryStart = drawingVue.indexOf(`viewMode === 'gallery'`)
+  const stampsStart = drawingVue.indexOf(`viewMode === 'stamps'`)
+  assert.notEqual(galleryStart, -1)
+  assert.notEqual(stampsStart, -1)
+  const galleryTemplate = drawingVue.slice(galleryStart, stampsStart)
+  assert.match(galleryTemplate, /@click="openStampsScreen"[\s\S]*?>\s*Кисти\s*</)
+})
+
 test('drawing view switches brush slider to stamp size', () => {
   assert.match(drawingVue, /sliderLabel/)
   assert.match(drawingVue, /Размер/)
