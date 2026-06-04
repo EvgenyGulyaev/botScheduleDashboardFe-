@@ -508,6 +508,35 @@
             placeholder="Без названия"
           />
         </label>
+        <div class="mt-4">
+          <div class="mb-2 text-xs font-semibold uppercase text-slate-500">Форма</div>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              class="rounded-xl px-3 py-2 text-sm font-semibold transition"
+              :class="
+                saveShape === DRAWING_SAVE_SHAPE_RECT
+                  ? 'bg-slate-950 text-white'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              "
+              @click="saveShape = DRAWING_SAVE_SHAPE_RECT"
+            >
+              Обычная
+            </button>
+            <button
+              type="button"
+              class="rounded-xl px-3 py-2 text-sm font-semibold transition"
+              :class="
+                saveShape === DRAWING_SAVE_SHAPE_CIRCLE
+                  ? 'bg-slate-950 text-white'
+                  : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              "
+              @click="saveShape = DRAWING_SAVE_SHAPE_CIRCLE"
+            >
+              Круг
+            </button>
+          </div>
+        </div>
         <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
@@ -653,8 +682,11 @@ import {
   createUndoStack,
   DRAWING_CANVAS_MAX,
   DRAWING_CANVAS_MIN,
+  DRAWING_SAVE_SHAPE_CIRCLE,
+  DRAWING_SAVE_SHAPE_RECT,
   DRAWING_TITLE_MAX_LENGTH,
   loadImageToCanvas,
+  normalizeDrawingSaveShape,
   normalizeDrawingTitle,
   validateCanvasDimensions,
 } from '../lib/drawing-canvas.js'
@@ -701,6 +733,7 @@ const stampDraft = ref({
   removeImage: false,
 })
 const titleInput = ref('')
+const saveShape = ref(DRAWING_SAVE_SHAPE_RECT)
 const selected = ref(null)
 const saving = ref(false)
 const confirmDelete = ref(false)
@@ -1488,7 +1521,8 @@ const confirmSave = async () => {
   saving.value = true
   try {
     renderCanvas()
-    const blob = await canvasToPngBlob(canvasRef.value)
+    const shape = normalizeDrawingSaveShape(saveShape.value)
+    const blob = await canvasToPngBlob(canvasRef.value, { shape })
     const width = canvasRef.value?.width || canvasWidth.value
     const height = canvasRef.value?.height || canvasHeight.value
     if (selected.value) {

@@ -6,6 +6,8 @@ export const DRAWING_UNDO_STACK_MAX = 50
 export const DRAWING_DEFAULT_BACKGROUND = '#ffffff'
 export const DRAWING_CANVAS_MIN = 50
 export const DRAWING_CANVAS_MAX = 4096
+export const DRAWING_SAVE_SHAPE_RECT = 'rect'
+export const DRAWING_SAVE_SHAPE_CIRCLE = 'circle'
 
 export const normalizeDrawingTitle = (value = '') => {
   const trimmed = String(value ?? '').trim()
@@ -79,15 +81,42 @@ export const createUndoStack = ({ max = DRAWING_UNDO_STACK_MAX } = {}) => {
   }
 }
 
-export const canvasToPngBlob = async (canvas) => {
+export const normalizeDrawingSaveShape = (value = '') =>
+  value === DRAWING_SAVE_SHAPE_CIRCLE ? DRAWING_SAVE_SHAPE_CIRCLE : DRAWING_SAVE_SHAPE_RECT
+
+const createCircularMaskedCanvas = (canvas) => {
+  if (typeof document === 'undefined') {
+    throw new Error('document is required for circular export')
+  }
+  const output = document.createElement('canvas')
+  output.width = canvas.width
+  output.height = canvas.height
+  const ctx = output.getContext('2d')
+  if (!ctx) {
+    throw new Error('2d context is not available')
+  }
+  const radius = Math.min(output.width, output.height) / 2
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(output.width / 2, output.height / 2, radius, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.drawImage(canvas, 0, 0)
+  ctx.restore()
+  return output
+}
+
+export const canvasToPngBlob = async (canvas, { shape = DRAWING_SAVE_SHAPE_RECT } = {}) => {
   if (!canvas) {
     throw new Error('canvas is required')
   }
-  if (typeof canvas.toBlob !== 'function') {
+  const exportShape = normalizeDrawingSaveShape(shape)
+  const outputCanvas =
+    exportShape === DRAWING_SAVE_SHAPE_CIRCLE ? createCircularMaskedCanvas(canvas) : canvas
+  if (typeof outputCanvas.toBlob !== 'function') {
     throw new Error('canvas.toBlob is not available')
   }
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
+    outputCanvas.toBlob((blob) => {
       if (!blob) {
         reject(new Error('failed to encode canvas to PNG'))
         return

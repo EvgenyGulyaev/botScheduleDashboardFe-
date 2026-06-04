@@ -9,8 +9,11 @@ import {
   DRAWING_BRUSH_MIN,
   DRAWING_CANVAS_MAX,
   DRAWING_CANVAS_MIN,
+  DRAWING_SAVE_SHAPE_CIRCLE,
+  DRAWING_SAVE_SHAPE_RECT,
   DRAWING_TITLE_MAX_LENGTH,
   DRAWING_UNDO_STACK_MAX,
+  normalizeDrawingSaveShape,
   normalizeDrawingTitle,
   validateCanvasDimensions,
 } from '../src/lib/drawing-canvas.js'
@@ -32,6 +35,12 @@ test('clampBrushSize enforces min and max', () => {
   assert.equal(clampBrushSize(DRAWING_BRUSH_MAX), DRAWING_BRUSH_MAX)
   assert.equal(clampBrushSize('not a number'), DRAWING_BRUSH_MIN)
   assert.equal(clampBrushSize(12.4), 12)
+})
+
+test('normalizes drawing save shape for export', () => {
+  assert.equal(normalizeDrawingSaveShape(DRAWING_SAVE_SHAPE_RECT), DRAWING_SAVE_SHAPE_RECT)
+  assert.equal(normalizeDrawingSaveShape(DRAWING_SAVE_SHAPE_CIRCLE), DRAWING_SAVE_SHAPE_CIRCLE)
+  assert.equal(normalizeDrawingSaveShape('unknown'), DRAWING_SAVE_SHAPE_RECT)
 })
 
 test('createBlankCanvasState keeps positive dimensions', () => {

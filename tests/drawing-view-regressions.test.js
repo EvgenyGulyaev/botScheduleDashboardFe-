@@ -118,3 +118,12 @@ test('editor actions live in one compact toolbar', () => {
   assert.doesNotMatch(editorTemplate, />\s*Изображения\s*</)
   assert.doesNotMatch(editorTemplate, />\s*Кисти\s*</)
 })
+
+test('save modal can export drawing as a circle', () => {
+  assert.match(drawingVue, /DRAWING_SAVE_SHAPE_CIRCLE/)
+  assert.match(drawingVue, /saveShape = ref\(DRAWING_SAVE_SHAPE_RECT\)/)
+  assert.match(drawingVue, />\s*Форма\s*</)
+  assert.match(drawingVue, />\s*Круг\s*</)
+  assert.match(drawingVue, /normalizeDrawingSaveShape\(saveShape\.value\)/)
+  assert.match(drawingVue, /canvasToPngBlob\(canvasRef\.value, \{ shape \}\)/)
+})
