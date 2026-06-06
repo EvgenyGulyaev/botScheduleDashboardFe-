@@ -66,6 +66,11 @@ const ADMIN_MENU_ITEMS = [
     label: 'Аудит',
     icon: '🧾',
   },
+  {
+    to: '/dashboard/ssh-accesses',
+    label: 'SSH доступы',
+    icon: '🔐',
+  },
 ]
 
 const normalizeMenuOptions = (options = false) => {
