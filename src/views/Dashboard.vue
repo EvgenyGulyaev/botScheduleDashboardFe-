@@ -49,62 +49,239 @@
         />
       </div>
 
-      <!-- Выбор сервиса + быстрые действия -->
-      <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg mb-6 sm:mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
-          <div class="flex items-center w-full sm:w-auto">
-            <label class="text-sm font-medium text-gray-700 whitespace-nowrap mr-3 sm:mr-4"
-              >Сервис:</label
-            >
-            <select
-              v-model="selectedService"
-              @change="loadStatus"
-              class="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white min-w-0"
-            >
-              <option value="bot">Бот для расписания</option>
-              <option value="dashboard-chat">Чат</option>
-              <option value="dashboard">Панель</option>
-              <option value="bot-nickname">Бот для Дискорда</option>
-              <option value="shotener">Сервис для ссылок</option>
-              <option value="geo3d">Сервис для 3d городов</option>
-              <option value="alice-speaker-service">Сервис для Алисы</option>
-              <option value="lawyer-backend">Сайт юриста</option>
-              <option value="drawing-service">Рисовалка</option>
-            </select>
+      <!-- Все сервисы -->
+      <div class="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-6">
+        <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div class="flex flex-wrap items-center gap-3">
+              <h3 class="text-2xl font-black tracking-tight text-slate-950">Все сервисы</h3>
+              <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600">
+                RAM всего {{ servicesMemoryTotalLabel }}
+              </span>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">
+              Быстрый обзор процессов. Нажми на сервис, чтобы открыть детали и логи.
+            </p>
           </div>
 
-          <!-- Кнопка перезапуска -->
-          <button
-            @click="restartBot"
-            :disabled="loading"
-            class="w-full sm:w-auto px-6 py-2.5 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 disabled:opacity-50 font-medium text-sm shadow-md transition-colors whitespace-nowrap"
-          >
-            {{ loading ? '🔄 Перезапуск...' : '🔄 Перезапустить' }}
-          </button>
-
-          <RouterLink
-            to="/dashboard/ssh-accesses"
-            class="w-full rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-center text-sm font-semibold text-slate-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 sm:w-auto"
-          >
-            SSH доступы
-          </RouterLink>
-
-          <div
-            class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
-          >
-            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Логи
-            </label>
-            <select
-              v-model.number="logLines"
-              @change="loadStatus"
-              class="rounded-xl border border-slate-200 bg-white px-2 py-1 text-sm text-slate-700 outline-none focus:border-blue-300"
+          <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Активны
+              </div>
+              <div class="text-lg font-black text-slate-950">
+                {{ activeServicesCount }}/{{ services.length }}
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Проблемы
+              </div>
+              <div
+                class="text-lg font-black"
+                :class="serviceProblemCount ? 'text-rose-600' : 'text-emerald-600'"
+              >
+                {{ serviceProblemCount }}
+              </div>
+            </div>
+            <button
+              @click="loadAllServices"
+              :disabled="loadingAll"
+              class="col-span-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50 sm:col-span-1"
             >
-              <option :value="8">8 строк</option>
-              <option :value="30">30 строк</option>
-              <option :value="80">80 строк</option>
-              <option :value="200">200 строк</option>
-            </select>
+              {{ loadingAll ? 'Обновляем...' : 'Обновить' }}
+            </button>
+            <RouterLink
+              to="/dashboard/ssh-accesses"
+              class="col-span-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-bold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 sm:col-span-1"
+            >
+              SSH доступы
+            </RouterLink>
+          </div>
+        </div>
+
+        <div
+          v-if="loadingAll && !hasLoadedServices"
+          class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
+          <div
+            v-for="item in 4"
+            :key="item"
+            class="h-32 animate-pulse rounded-2xl border border-slate-100 bg-slate-50"
+          ></div>
+        </div>
+        <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <button
+            v-for="service in services"
+            :key="service"
+            type="button"
+            @click="selectService(service)"
+            class="group rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50"
+            :class="
+              selectedService === service
+                ? 'border-blue-400 bg-blue-50 shadow-md'
+                : 'border-slate-200 bg-white'
+            "
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-2xl">{{ serviceTile(service).icon }}</span>
+                  <span class="truncate font-black text-slate-950">{{ service }}</span>
+                </div>
+                <div class="mt-1 text-sm font-semibold text-slate-500">
+                  {{ serviceTile(service).status }}
+                </div>
+              </div>
+              <span
+                class="mt-1 h-2.5 w-2.5 rounded-full"
+                :class="serviceStatusDotClass(service)"
+              ></span>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-1">
+              <span
+                v-for="item in serviceTile(service).meta"
+                :key="item"
+                class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600"
+              >
+                {{ item }}
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Детали выбранного сервиса -->
+      <div class="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-6">
+          <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+                Выбранный сервис
+              </p>
+              <h3 class="mt-1 break-words text-3xl font-black tracking-tight text-slate-950">
+                {{ selectedService }}
+              </h3>
+              <div class="mt-2 flex flex-wrap items-center gap-2">
+                <span
+                  class="inline-flex rounded-full border px-3 py-1 text-xs font-bold"
+                  :class="healthBadge.classes"
+                >
+                  {{ healthBadge.label }}
+                </span>
+                <span class="text-sm font-semibold text-slate-500">
+                  {{ botStatus }}
+                </span>
+                <span class="text-sm text-slate-400">
+                  {{ selectedStatus.subState || 'substate unknown' }}
+                </span>
+              </div>
+            </div>
+
+            <div class="flex gap-2">
+              <button
+                type="button"
+                @click="restartBot"
+                :disabled="loading"
+                class="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                {{ loading ? 'Перезапуск...' : 'Перезапустить' }}
+              </button>
+            </div>
+          </div>
+
+          <div v-if="hasLoadedStatus" class="grid grid-cols-2 gap-3">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500">PID</div>
+              <div class="mt-1 truncate text-lg font-black text-slate-950">
+                {{ stats.pid || '—' }}
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500">RAM</div>
+              <div class="mt-1 truncate text-lg font-black text-slate-950">
+                {{ stats.memory || '—' }}
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500">CPU</div>
+              <div class="mt-1 truncate text-lg font-black text-slate-950">
+                {{ stats.cpu || '—' }}
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div class="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Рестарты
+              </div>
+              <div class="mt-1 truncate text-lg font-black text-slate-950">
+                {{ stats.restarts || '0' }}
+              </div>
+            </div>
+          </div>
+          <div
+            v-else
+            class="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500"
+          >
+            Выбери сервис или обнови список, чтобы увидеть детали.
+          </div>
+
+          <dl v-if="hasLoadedStatus" class="mt-4 space-y-2 text-sm">
+            <div class="flex justify-between gap-4">
+              <dt class="text-slate-500">Uptime</dt>
+              <dd class="text-right font-semibold text-slate-900">{{ stats.uptime || '—' }}</dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-slate-500">Loaded</dt>
+              <dd class="text-right font-semibold text-slate-900">
+                {{ selectedStatus.loaded || '—' }}
+              </dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="text-slate-500">Unit file</dt>
+              <dd class="truncate text-right font-semibold text-slate-900">
+                {{ stats.fragmentPath || '—' }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div
+          class="rounded-3xl border border-slate-900 bg-slate-950 p-5 text-slate-100 shadow-xl sm:p-6"
+        >
+          <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Логи</p>
+              <h3 class="mt-1 text-xl font-black text-white">Последние строки</h3>
+            </div>
+            <div
+              class="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-3 py-2"
+            >
+              <label class="text-xs font-bold uppercase tracking-wide text-slate-400">Строк</label>
+              <select
+                v-model.number="logLines"
+                @change="loadStatus"
+                class="rounded-xl border border-white/10 bg-slate-900 px-2 py-1 text-sm text-slate-100 outline-none"
+              >
+                <option :value="8">8</option>
+                <option :value="30">30</option>
+                <option :value="80">80</option>
+                <option :value="200">200</option>
+              </select>
+            </div>
+          </div>
+          <div
+            v-if="selectedStatus.logs.length"
+            class="max-h-72 space-y-1 overflow-y-auto font-mono text-xs leading-relaxed"
+          >
+            <div v-for="line in selectedStatus.logs" :key="line" class="break-words">
+              {{ line }}
+            </div>
+          </div>
+          <div
+            v-else
+            class="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400"
+          >
+            Логи пока не подтянулись.
           </div>
         </div>
       </div>
@@ -339,294 +516,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Статус карточка (полная ширина) -->
-      <div class="grid grid-cols-1 gap-6 mb-8">
-        <div
-          class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border-l-4 lg:border-l-8"
-          :class="statusBorderClass"
-        >
-          <div v-if="loading && !hasLoadedStatus" class="animate-pulse space-y-4">
-            <div class="h-4 w-28 rounded-full bg-slate-200"></div>
-            <div class="h-12 w-48 rounded-2xl bg-slate-200"></div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div v-for="item in 3" :key="item" class="h-24 rounded-xl bg-slate-100"></div>
-            </div>
-          </div>
-
-          <div
-            v-else
-            class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 lg:mb-8 space-y-4 lg:space-y-0"
-          >
-            <div class="space-y-2">
-              <p class="text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wide">
-                {{ selectedService }}
-              </p>
-              <p class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
-                {{ botStatus }}
-              </p>
-              <div class="flex flex-wrap items-center gap-2">
-                <span
-                  class="inline-flex rounded-full border px-3 py-1 text-xs font-bold"
-                  :class="healthBadge.classes"
-                >
-                  {{ healthBadge.label }}
-                </span>
-                <span class="text-xs sm:text-sm text-gray-500">
-                  {{ selectedStatus.subState || 'substate unknown' }}
-                </span>
-              </div>
-              <p v-if="selectedStatus.description" class="text-sm text-slate-500">
-                {{ selectedStatus.description }}
-              </p>
-            </div>
-            <div
-              :class="statusClass"
-              class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl shadow-lg self-center lg:self-auto mx-auto lg:mx-0"
-            >
-              {{ statusIcon }}
-            </div>
-          </div>
-
-          <!-- Статистика -->
-          <div v-if="hasLoadedStatus" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- PID -->
-            <div
-              class="flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-sm border"
-            >
-              <div
-                class="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white text-lg font-bold"
-              >
-                PID
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <div class="text-xs uppercase tracking-wide text-blue-700 font-medium">
-                  Process ID
-                </div>
-                <div class="text-lg sm:text-xl font-bold text-blue-900 mt-1 truncate">
-                  {{ stats.pid || '—' }}
-                </div>
-              </div>
-            </div>
-
-            <!-- CPU -->
-            <div
-              class="flex items-center p-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl shadow-sm border"
-            >
-              <div
-                class="flex-shrink-0 w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white text-lg font-bold"
-              >
-                CPU
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <div class="text-xs uppercase tracking-wide text-orange-700 font-medium">
-                  CPU time
-                </div>
-                <div class="text-lg sm:text-xl font-bold text-orange-900 mt-1 truncate">
-                  {{ stats.cpu || '—' }}
-                </div>
-              </div>
-            </div>
-
-            <!-- MEM -->
-            <div
-              class="flex items-center p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-xl shadow-sm border"
-            >
-              <div
-                class="flex-shrink-0 w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center text-white text-lg font-bold"
-              >
-                RAM
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <div class="text-xs uppercase tracking-wide text-green-700 font-medium">Memory</div>
-                <div class="text-lg sm:text-xl font-bold text-green-900 mt-1 truncate">
-                  {{ stats.memory || '—' }}
-                </div>
-              </div>
-            </div>
-
-            <!-- UPTIME -->
-            <div
-              class="flex items-center p-4 bg-gradient-to-r from-sky-50 to-sky-100 rounded-xl shadow-sm border"
-            >
-              <div
-                class="flex-shrink-0 w-10 h-10 rounded-xl bg-sky-500 flex items-center justify-center text-white text-sm font-bold"
-              >
-                UP
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <div class="text-xs uppercase tracking-wide text-sky-700 font-medium">Uptime</div>
-                <div class="text-lg sm:text-xl font-bold text-sky-900 mt-1 truncate">
-                  {{ stats.uptime || '—' }}
-                </div>
-              </div>
-            </div>
-
-            <!-- RESTARTS -->
-            <div
-              class="flex items-center p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl shadow-sm border"
-            >
-              <div
-                class="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white text-sm font-bold"
-              >
-                RST
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <div class="text-xs uppercase tracking-wide text-amber-700 font-medium">
-                  Restarts
-                </div>
-                <div class="text-lg sm:text-xl font-bold text-amber-900 mt-1 truncate">
-                  {{ stats.restarts || '0' }}
-                </div>
-              </div>
-            </div>
-
-            <!-- TASKS -->
-            <div
-              class="flex items-center p-4 bg-gradient-to-r from-violet-50 to-violet-100 rounded-xl shadow-sm border"
-            >
-              <div
-                class="flex-shrink-0 w-10 h-10 rounded-xl bg-violet-500 flex items-center justify-center text-white text-sm font-bold"
-              >
-                TSK
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <div class="text-xs uppercase tracking-wide text-violet-700 font-medium">Tasks</div>
-                <div class="text-lg sm:text-xl font-bold text-violet-900 mt-1 truncate">
-                  {{ stats.tasks || '—' }}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="hasLoadedStatus"
-            class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]"
-          >
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Детали systemd
-              </div>
-              <dl class="mt-3 space-y-2 text-sm">
-                <div class="flex justify-between gap-4">
-                  <dt class="text-slate-500">Loaded</dt>
-                  <dd class="font-semibold text-slate-900">{{ selectedStatus.loaded || '—' }}</dd>
-                </div>
-                <div class="flex justify-between gap-4">
-                  <dt class="text-slate-500">Active since</dt>
-                  <dd class="text-right font-semibold text-slate-900">
-                    {{ stats.activeSince || '—' }}
-                  </dd>
-                </div>
-                <div class="flex justify-between gap-4">
-                  <dt class="text-slate-500">Unit file</dt>
-                  <dd class="truncate text-right font-semibold text-slate-900">
-                    {{ stats.fragmentPath || '—' }}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div class="rounded-2xl border border-slate-900 bg-slate-950 p-4 text-slate-100">
-              <div class="mb-3 flex items-center justify-between gap-3">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Последние логи
-                </div>
-                <div class="text-xs text-slate-500">{{ selectedStatus.logs.length }} строк</div>
-              </div>
-              <div
-                v-if="selectedStatus.logs.length"
-                class="max-h-52 space-y-1 overflow-y-auto font-mono text-xs leading-relaxed"
-              >
-                <div v-for="line in selectedStatus.logs" :key="line" class="break-words">
-                  {{ line }}
-                </div>
-              </div>
-              <div v-else class="text-sm text-slate-400">Логи пока не подтянулись.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Все сервисы -->
-      <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
-        <h3
-          class="mb-6 flex flex-col gap-3 text-xl font-bold text-gray-900 sm:flex-row sm:items-center sm:justify-between sm:text-2xl"
-        >
-          <span class="flex flex-wrap items-center gap-3">
-            <span>Все сервисы</span>
-            <span
-              class="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600 sm:text-base"
-            >
-              RAM всего {{ servicesMemoryTotalLabel }}
-            </span>
-          </span>
-          <button
-            @click="loadAllServices"
-            :disabled="loadingAll"
-            class="text-sm bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 transition-colors w-full sm:w-auto"
-          >
-            🔄 Обновить
-          </button>
-        </h3>
-        <div
-          v-if="loadingAll && !hasLoadedServices"
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
-        >
-          <div
-            v-for="item in 4"
-            :key="item"
-            class="h-32 animate-pulse rounded-2xl border-2 border-slate-100 bg-slate-50"
-          ></div>
-        </div>
-        <div
-          v-else
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
-        >
-          <div
-            v-for="service in services"
-            :key="service"
-            @click="selectService(service)"
-            class="group p-5 sm:p-6 rounded-2xl hover:shadow-2xl cursor-pointer transition-all border-2 hover:border-blue-300 hover:bg-blue-50 border-gray-200 bg-gradient-to-br from-white/80 to-gray-50"
-          >
-            <div class="flex items-start justify-between mb-3">
-              <div class="text-3xl sm:text-4xl">{{ serviceTile(service).icon }}</div>
-              <div
-                class="w-6 h-6 rounded-full bg-gray-200 group-hover:bg-blue-200 flex items-center justify-center transition-colors"
-              >
-                <svg
-                  class="w-3 h-3 text-gray-500 group-hover:text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 5l7 7-7 7"
-                  ></path>
-                </svg>
-              </div>
-            </div>
-            <div class="font-semibold text-gray-900 text-sm sm:text-base mb-1 leading-tight">
-              {{ service }}
-            </div>
-            <div class="text-xs sm:text-sm text-gray-500 leading-tight">
-              {{ serviceTile(service).status }}
-            </div>
-            <div class="mt-3 flex flex-wrap gap-1">
-              <span
-                v-for="item in serviceTile(service).meta"
-                :key="item"
-                class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600"
-              >
-                {{ item }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -710,6 +599,15 @@ const servicesMemoryTotalBytes = computed(() => getServicesMemoryTotalBytes(serv
 const servicesMemoryTotalLabel = computed(() =>
   formatServiceMemoryTotal(servicesMemoryTotalBytes.value),
 )
+const loadedServiceStatuses = computed(() =>
+  services.map((service) => serviceStatus.value[service]).filter(Boolean),
+)
+const activeServicesCount = computed(
+  () => loadedServiceStatuses.value.filter((status) => status.status === 'active').length,
+)
+const serviceProblemCount = computed(
+  () => loadedServiceStatuses.value.filter((status) => status.health?.level === 'error').length,
+)
 const selectedMaintenanceBytes = computed(() =>
   maintenancePlan.value.items
     .filter((item) => selectedMaintenanceItems.value.includes(item.key))
@@ -724,27 +622,19 @@ const selectedMaintenanceLabel = computed(() =>
     : 'ничего',
 )
 
-// Статусы
-const statusClass = computed(() =>
-  selectedStatus.value.health?.level === 'ok'
-    ? 'bg-green-100 border-green-400'
-    : selectedStatus.value.health?.level === 'error'
-      ? 'bg-red-100 border-red-400'
-      : 'bg-yellow-100 border-yellow-400',
-)
-
-const statusBorderClass = computed(() =>
-  selectedStatus.value.health?.level === 'ok'
-    ? 'border-green-500'
-    : selectedStatus.value.health?.level === 'error'
-      ? 'border-red-500'
-      : 'border-yellow-500',
-)
-
-const statusIcon = computed(() => healthBadge.value.icon)
-
 const serviceTile = (service) =>
   summarizeServiceTile(serviceStatus.value[service] || normalizeServiceStatus({ service }))
+
+const serviceStatusDotClass = (service) => {
+  const level = serviceStatus.value[service]?.health?.level
+  if (level === 'ok') {
+    return 'bg-emerald-500'
+  }
+  if (level === 'error') {
+    return 'bg-rose-500'
+  }
+  return 'bg-amber-400'
+}
 
 const boundedPercent = (value = 0) => Math.max(0, Math.min(100, Number(value) || 0))
 
