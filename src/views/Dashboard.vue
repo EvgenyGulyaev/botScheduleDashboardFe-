@@ -82,6 +82,13 @@
             {{ loading ? '🔄 Перезапуск...' : '🔄 Перезапустить' }}
           </button>
 
+          <RouterLink
+            to="/dashboard/ssh-accesses"
+            class="w-full rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-center text-sm font-semibold text-slate-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 sm:w-auto"
+          >
+            SSH доступы
+          </RouterLink>
+
           <div
             class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
           >

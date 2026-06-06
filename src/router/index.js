@@ -21,6 +21,12 @@ const routes = [
     meta: { requiresAuth: true, requiresSuperAdmin: true, appKey: 'dashboard' },
   },
   {
+    path: '/dashboard/ssh-accesses',
+    name: 'SSHAccesses',
+    component: () => import('../views/SSHAccesses.vue'),
+    meta: { requiresAuth: true, requiresSuperAdmin: true, appKey: 'dashboard' },
+  },
+  {
     path: '/admin/users',
     name: 'AdminUsers',
     component: () => import('../views/AdminUsers.vue'),
