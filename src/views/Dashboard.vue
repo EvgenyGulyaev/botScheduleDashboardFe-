@@ -66,6 +66,137 @@
         />
       </div>
 
+      <!-- Сервер -->
+      <div
+        class="mb-8 rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-xl sm:p-6"
+      >
+        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Сервер</p>
+            <h3 class="mt-1 text-2xl font-bold">
+              {{ systemInfo.hostname || 'server' }}
+            </h3>
+            <p class="mt-1 text-sm text-slate-400">
+              {{ systemInfo.os }}/{{ systemInfo.arch }} · uptime
+              {{ systemInfo.uptime.human || '—' }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="systemLoading"
+            @click="loadSystemInfo"
+          >
+            {{ systemLoading ? 'Обновляем...' : 'Обновить сервер' }}
+          </button>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-4">
+          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-400">CPU</div>
+            <div class="mt-2 text-2xl font-bold">{{ systemInfo.cpu.cores || '—' }} cores</div>
+            <div class="mt-1 text-sm text-slate-300">
+              load {{ systemInfo.cpu.load.one.toFixed(2) }} /
+              {{ systemInfo.cpu.load.five.toFixed(2) }} /
+              {{ systemInfo.cpu.load.fifteen.toFixed(2) }}
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xs uppercase tracking-wide text-slate-400">RAM</div>
+              <span
+                class="rounded-full px-2 py-1 text-xs font-bold"
+                :class="usageBadgeClass(systemInfo.memory.usedPercent)"
+              >
+                {{ systemInfo.memory.usedPercent.toFixed(0) }}%
+              </span>
+            </div>
+            <div class="mt-2 text-2xl font-bold">{{ systemInfo.memory.used || '—' }}</div>
+            <div class="mt-1 text-sm text-slate-300">
+              из {{ systemInfo.memory.total || '—' }}, свободно
+              {{ systemInfo.memory.available || '—' }}
+            </div>
+            <div class="mt-3 h-2 rounded-full bg-white/10">
+              <div
+                class="h-2 rounded-full bg-emerald-400"
+                :style="{ width: `${boundedPercent(systemInfo.memory.usedPercent)}%` }"
+              ></div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div class="text-xs uppercase tracking-wide text-slate-400">
+                Диск {{ systemInfo.disk.path }}
+              </div>
+              <span
+                class="rounded-full px-2 py-1 text-xs font-bold"
+                :class="usageBadgeClass(systemInfo.disk.usedPercent)"
+              >
+                {{ systemInfo.disk.usedPercent.toFixed(0) }}%
+              </span>
+            </div>
+            <div class="mt-2 text-2xl font-bold">{{ systemInfo.disk.used || '—' }}</div>
+            <div class="mt-1 text-sm text-slate-300">
+              из {{ systemInfo.disk.total || '—' }}, свободно {{ systemInfo.disk.free || '—' }}
+            </div>
+            <div class="mt-3 h-2 rounded-full bg-white/10">
+              <div
+                class="h-2 rounded-full bg-sky-400"
+                :style="{ width: `${boundedPercent(systemInfo.disk.usedPercent)}%` }"
+              ></div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-400">Swap</div>
+            <div class="mt-2 text-2xl font-bold">{{ systemInfo.memory.swapUsed || '—' }}</div>
+            <div class="mt-1 text-sm text-slate-300">Полезно, если RAM внезапно заканчивается.</div>
+          </div>
+        </div>
+
+        <div v-if="systemAlerts.length" class="mt-5 grid gap-3 lg:grid-cols-2">
+          <div
+            v-for="alert in systemAlerts"
+            :key="`${alert.metric}-${alert.message}`"
+            class="rounded-2xl border px-4 py-3 text-sm font-semibold"
+            :class="alertClass(alert.level)"
+          >
+            {{ alert.message }}
+          </div>
+        </div>
+
+        <div
+          v-if="compactSystemHistory.length > 1"
+          class="mt-5 rounded-2xl border border-white/10 bg-white/10 p-4"
+        >
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              История последних замеров
+            </div>
+            <div class="text-xs text-slate-500">RAM / Disk</div>
+          </div>
+          <div class="flex h-24 items-end gap-2">
+            <div
+              v-for="sample in compactSystemHistory"
+              :key="sample.at"
+              class="flex flex-1 items-end gap-1"
+              :title="`${Math.round(sample.memory)}% RAM, ${Math.round(sample.disk)}% disk`"
+            >
+              <span
+                class="w-full rounded-t bg-emerald-400/80"
+                :style="{ height: historyBarHeight(sample.memory) }"
+              ></span>
+              <span
+                class="w-full rounded-t bg-sky-400/80"
+                :style="{ height: historyBarHeight(sample.disk) }"
+              ></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Все сервисы -->
       <div class="mb-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-6">
         <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -289,137 +420,6 @@
             class="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400"
           >
             Логи пока не подтянулись.
-          </div>
-        </div>
-      </div>
-
-      <!-- Сервер -->
-      <div
-        class="mb-8 rounded-3xl border border-slate-200 bg-slate-950 p-5 text-white shadow-xl sm:p-6"
-      >
-        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Сервер</p>
-            <h3 class="mt-1 text-2xl font-bold">
-              {{ systemInfo.hostname || 'server' }}
-            </h3>
-            <p class="mt-1 text-sm text-slate-400">
-              {{ systemInfo.os }}/{{ systemInfo.arch }} · uptime
-              {{ systemInfo.uptime.human || '—' }}
-            </p>
-          </div>
-          <button
-            type="button"
-            class="rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="systemLoading"
-            @click="loadSystemInfo"
-          >
-            {{ systemLoading ? 'Обновляем...' : 'Обновить сервер' }}
-          </button>
-        </div>
-
-        <div class="grid gap-4 lg:grid-cols-4">
-          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
-            <div class="text-xs uppercase tracking-wide text-slate-400">CPU</div>
-            <div class="mt-2 text-2xl font-bold">{{ systemInfo.cpu.cores || '—' }} cores</div>
-            <div class="mt-1 text-sm text-slate-300">
-              load {{ systemInfo.cpu.load.one.toFixed(2) }} /
-              {{ systemInfo.cpu.load.five.toFixed(2) }} /
-              {{ systemInfo.cpu.load.fifteen.toFixed(2) }}
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-xs uppercase tracking-wide text-slate-400">RAM</div>
-              <span
-                class="rounded-full px-2 py-1 text-xs font-bold"
-                :class="usageBadgeClass(systemInfo.memory.usedPercent)"
-              >
-                {{ systemInfo.memory.usedPercent.toFixed(0) }}%
-              </span>
-            </div>
-            <div class="mt-2 text-2xl font-bold">{{ systemInfo.memory.used || '—' }}</div>
-            <div class="mt-1 text-sm text-slate-300">
-              из {{ systemInfo.memory.total || '—' }}, свободно
-              {{ systemInfo.memory.available || '—' }}
-            </div>
-            <div class="mt-3 h-2 rounded-full bg-white/10">
-              <div
-                class="h-2 rounded-full bg-emerald-400"
-                :style="{ width: `${boundedPercent(systemInfo.memory.usedPercent)}%` }"
-              ></div>
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-xs uppercase tracking-wide text-slate-400">
-                Диск {{ systemInfo.disk.path }}
-              </div>
-              <span
-                class="rounded-full px-2 py-1 text-xs font-bold"
-                :class="usageBadgeClass(systemInfo.disk.usedPercent)"
-              >
-                {{ systemInfo.disk.usedPercent.toFixed(0) }}%
-              </span>
-            </div>
-            <div class="mt-2 text-2xl font-bold">{{ systemInfo.disk.used || '—' }}</div>
-            <div class="mt-1 text-sm text-slate-300">
-              из {{ systemInfo.disk.total || '—' }}, свободно {{ systemInfo.disk.free || '—' }}
-            </div>
-            <div class="mt-3 h-2 rounded-full bg-white/10">
-              <div
-                class="h-2 rounded-full bg-sky-400"
-                :style="{ width: `${boundedPercent(systemInfo.disk.usedPercent)}%` }"
-              ></div>
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-white/10 bg-white/10 p-4">
-            <div class="text-xs uppercase tracking-wide text-slate-400">Swap</div>
-            <div class="mt-2 text-2xl font-bold">{{ systemInfo.memory.swapUsed || '—' }}</div>
-            <div class="mt-1 text-sm text-slate-300">Полезно, если RAM внезапно заканчивается.</div>
-          </div>
-        </div>
-
-        <div v-if="systemAlerts.length" class="mt-5 grid gap-3 lg:grid-cols-2">
-          <div
-            v-for="alert in systemAlerts"
-            :key="`${alert.metric}-${alert.message}`"
-            class="rounded-2xl border px-4 py-3 text-sm font-semibold"
-            :class="alertClass(alert.level)"
-          >
-            {{ alert.message }}
-          </div>
-        </div>
-
-        <div
-          v-if="compactSystemHistory.length > 1"
-          class="mt-5 rounded-2xl border border-white/10 bg-white/10 p-4"
-        >
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              История последних замеров
-            </div>
-            <div class="text-xs text-slate-500">RAM / Disk</div>
-          </div>
-          <div class="flex h-24 items-end gap-2">
-            <div
-              v-for="sample in compactSystemHistory"
-              :key="sample.at"
-              class="flex flex-1 items-end gap-1"
-              :title="`${Math.round(sample.memory)}% RAM, ${Math.round(sample.disk)}% disk`"
-            >
-              <span
-                class="w-full rounded-t bg-emerald-400/80"
-                :style="{ height: historyBarHeight(sample.memory) }"
-              ></span>
-              <span
-                class="w-full rounded-t bg-sky-400/80"
-                :style="{ height: historyBarHeight(sample.disk) }"
-              ></span>
-            </div>
           </div>
         </div>
       </div>
