@@ -41,6 +41,7 @@ test('dashboard keeps the page header compact', () => {
   assert.match(dashboardVue, /max-w-7xl mx-auto px-4 py-4/)
   assert.match(dashboardVue, /class="mb-4 flex flex-wrap items-center justify-between gap-3"/)
   assert.match(dashboardVue, /loadingAll \? 'Обновляем\.\.\.' : dashboardTimestampLabel/)
+  assert.doesNotMatch(dashboardVue, /<h2[^>]*>\s*Dashboard\s*<\/h2>/)
   assert.doesNotMatch(dashboardVue, /Статус ботов по сервисам/)
   assert.doesNotMatch(dashboardVue, /Данные подтягиваются без перезагрузки страницы/)
 })

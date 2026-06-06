@@ -4,7 +4,6 @@
       <!-- Заголовок -->
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-3">
-          <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
           <span
             class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600"
           >
