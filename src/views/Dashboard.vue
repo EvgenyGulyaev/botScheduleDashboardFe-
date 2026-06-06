@@ -127,10 +127,6 @@
                   {{ serviceTile(service).status }}
                 </div>
               </div>
-              <span
-                class="mt-1 h-2.5 w-2.5 rounded-full"
-                :class="serviceStatusDotClass(service)"
-              ></span>
             </div>
             <div class="mt-3 flex flex-wrap gap-1">
               <span
@@ -618,17 +614,6 @@ const selectedMaintenanceLabel = computed(() =>
 
 const serviceTile = (service) =>
   summarizeServiceTile(serviceStatus.value[service] || normalizeServiceStatus({ service }))
-
-const serviceStatusDotClass = (service) => {
-  const level = serviceStatus.value[service]?.health?.level
-  if (level === 'ok') {
-    return 'bg-emerald-500'
-  }
-  if (level === 'error') {
-    return 'bg-rose-500'
-  }
-  return 'bg-amber-400'
-}
 
 const boundedPercent = (value = 0) => Math.max(0, Math.min(100, Number(value) || 0))
 
