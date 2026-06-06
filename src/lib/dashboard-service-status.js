@@ -67,6 +67,34 @@ export const normalizeServiceStatus = (payload = {}) => {
 export const getServiceHealthBadge = (level = 'warning') =>
   HEALTH_BADGES[level] || HEALTH_BADGES.warning
 
+export const formatServiceMemoryTotal = (bytes = 0) => {
+  const value = Number(bytes) || 0
+  if (value <= 0) {
+    return '—'
+  }
+
+  const units = ['B', 'K', 'M', 'G', 'T']
+  let amount = value
+  let unitIndex = 0
+
+  while (amount >= 1024 && unitIndex < units.length - 1) {
+    amount /= 1024
+    unitIndex += 1
+  }
+
+  if (unitIndex === 0) {
+    return `${amount.toFixed(0)}${units[unitIndex]}`
+  }
+
+  return `${amount.toFixed(1)}${units[unitIndex]}`
+}
+
+export const getServicesMemoryTotalBytes = (statuses = {}) =>
+  Object.values(statuses).reduce(
+    (sum, status) => sum + Math.max(0, Number(status?.stats?.memoryBytes) || 0),
+    0,
+  )
+
 export const summarizeServiceTile = (status = normalizeServiceStatus()) => {
   const badge = getServiceHealthBadge(status.health?.level)
   const meta = [

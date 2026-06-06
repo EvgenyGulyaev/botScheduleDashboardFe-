@@ -1,7 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  formatServiceMemoryTotal,
   getServiceHealthBadge,
+  getServicesMemoryTotalBytes,
   normalizeServiceStatus,
   summarizeServiceTile,
 } from '../src/lib/dashboard-service-status.js'
@@ -62,4 +64,25 @@ test('maps health levels to dashboard badge styles', () => {
   assert.equal(getServiceHealthBadge('ok').label, 'OK')
   assert.equal(getServiceHealthBadge('warning').label, 'Внимание')
   assert.equal(getServiceHealthBadge('error').label, 'Ошибка')
+})
+
+test('summarizes loaded services memory from bytes', () => {
+  const statuses = {
+    bot: normalizeServiceStatus({
+      service: 'bot',
+      Stats: { memory_bytes: 12 * 1024 * 1024 },
+    }),
+    dashboard: normalizeServiceStatus({
+      service: 'dashboard',
+      Stats: { memory_bytes: 8.5 * 1024 * 1024 },
+    }),
+    failed: normalizeServiceStatus({
+      service: 'failed',
+      Stats: { memory_bytes: -100 },
+    }),
+  }
+
+  assert.equal(getServicesMemoryTotalBytes(statuses), 20.5 * 1024 * 1024)
+  assert.equal(formatServiceMemoryTotal(getServicesMemoryTotalBytes(statuses)), '20.5M')
+  assert.equal(formatServiceMemoryTotal(0), '—')
 })

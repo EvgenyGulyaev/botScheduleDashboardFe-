@@ -551,9 +551,16 @@
       <!-- Все сервисы -->
       <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl">
         <h3
-          class="text-xl sm:text-2xl font-bold mb-6 text-gray-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0"
+          class="mb-6 flex flex-col gap-3 text-xl font-bold text-gray-900 sm:flex-row sm:items-center sm:justify-between sm:text-2xl"
         >
-          <span>Все сервисы</span>
+          <span class="flex flex-wrap items-center gap-3">
+            <span>Все сервисы</span>
+            <span
+              class="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-600 sm:text-base"
+            >
+              RAM всего {{ servicesMemoryTotalLabel }}
+            </span>
+          </span>
           <button
             @click="loadAllServices"
             :disabled="loadingAll"
@@ -628,7 +635,9 @@
 import { ref, computed, onMounted } from 'vue'
 import InlineNotice from '../components/InlineNotice.vue'
 import {
+  formatServiceMemoryTotal,
   getServiceHealthBadge,
+  getServicesMemoryTotalBytes,
   normalizeServiceStatus,
   summarizeServiceTile,
 } from '../lib/dashboard-service-status.js'
@@ -697,6 +706,10 @@ const systemAlerts = computed(() => [
     })),
 ])
 const compactSystemHistory = computed(() => systemHistory.value.slice(-12))
+const servicesMemoryTotalBytes = computed(() => getServicesMemoryTotalBytes(serviceStatus.value))
+const servicesMemoryTotalLabel = computed(() =>
+  formatServiceMemoryTotal(servicesMemoryTotalBytes.value),
+)
 const selectedMaintenanceBytes = computed(() =>
   maintenancePlan.value.items
     .filter((item) => selectedMaintenanceItems.value.includes(item.key))
