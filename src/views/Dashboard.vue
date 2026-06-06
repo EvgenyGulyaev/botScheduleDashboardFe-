@@ -1,29 +1,21 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
       <!-- Заголовок -->
-      <div
-        class="mb-8 flex flex-col gap-4 text-center sm:flex-row sm:items-end sm:justify-between sm:text-left"
-      >
-        <div>
-          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
-          <p class="text-base sm:text-lg text-gray-600">Статус ботов по сервисам</p>
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
+          <span
+            class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600"
+          >
+            {{ loadingAll ? 'Обновляем...' : dashboardTimestampLabel }}
+          </span>
         </div>
-        <div
-          class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm"
-        >
-          <div class="font-semibold text-slate-900">{{ dashboardTimestampLabel }}</div>
-          <div class="mt-1">
-            {{
-              loadingAll
-                ? 'Обновляем список сервисов…'
-                : 'Данные подтягиваются без перезагрузки страницы.'
-            }}
-          </div>
+        <div class="flex items-center gap-2">
           <button
             v-if="canRunMaintenanceCleanup"
             type="button"
-            class="mt-3 w-full rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="maintenanceLoading || maintenanceCleaning"
             @click="runMaintenanceCleanup"
           >

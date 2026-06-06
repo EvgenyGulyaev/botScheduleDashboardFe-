@@ -37,6 +37,14 @@ test('dashboard service cards use compact vertical spacing', () => {
   assert.match(dashboardVue, /class="mt-2 flex flex-wrap gap-1"/)
 })
 
+test('dashboard keeps the page header compact', () => {
+  assert.match(dashboardVue, /max-w-7xl mx-auto px-4 py-4/)
+  assert.match(dashboardVue, /class="mb-4 flex flex-wrap items-center justify-between gap-3"/)
+  assert.match(dashboardVue, /loadingAll \? 'Обновляем\.\.\.' : dashboardTimestampLabel/)
+  assert.doesNotMatch(dashboardVue, /Статус ботов по сервисам/)
+  assert.doesNotMatch(dashboardVue, /Данные подтягиваются без перезагрузки страницы/)
+})
+
 test('dashboard exposes maintenance as compact cleanup action only when useful', () => {
   assert.doesNotMatch(dashboardVue, /<!-- Обслуживание сервера -->/)
   assert.match(dashboardVue, /v-if="canRunMaintenanceCleanup"/)
