@@ -31,6 +31,12 @@ test('dashboard service cards avoid redundant status text', () => {
   assert.doesNotMatch(dashboardVue, /serviceTile\(service\)\.status/)
 })
 
+test('dashboard service cards use compact vertical spacing', () => {
+  assert.match(dashboardVue, /px-4 py-3 text-left/)
+  assert.match(dashboardVue, /class="text-xl"/)
+  assert.match(dashboardVue, /class="mt-2 flex flex-wrap gap-1"/)
+})
+
 test('dashboard exposes maintenance as compact cleanup action only when useful', () => {
   assert.doesNotMatch(dashboardVue, /<!-- Обслуживание сервера -->/)
   assert.match(dashboardVue, /v-if="canRunMaintenanceCleanup"/)

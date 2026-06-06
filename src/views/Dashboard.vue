@@ -258,26 +258,26 @@
             :key="service"
             type="button"
             @click="selectService(service)"
-            class="group rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50"
+            class="group rounded-2xl border px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50"
             :class="
               selectedService === service
                 ? 'border-blue-400 bg-blue-50 shadow-md'
                 : 'border-slate-200 bg-white'
             "
           >
-            <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center justify-between gap-3">
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
-                  <span class="text-2xl">{{ serviceTile(service).icon }}</span>
+                  <span class="text-xl">{{ serviceTile(service).icon }}</span>
                   <span class="truncate font-black text-slate-950">{{ service }}</span>
                 </div>
               </div>
             </div>
-            <div class="mt-3 flex flex-wrap gap-1">
+            <div class="mt-2 flex flex-wrap gap-1">
               <span
                 v-for="item in serviceTile(service).meta"
                 :key="item"
-                class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600"
+                class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600"
               >
                 {{ item }}
               </span>
