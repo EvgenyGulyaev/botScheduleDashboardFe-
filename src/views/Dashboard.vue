@@ -20,6 +20,17 @@
                 : 'Данные подтягиваются без перезагрузки страницы.'
             }}
           </div>
+          <button
+            v-if="canRunMaintenanceCleanup"
+            type="button"
+            class="mt-3 w-full rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="maintenanceLoading || maintenanceCleaning"
+            @click="runMaintenanceCleanup"
+          >
+            {{
+              maintenanceCleaning ? 'Очищаем...' : `Очистить ${maintenancePlan.totalReclaimable}`
+            }}
+          </button>
         </div>
       </div>
 
@@ -46,6 +57,12 @@
           tone="error"
           title="Системная информация не обновилась"
           :message="systemError"
+        />
+        <InlineNotice
+          v-if="maintenanceError"
+          tone="error"
+          title="Очистка недоступна"
+          :message="maintenanceError"
         />
       </div>
 
@@ -406,106 +423,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Обслуживание сервера -->
-      <div class="mb-8 rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-6">
-        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Обслуживание
-            </p>
-            <h3 class="mt-1 text-2xl font-bold text-slate-950">Безопасная очистка сервера</h3>
-            <p class="mt-1 max-w-2xl text-sm text-slate-500">
-              Чистим только кэш пакетов, старые временные файлы и просроченные медиа чата. Рабочие
-              директории и база не трогаются.
-            </p>
-          </div>
-          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Можно освободить
-            </div>
-            <div class="mt-1 text-2xl font-black text-slate-950">
-              {{ maintenancePlan.totalReclaimable }}
-            </div>
-          </div>
-        </div>
-
-        <InlineNotice
-          v-if="maintenanceError"
-          tone="error"
-          title="Очистка недоступна"
-          :message="maintenanceError"
-          class="mb-4"
-        />
-
-        <div class="grid gap-3 lg:grid-cols-3">
-          <button
-            v-for="item in maintenancePlan.items"
-            :key="item.key"
-            type="button"
-            class="rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60"
-            :class="maintenanceItemClass(item)"
-            :disabled="!item.enabled || maintenanceCleaning"
-            @click="toggleMaintenanceItem(item.key)"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <div class="font-bold text-slate-950">{{ item.title }}</div>
-                <div class="mt-1 text-sm text-slate-500">{{ item.description }}</div>
-              </div>
-              <span
-                class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-black"
-                :class="
-                  isMaintenanceSelected(item.key)
-                    ? 'border-slate-950 bg-slate-950 text-white'
-                    : 'border-slate-300 bg-white text-slate-400'
-                "
-              >
-                {{ isMaintenanceSelected(item.key) ? '✓' : '' }}
-              </span>
-            </div>
-            <div class="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <span class="rounded-full bg-white px-2 py-1 text-slate-700 shadow-sm">
-                {{ item.reclaimable }}
-              </span>
-              <span
-                v-if="item.path"
-                class="truncate rounded-full bg-slate-100 px-2 py-1 text-slate-500"
-              >
-                {{ item.path }}
-              </span>
-              <span v-if="item.reason" class="rounded-full bg-amber-50 px-2 py-1 text-amber-700">
-                {{ item.reason }}
-              </span>
-            </div>
-          </button>
-        </div>
-
-        <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div class="text-sm text-slate-500">
-            Выбрано к очистке:
-            <span class="font-bold text-slate-900">{{ selectedMaintenanceLabel }}</span>
-          </div>
-          <div class="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              class="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="maintenanceLoading || maintenanceCleaning"
-              @click="loadMaintenancePreview"
-            >
-              {{ maintenanceLoading ? 'Проверяем...' : 'Проверить' }}
-            </button>
-            <button
-              type="button"
-              class="rounded-2xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="maintenanceCleaning || selectedMaintenanceItems.length === 0"
-              @click="runMaintenanceCleanup"
-            >
-              {{ maintenanceCleaning ? 'Очищаем...' : 'Очистить выбранное' }}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -525,11 +442,7 @@ import {
   normalizeSystemInfo,
   systemUsageTone,
 } from '../lib/dashboard-system-info.js'
-import {
-  getDefaultMaintenanceSelection,
-  getMaintenanceItemTone,
-  normalizeMaintenancePlan,
-} from '../lib/dashboard-maintenance.js'
+import { normalizeMaintenancePlan } from '../lib/dashboard-maintenance.js'
 import { formatLastUpdatedLabel } from '../lib/view-feedback.js'
 import { useAuthStore } from '../stores/auth.js'
 import { useNotificationsStore } from '../stores/notifications.js'
@@ -548,7 +461,6 @@ const systemLoading = ref(false)
 const maintenancePlan = ref(normalizeMaintenancePlan())
 const maintenanceLoading = ref(false)
 const maintenanceCleaning = ref(false)
-const selectedMaintenanceItems = ref([])
 const logLines = ref(30)
 const statusError = ref('')
 const allServicesError = ref('')
@@ -598,18 +510,11 @@ const activeServicesCount = computed(
 const serviceProblemCount = computed(
   () => loadedServiceStatuses.value.filter((status) => status.health?.level === 'error').length,
 )
-const selectedMaintenanceBytes = computed(() =>
-  maintenancePlan.value.items
-    .filter((item) => selectedMaintenanceItems.value.includes(item.key))
-    .reduce((sum, item) => sum + item.reclaimableBytes, 0),
+const maintenanceCleanupItems = computed(() =>
+  maintenancePlan.value.items.filter((item) => item.enabled).map((item) => item.key),
 )
-const selectedMaintenanceLabel = computed(() =>
-  selectedMaintenanceBytes.value > 0
-    ? maintenancePlan.value.items
-        .filter((item) => selectedMaintenanceItems.value.includes(item.key))
-        .map((item) => item.reclaimable)
-        .join(' + ')
-    : 'ничего',
+const canRunMaintenanceCleanup = computed(
+  () => maintenancePlan.value.totalReclaimableBytes > 0 && maintenanceCleanupItems.value.length > 0,
 )
 
 const serviceTile = (service) =>
@@ -634,37 +539,6 @@ const alertClass = (level = 'warning') =>
     : 'border-amber-400/30 bg-amber-400/10 text-amber-100'
 
 const historyBarHeight = (value = 0) => `${Math.max(8, Math.min(100, Number(value) || 0))}%`
-
-const isMaintenanceSelected = (key) => selectedMaintenanceItems.value.includes(key)
-
-const toggleMaintenanceItem = (key) => {
-  const item = maintenancePlan.value.items.find((candidate) => candidate.key === key)
-  if (!item?.enabled) {
-    return
-  }
-  if (isMaintenanceSelected(key)) {
-    selectedMaintenanceItems.value = selectedMaintenanceItems.value.filter(
-      (itemKey) => itemKey !== key,
-    )
-    return
-  }
-  selectedMaintenanceItems.value = [...selectedMaintenanceItems.value, key]
-}
-
-const maintenanceItemClass = (item) => {
-  const tone = getMaintenanceItemTone(item)
-  const selected = isMaintenanceSelected(item.key)
-  if (tone === 'muted') {
-    return 'border-slate-200 bg-slate-50'
-  }
-  if (selected) {
-    return 'border-slate-950 bg-slate-50 shadow-md'
-  }
-  if (tone === 'warning') {
-    return 'border-amber-200 bg-amber-50 hover:border-amber-300'
-  }
-  return 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-}
 
 const loadSystemInfo = async () => {
   systemLoading.value = true
@@ -699,11 +573,6 @@ const loadMaintenancePreview = async () => {
     const res = await authStore.api.get('/server/maintenance/preview')
     const normalized = normalizeMaintenancePlan(res.data)
     maintenancePlan.value = normalized
-    const availableKeys = new Set(normalized.items.map((item) => item.key))
-    const keptSelection = selectedMaintenanceItems.value.filter((key) => availableKeys.has(key))
-    selectedMaintenanceItems.value = keptSelection.length
-      ? keptSelection
-      : getDefaultMaintenanceSelection(normalized)
     maintenanceError.value = ''
   } catch (error) {
     if (isUnauthorizedError(error)) {
@@ -717,18 +586,17 @@ const loadMaintenancePreview = async () => {
 }
 
 const runMaintenanceCleanup = async () => {
-  if (selectedMaintenanceItems.value.length === 0) {
-    notifications.error('Выбери хотя бы один пункт очистки')
+  if (!canRunMaintenanceCleanup.value) {
+    notifications.error('Сейчас нечего очищать')
     return
   }
   maintenanceCleaning.value = true
   try {
     const res = await authStore.api.post('/server/maintenance/cleanup', {
-      items: selectedMaintenanceItems.value,
+      items: maintenanceCleanupItems.value,
     })
     const normalized = normalizeMaintenancePlan(res.data)
     maintenancePlan.value = normalized
-    selectedMaintenanceItems.value = getDefaultMaintenanceSelection(normalized)
     maintenanceError.value = ''
     notifications.success(`Очистка завершена, освобождено ${normalized.cleaned || '0B'}`)
     await loadSystemInfo()
