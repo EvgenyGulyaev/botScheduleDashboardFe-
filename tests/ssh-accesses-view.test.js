@@ -15,9 +15,8 @@ test('ssh accesses route is super admin dashboard route', () => {
   assert.match(router, /requiresSuperAdmin: true/)
 })
 
-test('dashboard exposes ssh accesses entry point', () => {
-  assert.match(dashboard, /to="\/dashboard\/ssh-accesses"/)
-  assert.match(dashboard, /SSH доступы/)
+test('dashboard does not duplicate ssh accesses entry point from navbar', () => {
+  assert.doesNotMatch(dashboard, /to="\/dashboard\/ssh-accesses"/)
 })
 
 test('ssh accesses view uses public key and folder permission API contract', () => {

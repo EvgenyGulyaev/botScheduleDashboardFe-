@@ -91,12 +91,6 @@
             >
               {{ loadingAll ? 'Обновляем...' : 'Обновить' }}
             </button>
-            <RouterLink
-              to="/dashboard/ssh-accesses"
-              class="col-span-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-bold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 sm:col-span-1"
-            >
-              SSH доступы
-            </RouterLink>
           </div>
         </div>
 
