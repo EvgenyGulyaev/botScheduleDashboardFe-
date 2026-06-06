@@ -27,6 +27,10 @@ test('dashboard does not keep the old top service selector', () => {
   assert.doesNotMatch(dashboardVue, /<label[^>]*>\s*Сервис:/)
 })
 
+test('dashboard service cards avoid redundant status text', () => {
+  assert.doesNotMatch(dashboardVue, /serviceTile\(service\)\.status/)
+})
+
 test('dashboard exposes maintenance as compact cleanup action only when useful', () => {
   assert.doesNotMatch(dashboardVue, /<!-- Обслуживание сервера -->/)
   assert.match(dashboardVue, /v-if="canRunMaintenanceCleanup"/)

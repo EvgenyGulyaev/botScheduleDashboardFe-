@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  formatServiceUptime,
   formatServiceMemoryTotal,
   getServiceHealthBadge,
   getServicesMemoryTotalBytes,
@@ -56,8 +57,18 @@ test('builds service tile summary with health icon and compact stats', () => {
   assert.deepEqual(summary, {
     icon: '🟢',
     status: 'active',
-    meta: ['2h ago', 'RAM 9.8M', '0 restarts'],
+    meta: ['2h', 'RAM 9.8M'],
   })
+})
+
+test('formats service uptime as compact duration', () => {
+  assert.equal(formatServiceUptime('48min ago'), '48m')
+  assert.equal(formatServiceUptime('2h ago'), '2h')
+  assert.equal(formatServiceUptime('2hours ago'), '2h')
+  assert.equal(formatServiceUptime('1 week ago'), '7d')
+  assert.equal(formatServiceUptime('1 week 5 days ago'), '12d')
+  assert.equal(formatServiceUptime('2 days ago'), '2d')
+  assert.equal(formatServiceUptime('35s ago'), '35s')
 })
 
 test('maps health levels to dashboard badge styles', () => {

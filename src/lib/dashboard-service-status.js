@@ -95,12 +95,49 @@ export const getServicesMemoryTotalBytes = (statuses = {}) =>
     0,
   )
 
+export const formatServiceUptime = (uptime = '') => {
+  const text = String(uptime)
+    .trim()
+    .toLowerCase()
+    .replace(/\bago\b/g, '')
+    .trim()
+  if (!text) {
+    return ''
+  }
+
+  const weekMatches = [...text.matchAll(/(\d+)\s*w(?:eek)?s?/g)]
+  const dayMatches = [...text.matchAll(/(\d+)\s*d(?:ay)?s?/g)]
+  const daysTotal =
+    weekMatches.reduce((sum, match) => sum + Number(match[1]) * 7, 0) +
+    dayMatches.reduce((sum, match) => sum + Number(match[1]), 0)
+  if (daysTotal > 0) {
+    return `${daysTotal}d`
+  }
+
+  const units = [
+    { pattern: /(\d+)\s*h(?:our)?s?/g, suffix: 'h', multiplier: 1 },
+    { pattern: /(\d+)\s*m(?:in(?:ute)?)?s?/g, suffix: 'm', multiplier: 1 },
+    { pattern: /(\d+)\s*s(?:ec(?:ond)?)?s?/g, suffix: 's', multiplier: 1 },
+  ]
+
+  for (const unit of units) {
+    let total = 0
+    for (const match of text.matchAll(unit.pattern)) {
+      total += Number(match[1]) * unit.multiplier
+    }
+    if (total > 0) {
+      return `${total}${unit.suffix}`
+    }
+  }
+
+  return uptime
+}
+
 export const summarizeServiceTile = (status = normalizeServiceStatus()) => {
   const badge = getServiceHealthBadge(status.health?.level)
   const meta = [
-    status.stats?.uptime,
+    formatServiceUptime(status.stats?.uptime),
     status.stats?.memory ? `RAM ${status.stats.memory}` : '',
-    status.stats?.restarts ? `${status.stats.restarts} restarts` : '',
   ].filter(Boolean)
 
   return {

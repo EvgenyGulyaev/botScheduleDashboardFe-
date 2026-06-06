@@ -271,9 +271,6 @@
                   <span class="text-2xl">{{ serviceTile(service).icon }}</span>
                   <span class="truncate font-black text-slate-950">{{ service }}</span>
                 </div>
-                <div class="mt-1 text-sm font-semibold text-slate-500">
-                  {{ serviceTile(service).status }}
-                </div>
               </div>
             </div>
             <div class="mt-3 flex flex-wrap gap-1">
