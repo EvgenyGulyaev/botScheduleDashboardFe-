@@ -19,6 +19,12 @@ test('desktop navigation does not depend on hover-only dropdowns', () => {
   assert.doesNotMatch(appVue, /group-hover:visible/)
 })
 
+test('brand opens service dashboard and admin dropdown is users-oriented', () => {
+  assert.match(appVue, /<router-link to="\/dashboard"[\s\S]*?Bot Admin/)
+  assert.match(appVue, /👥 Пользователи/)
+  assert.doesNotMatch(appVue, /📊 Dashboard/)
+})
+
 test('drawing route uses fixed viewport shell without page scroll', () => {
   assert.match(appVue, /appShellClass/)
   assert.match(appVue, /route\.name === 'Drawing'[\s\S]*?h-\[100dvh\] overflow-hidden bg-gray-50/)

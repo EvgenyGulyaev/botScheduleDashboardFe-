@@ -48,14 +48,17 @@ const APP_MENU_ITEMS = [
     icon: '🔊',
     permissionOnly: true,
   },
+  {
+    key: 'proxy',
+    to: '/proxy',
+    label: 'Прокси',
+    icon: '🛰️',
+    superAdminOnly: true,
+    alwaysVisible: true,
+  },
 ]
 
 const ADMIN_MENU_ITEMS = [
-  {
-    to: '/dashboard',
-    label: 'Статистика сервисов',
-    icon: '📊',
-  },
   {
     to: '/admin/users',
     label: 'Пользователи',
@@ -95,6 +98,9 @@ export const getAppMenuItems = (options = false) => {
   const shouldFilterPermissions = permissionSet.size > 0
 
   return APP_MENU_ITEMS.filter((item) => {
+    if (item.superAdminOnly && !isSuperAdmin) {
+      return false
+    }
     if (item.adminOnly && !isAdmin && !isSuperAdmin) {
       return false
     }
@@ -108,7 +114,7 @@ export const getAppMenuItems = (options = false) => {
       return false
     }
     return true
-  }).map(({ key, adminOnly, permissionOnly, alwaysVisible, ...item }) => item)
+  }).map(({ key, adminOnly, superAdminOnly, permissionOnly, alwaysVisible, ...item }) => item)
 }
 
 export const getAdminMenuItems = (isSuperAdmin = false) =>

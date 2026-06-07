@@ -50,10 +50,34 @@ test('filters app menu by user app permissions', () => {
   )
 })
 
+test('shows proxy app only for super admins', () => {
+  assert.equal(
+    getAppMenuItems({
+      isAdmin: true,
+      isSuperAdmin: false,
+      appPermissions: ['chat', 'proxy'],
+    }).some((item) => item.to === '/proxy'),
+    false,
+  )
+
+  assert.deepEqual(
+    getAppMenuItems({
+      isAdmin: true,
+      isSuperAdmin: true,
+      appPermissions: ['chat'],
+    }).find((item) => item.to === '/proxy'),
+    {
+      to: '/proxy',
+      label: 'Прокси',
+      icon: '🛰️',
+    },
+  )
+})
+
 test('shows admin dashboard dropdown only for super admins', () => {
   assert.deepEqual(getAdminMenuItems(false), [])
   assert.deepEqual(
     getAdminMenuItems(true).map((item) => item.to),
-    ['/dashboard', '/admin/users', '/admin/audit', '/dashboard/ssh-accesses'],
+    ['/admin/users', '/admin/audit', '/dashboard/ssh-accesses'],
   )
 })

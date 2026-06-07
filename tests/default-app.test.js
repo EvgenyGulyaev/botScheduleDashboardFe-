@@ -14,6 +14,7 @@ test('resolves known default app values to routes', () => {
   assert.equal(resolveDefaultAppRoute('short-links'), '/short-links')
   assert.equal(resolveDefaultAppRoute('wedding'), '/wedding')
   assert.equal(resolveDefaultAppRoute('drawing'), '/drawing')
+  assert.equal(resolveDefaultAppRoute('proxy'), '/proxy')
 })
 
 test('drawing can be a default app independent of access permission', () => {

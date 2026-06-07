@@ -314,7 +314,7 @@ const permissionOptions = DEFAULT_APP_OPTIONS.map((option) => ({
 
 const availablePermissionOptions = computed(() =>
   permissionOptions.filter((option) => {
-    if (option.value === 'dashboard') {
+    if (option.value === 'dashboard' || option.value === 'proxy') {
       return form.value.isSuperAdmin
     }
     return true
@@ -345,7 +345,7 @@ watch(
     if (form.value.isSuperAdmin && !form.value.appPermissions.includes('dashboard')) {
       form.value.appPermissions.unshift('dashboard')
     }
-    if (!form.value.isSuperAdmin && form.value.defaultApp === 'dashboard') {
+    if (!form.value.isSuperAdmin && ['dashboard', 'proxy'].includes(form.value.defaultApp)) {
       form.value.defaultApp = 'chat'
     }
   },

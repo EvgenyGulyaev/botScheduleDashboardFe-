@@ -11,7 +11,9 @@
         <div class="flex justify-between items-center h-16">
           <!-- Логотип -->
           <div class="flex items-center">
-            <h1 class="text-xl font-bold text-gray-900">🤖 Bot Admin</h1>
+            <router-link to="/dashboard" class="text-xl font-bold text-gray-900">
+              🤖 Bot Admin
+            </router-link>
           </div>
 
           <!-- Десктоп меню -->
@@ -25,7 +27,7 @@
                   :aria-expanded="openDesktopMenu === 'dashboard'"
                   @click="toggleDesktopMenu('dashboard')"
                 >
-                  📊 Dashboard
+                  👥 Пользователи
                   <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
                       stroke-linecap="round"
@@ -142,7 +144,7 @@
           <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <div v-if="adminMenuItems.length" class="border-b border-gray-100 pb-2">
               <div class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                Dashboard
+                Пользователи
               </div>
               <router-link
                 v-for="item in adminMenuItems"
