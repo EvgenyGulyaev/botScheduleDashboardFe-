@@ -7,8 +7,36 @@ import { dirname, resolve } from 'node:path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const dashboardVue = readFileSync(resolve(__dirname, '../src/views/Dashboard.vue'), 'utf8')
 
-test('dashboard service cards include drawing service daemon', () => {
-  assert.match(dashboardVue, /'drawing-service'/)
+test('dashboard service cards include drawyer and proxy services', () => {
+  assert.match(dashboardVue, /'drawyer'/)
+  assert.match(dashboardVue, /'proxy'/)
+})
+
+test('dashboard service cards keep the requested order', () => {
+  const servicesIndex = dashboardVue.indexOf('const services = [')
+  const servicesEndIndex = dashboardVue.indexOf(']', servicesIndex)
+  const servicesBlock = dashboardVue.slice(servicesIndex, servicesEndIndex)
+
+  const expected = [
+    'dashboard',
+    'chat',
+    'alice-TTS',
+    'drawyer',
+    'proxy',
+    'shotener',
+    'geo3d',
+    'lawyer',
+    'bot',
+    'bot-discord',
+  ]
+
+  let lastIndex = -1
+  for (const service of expected) {
+    const index = servicesBlock.indexOf(`'${service}'`)
+    assert.notEqual(index, -1, `${service} should be in services list`)
+    assert.ok(index > lastIndex, `${service} should stay in requested order`)
+    lastIndex = index
+  }
 })
 
 test('dashboard puts server overview before service sections', () => {

@@ -438,7 +438,7 @@ import { isUnauthorizedError } from '../lib/auth-session.js'
 
 const authStore = useAuthStore()
 const notifications = useNotificationsStore()
-const selectedService = ref('bot')
+const selectedService = ref('dashboard')
 const selectedStatus = ref(normalizeServiceStatus({ service: selectedService.value }))
 const loading = ref(false)
 const loadingAll = ref(false)
@@ -459,15 +459,16 @@ const hasLoadedStatus = ref(false)
 const hasLoadedServices = ref(false)
 
 const services = [
-  'bot',
   'dashboard',
-  'bot-nickname',
+  'chat',
+  'alice-TTS',
+  'drawyer',
+  'proxy',
   'shotener',
   'geo3d',
-  'dashboard-chat',
-  'alice-speaker-service',
-  'lawyer-backend',
-  'drawing-service',
+  'lawyer',
+  'bot',
+  'bot-discord',
 ]
 const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdatedAt.value))
 const botStatus = computed(() => selectedStatus.value.status)

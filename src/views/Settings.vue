@@ -715,7 +715,7 @@ const loadAliceAccounts = async () => {
     aliceAccounts.value = await authStore.fetchAliceAccounts()
     if (!aliceAccounts.value.length) {
       aliceSettingsHint.value =
-        'Alice service подключён, но аккаунты ещё не добавлены. Их можно будет завести в alice-speaker-service отдельно.'
+        'Alice service подключён, но аккаунты ещё не добавлены. Их можно будет завести в alice-TTS отдельно.'
     }
   } catch (error) {
     aliceAccounts.value = []
