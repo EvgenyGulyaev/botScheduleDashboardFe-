@@ -9,15 +9,19 @@ const proxyVue = readFileSync(resolve(__dirname, '../src/views/Proxy.vue'), 'utf
 const router = readFileSync(resolve(__dirname, '../src/router/index.js'), 'utf8')
 
 test('proxy route is a super admin app', () => {
-  assert.match(router, /path: '\/proxy'/)
+  assert.match(router, /path: '\/proxy\/:section\?'/)
   assert.match(router, /name: 'Proxy'/)
   assert.match(router, /requiresSuperAdmin: true/)
 })
 
-test('proxy view manages runtime, nodes and users', () => {
+test('proxy view manages runtime, nodes, users and routes', () => {
   assert.match(proxyVue, /\/proxy\/runtime\/status/)
   assert.match(proxyVue, /\/proxy\/runtime\/apply/)
   assert.match(proxyVue, /\/proxy\/nodes/)
+  assert.match(proxyVue, /\/proxy\/nodes\/\$\{node\.id\}\/check/)
   assert.match(proxyVue, /\/proxy\/users/)
+  assert.match(proxyVue, /\/proxy\/routes/)
   assert.match(proxyVue, /vless-link/)
+  assert.match(proxyVue, /Direct-маршруты/)
+  assert.match(proxyVue, /Импорт VLESS/)
 })

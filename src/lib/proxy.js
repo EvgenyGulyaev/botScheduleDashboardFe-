@@ -51,11 +51,22 @@ export const normalizeProxyUser = (payload = {}) => ({
   trafficLimitBytes: payload.traffic_limit_bytes ?? payload.trafficLimitBytes ?? null,
 })
 
-export const normalizeProxyState = ({ runtime, nodes, pools, users } = {}) => ({
+export const normalizeProxyRouteRule = (payload = {}) => ({
+  id: payload.id ?? '',
+  name: payload.name ?? '',
+  kind: payload.kind ?? 'domain',
+  value: payload.value ?? '',
+  outboundTag: payload.outbound_tag ?? payload.outboundTag ?? 'direct',
+  enabled: Boolean(payload.enabled),
+  priority: Number(payload.priority ?? 100),
+})
+
+export const normalizeProxyState = ({ runtime, nodes, pools, users, routes } = {}) => ({
   runtime: normalizeProxyRuntime(runtime),
   nodes: toArray(nodes).map(normalizeProxyNode),
   pools: toArray(pools).map(normalizeProxyPool),
   users: toArray(users).map(normalizeProxyUser),
+  routes: toArray(routes).map(normalizeProxyRouteRule),
 })
 
 export const proxyHealthTone = (status = '') => {
@@ -69,4 +80,23 @@ export const proxyHealthTone = (status = '') => {
     default:
       return 'muted'
   }
+}
+
+export const inferVlessName = (raw = '') => {
+  try {
+    const url = new URL(raw)
+    if (url.protocol !== 'vless:') return ''
+    return decodeURIComponent(url.hash.replace(/^#/, '')) || url.hostname
+  } catch {
+    return ''
+  }
+}
+
+export const inferVlessCountry = (raw = '') => {
+  const value = `${inferVlessName(raw)} ${raw}`.toLowerCase()
+  if (value.includes('🇩🇪') || value.includes('germany') || value.includes('de')) return 'DE'
+  if (value.includes('🇳🇱') || value.includes('netherlands') || value.includes('nl')) return 'NL'
+  if (value.includes('🇫🇮') || value.includes('finland') || value.includes('fi')) return 'FI'
+  if (value.includes('🇺🇸') || value.includes('usa') || value.includes('us')) return 'US'
+  return ''
 }

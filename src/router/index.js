@@ -27,7 +27,7 @@ const routes = [
     meta: { requiresAuth: true, requiresSuperAdmin: true, appKey: 'dashboard' },
   },
   {
-    path: '/proxy',
+    path: '/proxy/:section?',
     name: 'Proxy',
     component: () => import('../views/Proxy.vue'),
     meta: { requiresAuth: true, requiresSuperAdmin: true },
