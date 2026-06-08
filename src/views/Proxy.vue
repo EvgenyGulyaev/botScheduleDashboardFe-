@@ -441,6 +441,22 @@
           </div>
           <button class="proxy-secondary" type="button" @click="closeVlessModal">Закрыть</button>
         </div>
+        <div v-if="vlessModal.mode === 'config'" class="mt-4 grid gap-2 sm:max-w-xs">
+          <label class="text-xs font-bold uppercase tracking-wide text-slate-500" for="proxy-config-format">
+            Формат
+          </label>
+          <select
+            id="proxy-config-format"
+            v-model="vlessModal.format"
+            class="proxy-input"
+            :disabled="vlessModal.loading"
+            @change="reloadUserConfigFormat"
+          >
+            <option v-for="format in CONFIG_FORMATS" :key="format.value" :value="format.value">
+              {{ format.label }}
+            </option>
+          </select>
+        </div>
         <textarea readonly class="proxy-input mt-4 min-h-44 font-mono text-xs" :value="vlessModal.content"></textarea>
         <div class="mt-3 flex gap-2">
           <button class="proxy-primary" type="button" @click="copyVlessModalContent">Скопировать</button>
@@ -492,9 +508,25 @@ const draggingUserPoolId = ref('')
 const POOL_PAGE_SIZE = 8
 const BROKEN_NODES_GROUP = 'Нерабочие'
 const DEFAULT_ROUTE_GROUP_ID = 'default'
+const CONFIG_FORMATS = [
+  { value: 'happ', label: 'Happ' },
+  { value: 'ficlashx', label: 'FIClashX' },
+  { value: 'koala-clash', label: 'Koala Clash' },
+  { value: 'prizrak-box', label: 'Prizrak-Box' },
+]
 
 const modal = reactive({ open: false, type: '', mode: 'create', id: '' })
-const vlessModal = reactive({ open: false, title: '', userLabel: '', content: '', filename: '' })
+const vlessModal = reactive({
+  open: false,
+  mode: '',
+  title: '',
+  userId: '',
+  userLabel: '',
+  format: 'happ',
+  content: '',
+  filename: '',
+  loading: false,
+})
 const collapsedNodeGroups = reactive({ [BROKEN_NODES_GROUP]: true })
 const collapsedRouteGroups = reactive({})
 
@@ -970,7 +1002,9 @@ const loadVlessLink = async (user) => {
   try {
     const { data } = await authStore.api.get(`/proxy/users/${user.id}/vless-link`)
     vlessModal.open = true
+    vlessModal.mode = 'link'
     vlessModal.title = 'VLESS ссылка'
+    vlessModal.userId = user.id
     vlessModal.userLabel = user.label
     vlessModal.content = data.link || ''
     vlessModal.filename = ''
@@ -979,17 +1013,30 @@ const loadVlessLink = async (user) => {
   }
 }
 
-const loadUserConfig = async (user) => {
+const loadUserConfig = async (user, format = vlessModal.format || 'happ') => {
+  vlessModal.loading = true
   try {
-    const { data } = await authStore.api.get(`/proxy/users/${user.id}/config`)
+    const { data } = await authStore.api.get(
+      `/proxy/users/${user.id}/config?format=${encodeURIComponent(format)}`,
+    )
     vlessModal.open = true
+    vlessModal.mode = 'config'
     vlessModal.title = 'Клиентский config'
+    vlessModal.userId = user.id
     vlessModal.userLabel = user.label
-    vlessModal.content = JSON.stringify(data.config || {}, null, 2)
+    vlessModal.format = data.format || format
+    vlessModal.content = data.content || JSON.stringify(data.config || {}, null, 2)
     vlessModal.filename = data.filename || `${user.label}-proxy-config.json`
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось получить config')
+  } finally {
+    vlessModal.loading = false
   }
+}
+
+const reloadUserConfigFormat = async () => {
+  if (!vlessModal.userId) return
+  await loadUserConfig({ id: vlessModal.userId, label: vlessModal.userLabel }, vlessModal.format)
 }
 
 const copyVlessModalContent = async () => {
@@ -1009,6 +1056,7 @@ const downloadUserConfig = () => {
 
 const closeVlessModal = () => {
   vlessModal.open = false
+  vlessModal.loading = false
 }
 
 const isUserPoolSelected = (poolId) => userDraft.pool_priorities.some((item) => item.poolId === poolId)

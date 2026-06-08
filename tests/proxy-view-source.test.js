@@ -46,3 +46,13 @@ test('proxy view manages runtime, nodes, users and routes', () => {
   assert.match(proxyVue, /openRouteModal/)
   assert.match(proxyVue, /openNodeModal/)
 })
+
+test('proxy config modal exposes client format selector', () => {
+  assert.match(proxyVue, /CONFIG_FORMATS/)
+  assert.match(proxyVue, /Happ/)
+  assert.match(proxyVue, /FIClashX/)
+  assert.match(proxyVue, /Koala Clash/)
+  assert.match(proxyVue, /Prizrak-Box/)
+  assert.match(proxyVue, /format=\$\{encodeURIComponent\(format\)\}/)
+  assert.match(proxyVue, /reloadUserConfigFormat/)
+})
