@@ -49,10 +49,15 @@ test('proxy view manages runtime, nodes, users and routes', () => {
 
 test('proxy config modal exposes client format selector', () => {
   assert.match(proxyVue, /CONFIG_FORMATS/)
-  assert.match(proxyVue, /Happ/)
+  assert.match(proxyVue, /Happ маршруты/)
   assert.match(proxyVue, /FIClashX/)
   assert.match(proxyVue, /Koala Clash/)
   assert.match(proxyVue, /Prizrak-Box/)
   assert.match(proxyVue, /format=\$\{encodeURIComponent\(format\)\}/)
   assert.match(proxyVue, /reloadUserConfigFormat/)
+  assert.match(proxyVue, /Клиентский конфиг/)
+  assert.match(proxyVue, /VLESS ссылка/)
+  assert.match(proxyVue, /switchVlessModalMode/)
+  assert.match(proxyVue, /\$\{user\.label\}-vless-link\.txt/)
+  assert.match(proxyVue, /contentType/)
 })

@@ -436,11 +436,31 @@
       <div class="proxy-modal max-w-3xl">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <h3 class="text-xl font-black text-slate-950">{{ vlessModal.title }}</h3>
+            <h3 class="text-xl font-black text-slate-950">Клиентский config</h3>
             <p class="mt-1 text-sm text-slate-500">{{ vlessModal.userLabel }}</p>
           </div>
           <button class="proxy-secondary" type="button" @click="closeVlessModal">Закрыть</button>
         </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button
+            :class="vlessModal.mode === 'config' ? 'proxy-primary' : 'proxy-secondary'"
+            type="button"
+            :disabled="vlessModal.loading"
+            @click="switchVlessModalMode('config')"
+          >
+            Клиентский конфиг
+          </button>
+          <button
+            :class="vlessModal.mode === 'link' ? 'proxy-primary' : 'proxy-secondary'"
+            type="button"
+            :disabled="vlessModal.loading"
+            @click="switchVlessModalMode('link')"
+          >
+            VLESS ссылка
+          </button>
+        </div>
+
         <div v-if="vlessModal.mode === 'config'" class="mt-4 grid gap-2 sm:max-w-xs">
           <label class="text-xs font-bold uppercase tracking-wide text-slate-500" for="proxy-config-format">
             Формат
@@ -509,7 +529,7 @@ const POOL_PAGE_SIZE = 8
 const BROKEN_NODES_GROUP = 'Нерабочие'
 const DEFAULT_ROUTE_GROUP_ID = 'default'
 const CONFIG_FORMATS = [
-  { value: 'happ', label: 'Happ' },
+  { value: 'happ', label: 'Happ маршруты' },
   { value: 'ficlashx', label: 'FIClashX' },
   { value: 'koala-clash', label: 'Koala Clash' },
   { value: 'prizrak-box', label: 'Prizrak-Box' },
@@ -519,12 +539,12 @@ const modal = reactive({ open: false, type: '', mode: 'create', id: '' })
 const vlessModal = reactive({
   open: false,
   mode: '',
-  title: '',
   userId: '',
   userLabel: '',
   format: 'happ',
   content: '',
   filename: '',
+  contentType: 'text/plain',
   loading: false,
 })
 const collapsedNodeGroups = reactive({ [BROKEN_NODES_GROUP]: true })
@@ -999,17 +1019,20 @@ const deleteAndReload = async (url, question, success, fallback) => {
 }
 
 const loadVlessLink = async (user) => {
+  vlessModal.loading = true
   try {
     const { data } = await authStore.api.get(`/proxy/users/${user.id}/vless-link`)
     vlessModal.open = true
     vlessModal.mode = 'link'
-    vlessModal.title = 'VLESS ссылка'
     vlessModal.userId = user.id
     vlessModal.userLabel = user.label
     vlessModal.content = data.link || ''
-    vlessModal.filename = ''
+    vlessModal.filename = `${user.label}-vless-link.txt`
+    vlessModal.contentType = 'text/plain'
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось получить VLESS ссылку')
+  } finally {
+    vlessModal.loading = false
   }
 }
 
@@ -1021,12 +1044,12 @@ const loadUserConfig = async (user, format = vlessModal.format || 'happ') => {
     )
     vlessModal.open = true
     vlessModal.mode = 'config'
-    vlessModal.title = 'Клиентский config'
     vlessModal.userId = user.id
     vlessModal.userLabel = user.label
     vlessModal.format = data.format || format
     vlessModal.content = data.content || JSON.stringify(data.config || {}, null, 2)
     vlessModal.filename = data.filename || `${user.label}-proxy-config.json`
+    vlessModal.contentType = data.content_type || 'text/plain'
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось получить config')
   } finally {
@@ -1039,13 +1062,23 @@ const reloadUserConfigFormat = async () => {
   await loadUserConfig({ id: vlessModal.userId, label: vlessModal.userLabel }, vlessModal.format)
 }
 
+const switchVlessModalMode = async (mode) => {
+  if (!vlessModal.userId || vlessModal.mode === mode) return
+  const user = { id: vlessModal.userId, label: vlessModal.userLabel }
+  if (mode === 'link') {
+    await loadVlessLink(user)
+    return
+  }
+  await loadUserConfig(user, vlessModal.format)
+}
+
 const copyVlessModalContent = async () => {
   await navigator.clipboard?.writeText(vlessModal.content)
   notifications.success('Скопировано')
 }
 
 const downloadUserConfig = () => {
-  const blob = new Blob([vlessModal.content], { type: 'application/json' })
+  const blob = new Blob([vlessModal.content], { type: vlessModal.contentType || 'text/plain' })
   const href = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = href
