@@ -46,6 +46,10 @@ export const normalizeProxyUser = (payload = {}) => ({
   uuid: payload.uuid ?? '',
   enabled: Boolean(payload.enabled),
   poolId: payload.pool_id ?? payload.poolId ?? '',
+  poolPriorities: toArray(payload.pool_priorities ?? payload.poolPriorities).map((item) => ({
+    poolId: item.pool_id ?? item.poolId ?? '',
+    priority: Number(item.priority ?? 100),
+  })),
   selectionMode: payload.selection_mode ?? payload.selectionMode ?? 'pool',
   activeNodeId: payload.active_node_id ?? payload.activeNodeId ?? '',
   trafficLimitBytes: payload.traffic_limit_bytes ?? payload.trafficLimitBytes ?? null,
