@@ -77,7 +77,7 @@ test('shows proxy app for users with proxy permission', () => {
     getAppMenuItems({
       isAdmin: true,
       isSuperAdmin: true,
-      appPermissions: ['chat', 'proxy'],
+      appPermissions: ['chat'],
     }).find((item) => item.to === '/proxy'),
     {
       to: '/proxy',

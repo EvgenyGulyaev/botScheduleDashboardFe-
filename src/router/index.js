@@ -30,7 +30,7 @@ const routes = [
     path: '/proxy/:section?',
     name: 'Proxy',
     component: () => import('../views/Proxy.vue'),
-    meta: { requiresAuth: true, appKey: 'proxy' },
+    meta: { requiresAuth: true, appKey: 'proxy', superAdminBypass: true },
   },
   {
     path: '/admin/users',

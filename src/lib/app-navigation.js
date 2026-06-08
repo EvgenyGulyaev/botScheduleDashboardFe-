@@ -54,6 +54,7 @@ const APP_MENU_ITEMS = [
     label: 'Прокси',
     icon: '🛰️',
     permissionOnly: true,
+    superAdminBypass: true,
   },
 ]
 
@@ -103,17 +104,21 @@ export const getAppMenuItems = (options = false) => {
     if (item.adminOnly && !isAdmin && !isSuperAdmin) {
       return false
     }
-    if (item.permissionOnly && !permissionSet.has(item.key)) {
+    const canBypassPermission = Boolean(item.superAdminBypass && isSuperAdmin)
+    if (item.permissionOnly && !permissionSet.has(item.key) && !canBypassPermission) {
       return false
     }
     if (item.alwaysVisible) {
       return true
     }
-    if (shouldFilterPermissions && !permissionSet.has(item.key)) {
+    if (shouldFilterPermissions && !permissionSet.has(item.key) && !canBypassPermission) {
       return false
     }
     return true
-  }).map(({ key, adminOnly, superAdminOnly, permissionOnly, alwaysVisible, ...item }) => item)
+  }).map(
+    ({ key, adminOnly, superAdminOnly, permissionOnly, alwaysVisible, superAdminBypass, ...item }) =>
+      item,
+  )
 }
 
 export const getAdminMenuItems = (isSuperAdmin = false) =>

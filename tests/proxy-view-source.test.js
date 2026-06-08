@@ -13,6 +13,7 @@ test('proxy route is protected by proxy app permission', () => {
 
   assert.match(route, /name: 'Proxy'/)
   assert.match(route, /appKey: 'proxy'/)
+  assert.match(route, /superAdminBypass: true/)
   assert.doesNotMatch(route, /requiresSuperAdmin/)
 })
 

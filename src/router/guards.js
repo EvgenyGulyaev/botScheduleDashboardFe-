@@ -25,11 +25,14 @@ export const resolveAuthRedirect = ({
     return defaultRoute
   }
 
+  const canBypassAppPermission = Boolean(to.meta?.superAdminBypass && isSuperAdmin)
+
   if (
     isAuthenticated &&
     to.meta?.appKey &&
     Array.isArray(appPermissions) &&
-    !appPermissions.includes(to.meta.appKey)
+    !appPermissions.includes(to.meta.appKey) &&
+    !canBypassAppPermission
   ) {
     return defaultRoute
   }

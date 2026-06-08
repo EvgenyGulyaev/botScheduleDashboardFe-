@@ -41,6 +41,19 @@ test('redirects users without app permission away from app routes', () => {
   assert.equal(result, '/chat')
 })
 
+test('allows super admin through app routes with explicit bypass', () => {
+  const result = resolveAuthRedirect({
+    isAuthenticated: true,
+    isAdmin: true,
+    isSuperAdmin: true,
+    appPermissions: ['chat'],
+    defaultRoute: '/chat',
+    to: { path: '/proxy', meta: { requiresAuth: true, appKey: 'proxy', superAdminBypass: true } },
+  })
+
+  assert.equal(result, true)
+})
+
 test('redirects non-super-admin users away from super-admin-only routes', () => {
   const result = resolveAuthRedirect({
     isAuthenticated: true,
