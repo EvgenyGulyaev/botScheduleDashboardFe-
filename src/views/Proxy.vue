@@ -668,6 +668,18 @@ const applyRuntime = async () => {
   }
 }
 
+const applyRuntimeAfterMutation = async () => {
+  try {
+    await authStore.api.post('/proxy/runtime/apply')
+    return true
+  } catch (error) {
+    notifications.errorFrom(error, 'Настройки сохранены, но Xray config не применился')
+    return false
+  }
+}
+
+const appliedMutationMessage = (message, applied) => `${message}${applied ? ' и применен' : ''}`
+
 function defaultNodeDraft() {
   return { name: '', country: '', pool_id: '', url: '', enabled: true, priority: 100 }
 }
@@ -792,7 +804,8 @@ const saveNode = async () => {
     } else {
       await authStore.api.patch(`/proxy/nodes/${modal.id}`, payload)
     }
-    notifications.success(modal.mode === 'edit' ? 'Нода сохранена' : 'Нода добавлена')
+    const applied = await applyRuntimeAfterMutation()
+    notifications.success(modal.mode === 'edit' ? appliedMutationMessage('Нода сохранена', applied) : appliedMutationMessage('Нода добавлена', applied))
     closeModal()
     await loadProxy()
   } catch (error) {
@@ -811,7 +824,8 @@ const savePool = async () => {
     } else {
       await authStore.api.patch(`/proxy/pools/${modal.id}`, { name: poolDraft.name, mode: 'auto_failover' })
     }
-    notifications.success('Пул сохранен')
+    const applied = await applyRuntimeAfterMutation()
+    notifications.success(appliedMutationMessage('Пул сохранен', applied))
     closeModal()
     await loadProxy()
   } catch (error) {
@@ -839,7 +853,8 @@ const saveUser = async () => {
     } else {
       await authStore.api.patch(`/proxy/users/${modal.id}`, payload)
     }
-    notifications.success('Пользователь сохранен')
+    const applied = await applyRuntimeAfterMutation()
+    notifications.success(appliedMutationMessage('Пользователь сохранен', applied))
     closeModal()
     await loadProxy()
   } catch (error) {
@@ -867,7 +882,8 @@ const saveRoute = async () => {
     } else {
       await authStore.api.patch(`/proxy/routes/${modal.id}`, payload)
     }
-    notifications.success('Маршрут сохранен')
+    const applied = await applyRuntimeAfterMutation()
+    notifications.success(appliedMutationMessage('Маршрут сохранен', applied))
     closeModal()
     await loadProxy()
   } catch (error) {
@@ -886,7 +902,8 @@ const saveRouteGroup = async () => {
     } else {
       await authStore.api.patch(`/proxy/route-groups/${modal.id}`, { name: routeGroupDraft.name })
     }
-    notifications.success('Папка маршрутов сохранена')
+    const applied = await applyRuntimeAfterMutation()
+    notifications.success(appliedMutationMessage('Папка маршрутов сохранена', applied))
     closeModal()
     await loadProxy()
   } catch (error) {
@@ -898,6 +915,7 @@ const checkNode = async (node) => {
   try {
     const { data } = await authStore.api.post(`/proxy/nodes/${node.id}/check`)
     notifications[data.ok ? 'success' : 'error'](data.ok ? 'Нода отвечает' : data.error || 'Нода недоступна')
+    await applyRuntimeAfterMutation()
     await loadProxy()
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось проверить ноду')
@@ -911,6 +929,7 @@ const toggleRoute = async (rule) => patchAndReload(`/proxy/routes/${rule.id}`, {
 const patchAndReload = async (url, payload, fallback) => {
   try {
     await authStore.api.patch(url, payload)
+    await applyRuntimeAfterMutation()
     await loadProxy()
   } catch (error) {
     notifications.errorFrom(error, fallback)
@@ -927,6 +946,7 @@ const deleteAndReload = async (url, question, success, fallback) => {
   if (!window.confirm(question)) return
   try {
     await authStore.api.delete(url)
+    await applyRuntimeAfterMutation()
     notifications.success(success)
     await loadProxy()
   } catch (error) {
