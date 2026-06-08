@@ -322,21 +322,26 @@
 
         <div v-else-if="modal.type === 'user'" class="mt-4 space-y-3">
           <input v-model.trim="userDraft.label" class="proxy-input" placeholder="label, например evgeny" />
-          <div class="space-y-2">
-            <label
-              v-for="pool in pools"
+          <div class="space-y-2" aria-label="Пулы пользователя">
+            <div
+              v-for="pool in userPoolRows"
               :key="pool.id"
-              class="grid grid-cols-[auto_1fr_90px] items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2"
+              class="proxy-user-pool-row"
+              :class="{ selected: pool.selected, dragging: draggingUserPoolId === pool.id }"
+              :draggable="pool.selected"
+              @dragstart="startUserPoolDrag(pool.id, $event)"
+              @dragover.prevent
+              @drop.prevent="dropUserPool(pool.id, $event)"
+              @dragend="finishUserPoolDrag"
             >
-              <input :checked="isUserPoolSelected(pool.id)" type="checkbox" @change="toggleUserPool(pool.id)" />
-              <span class="text-sm font-black text-slate-800">{{ pool.name }}</span>
-              <input
-                class="proxy-priority-input"
-                type="number"
-                :value="poolPriority(pool.id)"
-                @input="setPoolPriority(pool.id, $event.target.value)"
-              />
-            </label>
+              <input :checked="pool.selected" type="checkbox" @change="toggleUserPool(pool.id)" />
+              <span class="min-w-0 truncate text-sm font-black text-slate-800">{{ pool.name }}</span>
+              <div v-if="pool.selected" class="flex items-center gap-1">
+                <button class="proxy-order-button" type="button" title="Выше" @click="moveUserPool(pool.id, -1)">↑</button>
+                <button class="proxy-order-button" type="button" title="Ниже" @click="moveUserPool(pool.id, 1)">↓</button>
+                <span class="proxy-drag-handle" title="Перетащить">↕</span>
+              </div>
+            </div>
           </div>
           <label class="proxy-check">
             <input v-model="userDraft.enabled" type="checkbox" />
@@ -418,6 +423,7 @@ const pools = ref([])
 const users = ref([])
 const routes = ref([])
 const poolPage = ref(1)
+const draggingUserPoolId = ref('')
 const POOL_PAGE_SIZE = 8
 
 const modal = reactive({ open: false, type: '', mode: 'create', id: '' })
@@ -516,6 +522,21 @@ const poolPageRange = computed(() => {
 
 watch(poolTotalPages, (total) => {
   if (poolPage.value > total) poolPage.value = total
+})
+
+const userPoolRows = computed(() => {
+  const selectedIds = orderedUserPoolPriorities().map((item) => item.poolId)
+  const selectedSet = new Set(selectedIds)
+  const selected = selectedIds
+    .map((id) => pools.value.find((pool) => pool.id === id))
+    .filter(Boolean)
+    .map((pool) => ({ ...pool, selected: true }))
+  const unselected = pools.value
+    .filter((pool) => !selectedSet.has(pool.id))
+    .slice()
+    .sort((left, right) => left.name.localeCompare(right.name, 'ru'))
+    .map((pool) => ({ ...pool, selected: false }))
+  return [...selected, ...unselected]
 })
 
 const modalTitle = computed(() => {
@@ -621,7 +642,7 @@ const openUserModal = (user = null) => {
     label: user.label,
     enabled: user.enabled,
     pool_priorities: user.poolPriorities.length
-      ? user.poolPriorities.map((item) => ({ ...item }))
+      ? orderedUserPoolPriorities(user.poolPriorities)
       : (user.poolId ? [{ poolId: user.poolId, priority: 100 }] : []),
   } : defaultUserDraft())
 }
@@ -843,34 +864,68 @@ const closeVlessModal = () => {
 }
 
 const isUserPoolSelected = (poolId) => userDraft.pool_priorities.some((item) => item.poolId === poolId)
-const poolPriority = (poolId) => userDraft.pool_priorities.find((item) => item.poolId === poolId)?.priority || 100
+
+const orderedUserPoolPriorities = (items = userDraft.pool_priorities) =>
+  [...items]
+    .filter((item) => item.poolId)
+    .sort((left, right) => (Number(left.priority) || 100) - (Number(right.priority) || 100))
+    .map((item, index) => ({ poolId: item.poolId, priority: (index + 1) * 100 }))
+
+const syncUserPoolPriorities = (items = userDraft.pool_priorities) => {
+  userDraft.pool_priorities.splice(0, userDraft.pool_priorities.length, ...items.map((item, index) => ({
+    poolId: item.poolId,
+    priority: (index + 1) * 100,
+  })))
+}
 
 const toggleUserPool = (poolId) => {
   const index = userDraft.pool_priorities.findIndex((item) => item.poolId === poolId)
   if (index >= 0) {
     userDraft.pool_priorities.splice(index, 1)
   } else {
-    userDraft.pool_priorities.push({ poolId, priority: nextUserPoolPriority() })
+    userDraft.pool_priorities.push({ poolId, priority: (userDraft.pool_priorities.length + 1) * 100 })
   }
+  syncUserPoolPriorities(orderedUserPoolPriorities())
 }
 
-const setPoolPriority = (poolId, value) => {
-  const item = userDraft.pool_priorities.find((entry) => entry.poolId === poolId)
-  if (item) item.priority = Number(value) || 100
+const moveUserPool = (poolId, direction) => {
+  const ordered = orderedUserPoolPriorities()
+  const from = ordered.findIndex((item) => item.poolId === poolId)
+  const to = from + direction
+  if (from < 0 || to < 0 || to >= ordered.length) return
+  const [item] = ordered.splice(from, 1)
+  ordered.splice(to, 0, item)
+  syncUserPoolPriorities(ordered)
 }
 
-const nextUserPoolPriority = () => {
-  const max = Math.max(0, ...userDraft.pool_priorities.map((item) => Number(item.priority) || 0))
-  return max + 100
+const startUserPoolDrag = (poolId, event) => {
+  if (!isUserPoolSelected(poolId)) return
+  draggingUserPoolId.value = poolId
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', poolId)
+}
+
+const dropUserPool = (targetPoolId, event) => {
+  const sourcePoolId = draggingUserPoolId.value || event.dataTransfer.getData('text/plain')
+  if (!sourcePoolId || sourcePoolId === targetPoolId || !isUserPoolSelected(targetPoolId)) return
+  const ordered = orderedUserPoolPriorities()
+  const from = ordered.findIndex((item) => item.poolId === sourcePoolId)
+  const to = ordered.findIndex((item) => item.poolId === targetPoolId)
+  if (from < 0 || to < 0) return
+  const [item] = ordered.splice(from, 1)
+  ordered.splice(to, 0, item)
+  syncUserPoolPriorities(ordered)
+}
+
+const finishUserPoolDrag = () => {
+  draggingUserPoolId.value = ''
 }
 
 const normalizedUserPoolPayload = () =>
-  [...userDraft.pool_priorities]
-    .filter((item) => item.poolId)
-    .sort((left, right) => (Number(left.priority) || 100) - (Number(right.priority) || 100))
+  orderedUserPoolPriorities()
     .map((item, index) => ({
       pool_id: item.poolId,
-      priority: Number(item.priority) || (index + 1) * 100,
+      priority: (index + 1) * 100,
     }))
 
 const changePoolPage = (direction) => {
@@ -1166,8 +1221,7 @@ onMounted(loadProxy)
   background: rgb(248 250 252);
 }
 
-.proxy-input,
-.proxy-priority-input {
+.proxy-input {
   width: 100%;
   border-radius: 1rem;
   border: 1px solid rgb(226 232 240);
@@ -1180,15 +1234,52 @@ onMounted(loadProxy)
   padding: 0.75rem 0.9rem;
 }
 
-.proxy-priority-input {
-  padding: 0.45rem 0.6rem;
-  font-weight: 800;
-}
-
-.proxy-input:focus,
-.proxy-priority-input:focus {
+.proxy-input:focus {
   border-color: rgb(37 99 235);
   box-shadow: 0 0 0 3px rgb(37 99 235 / 0.12);
+}
+
+.proxy-user-pool-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 1rem;
+  border: 1px solid rgb(226 232 240);
+  background: rgb(248 250 252);
+  padding: 0.65rem 0.75rem;
+}
+
+.proxy-user-pool-row.selected {
+  border-color: rgb(191 219 254);
+  background: rgb(239 246 255);
+}
+
+.proxy-user-pool-row.dragging {
+  opacity: 0.55;
+}
+
+.proxy-order-button,
+.proxy-drag-handle {
+  display: grid;
+  width: 1.85rem;
+  height: 1.85rem;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgb(226 232 240);
+  background: white;
+  color: rgb(51 65 85);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.proxy-order-button:hover {
+  background: rgb(241 245 249);
+}
+
+.proxy-drag-handle {
+  cursor: grab;
+  color: rgb(100 116 139);
 }
 
 .proxy-check {
