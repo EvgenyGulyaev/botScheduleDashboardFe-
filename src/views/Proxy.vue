@@ -242,30 +242,41 @@
         </div>
 
         <div class="mt-4 space-y-4">
-          <article v-for="group in routeGroupRows" :key="group.id" class="proxy-route-group">
-            <div class="flex items-center justify-between gap-3 px-1">
-              <div class="min-w-0">
-                <h4 class="truncate text-lg font-black text-slate-950">{{ group.name }}</h4>
-                <p class="text-xs font-bold text-slate-500">{{ group.routes.length }} маршрутов</p>
+          <details
+            v-for="group in routeGroupRows"
+            :key="group.id"
+            class="proxy-route-group"
+            :open="!isRouteGroupCollapsed(group)"
+            @toggle="setRouteGroupCollapsed(group, $event.target.open)"
+          >
+            <summary class="cursor-pointer list-none">
+              <div class="flex items-center justify-between gap-3 px-1">
+                <div class="flex min-w-0 items-center gap-3">
+                  <span class="proxy-collapse-mark">{{ isRouteGroupCollapsed(group) ? '+' : '−' }}</span>
+                  <div class="min-w-0">
+                    <h4 class="truncate text-lg font-black text-slate-950">{{ group.name }}</h4>
+                    <p class="text-xs font-bold text-slate-500">{{ group.routes.length }} маршрутов</p>
+                  </div>
+                </div>
+                <div class="flex shrink-0 gap-2">
+                  <button class="proxy-icon" type="button" title="Добавить маршрут" @click.stop="openRouteModal(null, group.id)">+</button>
+                  <button
+                    class="proxy-icon"
+                    type="button"
+                    title="Редактировать папку"
+                    :disabled="group.id === DEFAULT_ROUTE_GROUP_ID"
+                    @click.stop="openRouteGroupModal(group)"
+                  >✎</button>
+                  <button
+                    class="proxy-icon danger"
+                    type="button"
+                    title="Удалить папку"
+                    :disabled="group.id === DEFAULT_ROUTE_GROUP_ID"
+                    @click.stop="deleteRouteGroup(group)"
+                  >🗑</button>
+                </div>
               </div>
-              <div class="flex shrink-0 gap-2">
-                <button class="proxy-icon" type="button" title="Добавить маршрут" @click="openRouteModal(null, group.id)">+</button>
-                <button
-                  class="proxy-icon"
-                  type="button"
-                  title="Редактировать папку"
-                  :disabled="group.id === DEFAULT_ROUTE_GROUP_ID"
-                  @click="openRouteGroupModal(group)"
-                >✎</button>
-                <button
-                  class="proxy-icon danger"
-                  type="button"
-                  title="Удалить папку"
-                  :disabled="group.id === DEFAULT_ROUTE_GROUP_ID"
-                  @click="deleteRouteGroup(group)"
-                >🗑</button>
-              </div>
-            </div>
+            </summary>
             <div class="proxy-routes-table mt-3 overflow-x-auto rounded-2xl border border-slate-200">
               <table class="min-w-[720px] w-full border-collapse text-left text-sm">
                 <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.1em] text-slate-500">
@@ -310,7 +321,7 @@
                 </tbody>
               </table>
             </div>
-          </article>
+          </details>
         </div>
       </section>
     </div>
@@ -485,6 +496,7 @@ const DEFAULT_ROUTE_GROUP_ID = 'default'
 const modal = reactive({ open: false, type: '', mode: 'create', id: '' })
 const vlessModal = reactive({ open: false, title: '', userLabel: '', content: '', filename: '' })
 const collapsedNodeGroups = reactive({ [BROKEN_NODES_GROUP]: true })
+const collapsedRouteGroups = reactive({})
 
 const nodeDraft = reactive(defaultNodeDraft())
 const poolDraft = reactive(defaultPoolDraft())
@@ -1117,6 +1129,12 @@ const setNodeGroupCollapsed = (group, open) => {
   collapsedNodeGroups[group.country] = !open
 }
 
+const isRouteGroupCollapsed = (group) => Boolean(collapsedRouteGroups[group.id])
+
+const setRouteGroupCollapsed = (group, open) => {
+  collapsedRouteGroups[group.id] = !open
+}
+
 const normalizeCountryLabel = (country) => {
   const value = String(country || '').trim().toUpperCase()
   const labels = { DE: 'Германия', FI: 'Финляндия', NL: 'Нидерланды', US: 'США' }
@@ -1238,6 +1256,19 @@ onMounted(loadProxy)
   border: 1px solid rgb(226 232 240);
   background: rgb(248 250 252);
   padding: 0.75rem;
+}
+
+.proxy-collapse-mark {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(15 23 42);
+  color: white;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .proxy-pools-table th:nth-child(1),

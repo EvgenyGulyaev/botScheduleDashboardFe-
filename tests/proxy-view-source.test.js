@@ -30,6 +30,8 @@ test('proxy view manages runtime, nodes, users and routes', () => {
   assert.match(proxyVue, /BROKEN_NODES_GROUP = 'Нерабочие'/)
   assert.match(proxyVue, /isBrokenNode\(node\) \? BROKEN_NODES_GROUP/)
   assert.match(proxyVue, /collapsedNodeGroups/)
+  assert.match(proxyVue, /collapsedRouteGroups/)
+  assert.match(proxyVue, /isRouteGroupCollapsed/)
   assert.match(proxyVue, /pool_priorities/)
   assert.match(proxyVue, /route_groups/)
   assert.match(proxyVue, /routeGroupRows/)
