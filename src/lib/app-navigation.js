@@ -53,8 +53,7 @@ const APP_MENU_ITEMS = [
     to: '/proxy',
     label: 'Прокси',
     icon: '🛰️',
-    superAdminOnly: true,
-    alwaysVisible: true,
+    permissionOnly: true,
   },
 ]
 
