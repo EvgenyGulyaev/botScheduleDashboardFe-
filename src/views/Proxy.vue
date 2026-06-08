@@ -115,11 +115,12 @@
           v-for="group in nodesByCountry"
           :key="group.country"
           class="proxy-panel"
+          :class="{ 'proxy-panel-broken': group.broken }"
           open
         >
           <summary class="cursor-pointer list-none">
             <div class="flex items-center justify-between gap-3">
-              <h3 class="proxy-title">{{ group.country }}</h3>
+              <h3 class="proxy-title" :class="{ 'text-rose-700': group.broken }">{{ group.country }}</h3>
               <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
                 {{ group.nodes.length }}
               </span>
@@ -425,6 +426,7 @@ const routes = ref([])
 const poolPage = ref(1)
 const draggingUserPoolId = ref('')
 const POOL_PAGE_SIZE = 8
+const BROKEN_NODES_GROUP = 'Нерабочие'
 
 const modal = reactive({ open: false, type: '', mode: 'create', id: '' })
 const vlessModal = reactive({ open: false, title: '', userLabel: '', content: '', filename: '' })
@@ -483,15 +485,20 @@ const nodeSummary = computed(() => {
 const nodesByCountry = computed(() => {
   const groups = new Map()
   for (const node of nodes.value) {
-    const country = normalizeCountryLabel(node.country)
+    const country = isBrokenNode(node) ? BROKEN_NODES_GROUP : normalizeCountryLabel(node.country)
     if (!groups.has(country)) groups.set(country, [])
     groups.get(country).push(node)
   }
   const result = [...groups.entries()].map(([country, groupNodes]) => ({
     country,
     nodes: groupNodes,
+    broken: country === BROKEN_NODES_GROUP,
   }))
-  result.sort((left, right) => left.country.localeCompare(right.country, 'ru'))
+  result.sort((left, right) => {
+    if (left.broken) return 1
+    if (right.broken) return -1
+    return left.country.localeCompare(right.country, 'ru')
+  })
   return result
 })
 
@@ -952,6 +959,8 @@ const healthDotClass = (status) => {
   return 'bg-slate-300'
 }
 
+const isBrokenNode = (node) => String(node?.healthStatus || '').toLowerCase() === 'down'
+
 const normalizeCountryLabel = (country) => {
   const value = String(country || '').trim().toUpperCase()
   const labels = { DE: 'Германия', FI: 'Финляндия', NL: 'Нидерланды', US: 'США' }
@@ -970,6 +979,11 @@ onMounted(loadProxy)
   background: white;
   padding: 1rem;
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.proxy-panel-broken {
+  border-color: rgb(254 205 211);
+  background: rgb(255 241 242);
 }
 
 .proxy-card {
