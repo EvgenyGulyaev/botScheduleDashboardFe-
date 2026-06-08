@@ -12,7 +12,7 @@
           <!-- Логотип -->
           <div class="flex items-center">
             <router-link to="/dashboard" class="text-xl font-bold text-gray-900">
-              🤖 Bot Admin
+              🤖 Панель
             </router-link>
           </div>
 

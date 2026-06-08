@@ -20,7 +20,7 @@ test('desktop navigation does not depend on hover-only dropdowns', () => {
 })
 
 test('brand opens service dashboard and admin dropdown is users-oriented', () => {
-  assert.match(appVue, /<router-link to="\/dashboard"[\s\S]*?Bot Admin/)
+  assert.match(appVue, /<router-link to="\/dashboard"[\s\S]*?Панель/)
   assert.match(appVue, /👥 Пользователи/)
   assert.doesNotMatch(appVue, /📊 Dashboard/)
 })
