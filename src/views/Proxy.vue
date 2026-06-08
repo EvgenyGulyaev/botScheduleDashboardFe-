@@ -158,22 +158,51 @@
       </section>
 
       <section v-else-if="activeTab === 'pools'" class="proxy-panel">
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <article v-for="pool in pools" :key="pool.id" class="proxy-card">
-            <div class="proxy-card-actions">
-              <button class="proxy-icon" type="button" title="Редактировать" @click="openPoolModal(pool)">✎</button>
-              <button class="proxy-icon danger" type="button" title="Удалить" @click="deletePool(pool)">🗑</button>
-            </div>
-            <div class="pr-20">
-              <h4 class="text-lg font-black text-slate-950">{{ pool.name }}</h4>
-              <p class="mt-2 text-sm font-semibold text-slate-500">
-                Нод: {{ nodes.filter((node) => node.poolId === pool.id).length }}
-              </p>
-            </div>
-          </article>
-          <button class="proxy-add-card" type="button" @click="openPoolModal()">
-            <span>+</span>
-          </button>
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-xl font-black text-slate-950">Пулы</h3>
+          <button class="proxy-add-button" type="button" title="Добавить пул" @click="openPoolModal()">+</button>
+        </div>
+
+        <div class="proxy-pools-table mt-4 overflow-x-auto rounded-2xl border border-slate-200">
+          <table class="min-w-[640px] w-full border-collapse text-left text-sm">
+            <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.1em] text-slate-500">
+              <tr>
+                <th class="px-4 py-3">Пул</th>
+                <th class="px-4 py-3">Ноды</th>
+                <th class="px-4 py-3">Страны</th>
+                <th class="px-4 py-3 text-right">Действия</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 bg-white">
+              <tr v-for="pool in pagedPools" :key="pool.id" class="transition hover:bg-slate-50">
+                <td class="px-4 py-3 font-black text-slate-950">
+                  <div class="truncate" :title="pool.name">{{ pool.name }}</div>
+                </td>
+                <td class="px-4 py-3 font-bold text-slate-700">{{ pool.nodeCount }}</td>
+                <td class="px-4 py-3 text-xs font-bold text-slate-500">
+                  <div class="truncate" :title="pool.countries">{{ pool.countries }}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex justify-end gap-2">
+                    <button class="proxy-icon" type="button" title="Редактировать" @click="openPoolModal(pool)">✎</button>
+                    <button class="proxy-icon danger" type="button" title="Удалить" @click="deletePool(pool)">🗑</button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!poolRows.length">
+                <td class="px-4 py-8 text-center font-bold text-slate-400" colspan="4">Пулов пока нет</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="poolRows.length" class="proxy-pagination">
+          <span>{{ poolPageRange }}</span>
+          <div v-if="poolTotalPages > 1" class="flex items-center gap-2">
+            <button class="proxy-page-button" type="button" :disabled="poolPage === 1" @click="changePoolPage(-1)">Назад</button>
+            <strong>{{ poolPage }} / {{ poolTotalPages }}</strong>
+            <button class="proxy-page-button" type="button" :disabled="poolPage === poolTotalPages" @click="changePoolPage(1)">Вперед</button>
+          </div>
         </div>
       </section>
 
@@ -388,6 +417,8 @@ const nodes = ref([])
 const pools = ref([])
 const users = ref([])
 const routes = ref([])
+const poolPage = ref(1)
+const POOL_PAGE_SIZE = 8
 
 const modal = reactive({ open: false, type: '', mode: 'create', id: '' })
 const vlessModal = reactive({ open: false, title: '', userLabel: '', content: '', filename: '' })
@@ -456,6 +487,35 @@ const nodesByCountry = computed(() => {
   }))
   result.sort((left, right) => left.country.localeCompare(right.country, 'ru'))
   return result
+})
+
+const poolRows = computed(() =>
+  pools.value
+    .map((pool) => {
+      const poolNodes = nodes.value.filter((node) => node.poolId === pool.id)
+      const countries = [...new Set(poolNodes.map((node) => normalizeCountryLabel(node.country)).filter(Boolean))]
+      return {
+        ...pool,
+        nodeCount: poolNodes.length,
+        countries: countries.join(', ') || 'не задано',
+      }
+    })
+    .sort((left, right) => left.name.localeCompare(right.name, 'ru')),
+)
+const poolTotalPages = computed(() => Math.max(1, Math.ceil(poolRows.value.length / POOL_PAGE_SIZE)))
+const pagedPools = computed(() => {
+  const start = (poolPage.value - 1) * POOL_PAGE_SIZE
+  return poolRows.value.slice(start, start + POOL_PAGE_SIZE)
+})
+const poolPageRange = computed(() => {
+  if (!poolRows.value.length) return '0 из 0'
+  const start = (poolPage.value - 1) * POOL_PAGE_SIZE + 1
+  const end = Math.min(poolPage.value * POOL_PAGE_SIZE, poolRows.value.length)
+  return `${start}-${end} из ${poolRows.value.length}`
+})
+
+watch(poolTotalPages, (total) => {
+  if (poolPage.value > total) poolPage.value = total
 })
 
 const modalTitle = computed(() => {
@@ -813,6 +873,11 @@ const normalizedUserPoolPayload = () =>
       priority: Number(item.priority) || (index + 1) * 100,
     }))
 
+const changePoolPage = (direction) => {
+  const next = poolPage.value + direction
+  poolPage.value = Math.min(Math.max(next, 1), poolTotalPages.value)
+}
+
 const poolName = (id) => pools.value.find((pool) => pool.id === id)?.name || ''
 const userPoolSummary = (user) =>
   (user.poolPriorities || [])
@@ -929,8 +994,24 @@ onMounted(loadProxy)
   background: rgb(30 41 59);
 }
 
-.proxy-routes-table table {
+.proxy-routes-table table,
+.proxy-pools-table table {
   table-layout: fixed;
+}
+
+.proxy-pools-table th:nth-child(1),
+.proxy-pools-table td:nth-child(1) {
+  width: 16rem;
+}
+
+.proxy-pools-table th:nth-child(2),
+.proxy-pools-table td:nth-child(2) {
+  width: 6rem;
+}
+
+.proxy-pools-table th:nth-child(4),
+.proxy-pools-table td:nth-child(4) {
+  width: 7.5rem;
 }
 
 .proxy-routes-table th:nth-child(1),
@@ -965,6 +1046,35 @@ onMounted(loadProxy)
 
 .proxy-status-toggle.off {
   background: rgb(244 63 94);
+}
+
+.proxy-pagination {
+  margin-top: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: rgb(100 116 139);
+}
+
+.proxy-page-button {
+  border-radius: 999px;
+  border: 1px solid rgb(226 232 240);
+  background: white;
+  padding: 0.35rem 0.75rem;
+  color: rgb(51 65 85);
+  font-weight: 900;
+}
+
+.proxy-page-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.proxy-page-button:not(:disabled):hover {
+  background: rgb(241 245 249);
 }
 
 .proxy-runtime-cell {

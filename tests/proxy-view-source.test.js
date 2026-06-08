@@ -24,6 +24,8 @@ test('proxy view manages runtime, nodes, users and routes', () => {
   assert.match(proxyVue, /\/proxy\/routes/)
   assert.match(proxyVue, /vless-link/)
   assert.match(proxyVue, /pool_priorities/)
+  assert.match(proxyVue, /proxy-pools-table/)
+  assert.match(proxyVue, /pagedPools/)
   assert.match(proxyVue, /proxy-routes-table/)
   assert.match(proxyVue, /routeKindLabel/)
   assert.match(proxyVue, /openRouteModal/)
