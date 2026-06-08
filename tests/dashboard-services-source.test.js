@@ -80,3 +80,11 @@ test('dashboard exposes maintenance as compact cleanup action only when useful',
   assert.match(dashboardVue, /@click="runMaintenanceCleanup"/)
   assert.match(dashboardVue, /Очистить/)
 })
+
+test('dashboard selected service exposes start stop and icon restart controls', () => {
+  assert.match(dashboardVue, /selectedServicePowerLabel/)
+  assert.match(dashboardVue, /toggleSelectedService/)
+  assert.match(dashboardVue, /endpoint: '\/bot\/start'/)
+  assert.match(dashboardVue, /endpoint: '\/bot\/stop'/)
+  assert.match(dashboardVue, /aria-label="Перезапустить сервис"/)
+})

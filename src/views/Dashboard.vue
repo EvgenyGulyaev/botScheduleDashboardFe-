@@ -304,14 +304,29 @@
               </div>
             </div>
 
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                @click="toggleSelectedService"
+                :disabled="loading"
+                class="rounded-2xl px-4 py-2 text-sm font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                :class="
+                  selectedServiceIsActive
+                    ? 'border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
+                "
+              >
+                {{ loading ? 'Выполняем...' : selectedServicePowerLabel }}
+              </button>
               <button
                 type="button"
                 @click="restartBot"
                 :disabled="loading"
-                class="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50"
+                class="inline-flex size-11 items-center justify-center rounded-2xl bg-slate-950 text-xl font-black leading-none text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Перезапустить"
+                aria-label="Перезапустить сервис"
               >
-                {{ loading ? 'Перезапуск...' : 'Перезапустить' }}
+                ⟳
               </button>
             </div>
           </div>
@@ -474,6 +489,15 @@ const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdate
 const botStatus = computed(() => selectedStatus.value.status)
 const stats = computed(() => selectedStatus.value.stats)
 const healthBadge = computed(() => getServiceHealthBadge(selectedStatus.value.health?.level))
+const selectedServiceIsActive = computed(
+  () => selectedStatus.value.status === 'active' || selectedStatus.value.subState === 'running',
+)
+const selectedServicePowerAction = computed(() =>
+  selectedServiceIsActive.value ? 'stop' : 'start',
+)
+const selectedServicePowerLabel = computed(() =>
+  selectedServiceIsActive.value ? 'Остановить' : 'Запустить',
+)
 const systemAlerts = computed(() => [
   ...(systemInfo.value.alerts || []),
   ...services
@@ -665,21 +689,44 @@ const selectService = (service) => {
   loadStatus()
 }
 
-const restartBot = async () => {
+const SERVICE_ACTION_META = {
+  restart: {
+    endpoint: '/bot/restart',
+    success: 'перезапущен',
+    error: 'Ошибка рестарта',
+  },
+  start: {
+    endpoint: '/bot/start',
+    success: 'запущен',
+    error: 'Ошибка запуска',
+  },
+  stop: {
+    endpoint: '/bot/stop',
+    success: 'остановлен',
+    error: 'Ошибка остановки',
+  },
+}
+
+const runServiceAction = async (action) => {
+  const meta = SERVICE_ACTION_META[action] || SERVICE_ACTION_META.restart
   loading.value = true
   try {
-    await authStore.api.post(`/bot/restart`, { service: selectedService.value })
-    notifications.success(`Сервис ${selectedService.value} перезапущен`)
+    await authStore.api.post(meta.endpoint, { service: selectedService.value })
+    notifications.success(`Сервис ${selectedService.value} ${meta.success}`)
     await loadStatus()
   } catch (error) {
     if (isUnauthorizedError(error)) {
       return
     }
-    notifications.errorFrom(error, 'Ошибка рестарта', { duration: 5000 })
+    notifications.errorFrom(error, meta.error, { duration: 5000 })
   } finally {
     loading.value = false
   }
 }
+
+const restartBot = () => runServiceAction('restart')
+
+const toggleSelectedService = () => runServiceAction(selectedServicePowerAction.value)
 
 onMounted(async () => {
   await loadSystemInfo()
