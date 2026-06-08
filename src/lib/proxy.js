@@ -93,10 +93,29 @@ export const inferVlessName = (raw = '') => {
 }
 
 export const inferVlessCountry = (raw = '') => {
-  const value = `${inferVlessName(raw)} ${raw}`.toLowerCase()
-  if (value.includes('🇩🇪') || value.includes('germany') || value.includes('de')) return 'DE'
-  if (value.includes('🇳🇱') || value.includes('netherlands') || value.includes('nl')) return 'NL'
-  if (value.includes('🇫🇮') || value.includes('finland') || value.includes('fi')) return 'FI'
-  if (value.includes('🇺🇸') || value.includes('usa') || value.includes('us')) return 'US'
+  const parsed = parseVlessUrl(raw)
+  const host = parsed?.hostname || ''
+  const name = inferVlessName(raw)
+  const value = `${name} ${host}`.toLowerCase()
+  const tokens = value.split(/[^a-zа-яё0-9]+/iu).filter(Boolean)
+  const tokenSet = new Set(tokens)
+  const hostCountry = {
+    '31.56.196.40': 'FI',
+  }[host]
+
+  if (hostCountry) return hostCountry
+  if (value.includes('🇩🇪') || tokenSet.has('germany') || tokenSet.has('de')) return 'DE'
+  if (value.includes('🇳🇱') || tokenSet.has('netherlands') || tokenSet.has('nl')) return 'NL'
+  if (value.includes('🇫🇮') || tokenSet.has('finland') || tokenSet.has('fi')) return 'FI'
+  if (value.includes('🇺🇸') || tokenSet.has('usa') || tokenSet.has('us')) return 'US'
   return ''
+}
+
+const parseVlessUrl = (raw = '') => {
+  try {
+    const url = new URL(raw)
+    return url.protocol === 'vless:' ? url : null
+  } catch {
+    return null
+  }
 }
