@@ -50,13 +50,20 @@ export const normalizeProxyUser = (payload = {}) => ({
     poolId: item.pool_id ?? item.poolId ?? '',
     priority: Number(item.priority ?? 100),
   })),
+  routeGroups: toArray(payload.route_groups ?? payload.routeGroups).map(String).filter(Boolean),
   selectionMode: payload.selection_mode ?? payload.selectionMode ?? 'pool',
   activeNodeId: payload.active_node_id ?? payload.activeNodeId ?? '',
   trafficLimitBytes: payload.traffic_limit_bytes ?? payload.trafficLimitBytes ?? null,
 })
 
+export const normalizeProxyRouteGroup = (payload = {}) => ({
+  id: payload.id ?? '',
+  name: payload.name ?? '',
+})
+
 export const normalizeProxyRouteRule = (payload = {}) => ({
   id: payload.id ?? '',
+  groupId: payload.group_id ?? payload.groupId ?? 'default',
   name: payload.name ?? '',
   kind: payload.kind ?? 'domain',
   value: payload.value ?? '',
@@ -65,11 +72,12 @@ export const normalizeProxyRouteRule = (payload = {}) => ({
   priority: Number(payload.priority ?? 100),
 })
 
-export const normalizeProxyState = ({ runtime, nodes, pools, users, routes } = {}) => ({
+export const normalizeProxyState = ({ runtime, nodes, pools, users, routeGroups, routes } = {}) => ({
   runtime: normalizeProxyRuntime(runtime),
   nodes: toArray(nodes).map(normalizeProxyNode),
   pools: toArray(pools).map(normalizeProxyPool),
   users: toArray(users).map(normalizeProxyUser),
+  routeGroups: toArray(routeGroups).map(normalizeProxyRouteGroup),
   routes: toArray(routes).map(normalizeProxyRouteRule),
 })
 

@@ -116,7 +116,8 @@
           :key="group.country"
           class="proxy-panel"
           :class="{ 'proxy-panel-broken': group.broken }"
-          open
+          :open="!isNodeGroupCollapsed(group)"
+          @toggle="setNodeGroupCollapsed(group, $event.target.open)"
         >
           <summary class="cursor-pointer list-none">
             <div class="flex items-center justify-between gap-3">
@@ -236,53 +237,80 @@
 
       <section v-else-if="activeTab === 'routes'" class="proxy-panel">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="text-xl font-black text-slate-950">Маршруты</h3>
-          <button class="proxy-add-button" type="button" title="Добавить маршрут" @click="openRouteModal()">+</button>
+          <h3 class="text-xl font-black text-slate-950">Папки маршрутов</h3>
+          <button class="proxy-add-button" type="button" title="Добавить папку" @click="openRouteGroupModal()">+</button>
         </div>
 
-        <div class="proxy-routes-table mt-4 overflow-x-auto rounded-2xl border border-slate-200">
-          <table class="min-w-[720px] w-full border-collapse text-left text-sm">
-            <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.1em] text-slate-500">
-              <tr>
-                <th class="px-4 py-3">IP / домен</th>
-                <th class="px-4 py-3">Название</th>
-                <th class="px-4 py-3">Значение</th>
-                <th class="px-4 py-3">Статус</th>
-                <th class="px-4 py-3 text-right">Действия</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-200 bg-white">
-              <tr v-for="rule in routes" :key="rule.id" class="transition hover:bg-slate-50">
-                <td class="px-4 py-3 font-black text-slate-950">{{ routeKindLabel(rule.kind) }}</td>
-                <td class="px-4 py-3 font-bold text-slate-800">
-                  <div class="truncate" :title="rule.name">{{ rule.name }}</div>
-                </td>
-                <td class="px-4 py-3 font-mono text-xs font-bold text-slate-500">
-                  <div class="truncate" :title="rule.value">{{ rule.value }}</div>
-                </td>
-                <td class="px-4 py-3">
-                  <button
-                    class="proxy-status-toggle"
-                    :class="{ off: !rule.enabled }"
-                    type="button"
-                    :title="rule.enabled ? 'Выключить' : 'Включить'"
-                    @click="toggleRoute(rule)"
-                  >
-                    {{ rule.enabled ? 'Вкл' : 'Выкл' }}
-                  </button>
-                </td>
-                <td class="px-4 py-3">
-                  <div class="flex justify-end gap-2">
-                    <button class="proxy-icon" type="button" title="Редактировать" @click="openRouteModal(rule)">✎</button>
-                    <button class="proxy-icon danger" type="button" title="Удалить" @click="deleteRoute(rule)">🗑</button>
-                  </div>
-                </td>
-              </tr>
-              <tr v-if="!routes.length">
-                <td class="px-4 py-8 text-center font-bold text-slate-400" colspan="5">Маршрутов пока нет</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="mt-4 space-y-4">
+          <article v-for="group in routeGroupRows" :key="group.id" class="proxy-route-group">
+            <div class="flex items-center justify-between gap-3 px-1">
+              <div class="min-w-0">
+                <h4 class="truncate text-lg font-black text-slate-950">{{ group.name }}</h4>
+                <p class="text-xs font-bold text-slate-500">{{ group.routes.length }} маршрутов</p>
+              </div>
+              <div class="flex shrink-0 gap-2">
+                <button class="proxy-icon" type="button" title="Добавить маршрут" @click="openRouteModal(null, group.id)">+</button>
+                <button
+                  class="proxy-icon"
+                  type="button"
+                  title="Редактировать папку"
+                  :disabled="group.id === DEFAULT_ROUTE_GROUP_ID"
+                  @click="openRouteGroupModal(group)"
+                >✎</button>
+                <button
+                  class="proxy-icon danger"
+                  type="button"
+                  title="Удалить папку"
+                  :disabled="group.id === DEFAULT_ROUTE_GROUP_ID"
+                  @click="deleteRouteGroup(group)"
+                >🗑</button>
+              </div>
+            </div>
+            <div class="proxy-routes-table mt-3 overflow-x-auto rounded-2xl border border-slate-200">
+              <table class="min-w-[720px] w-full border-collapse text-left text-sm">
+                <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.1em] text-slate-500">
+                  <tr>
+                    <th class="px-4 py-3">Тип</th>
+                    <th class="px-4 py-3">Название</th>
+                    <th class="px-4 py-3">Значение</th>
+                    <th class="px-4 py-3">Статус</th>
+                    <th class="px-4 py-3 text-right">Действия</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 bg-white">
+                  <tr v-for="rule in group.routes" :key="rule.id" class="transition hover:bg-slate-50">
+                    <td class="px-4 py-3 font-black text-slate-950">{{ routeKindLabel(rule.kind) }}</td>
+                    <td class="px-4 py-3 font-bold text-slate-800">
+                      <div class="truncate" :title="rule.name">{{ rule.name }}</div>
+                    </td>
+                    <td class="px-4 py-3 font-mono text-xs font-bold text-slate-500">
+                      <div class="truncate" :title="rule.value">{{ rule.value }}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                      <button
+                        class="proxy-status-toggle"
+                        :class="{ off: !rule.enabled }"
+                        type="button"
+                        :title="rule.enabled ? 'Выключить' : 'Включить'"
+                        @click="toggleRoute(rule)"
+                      >
+                        {{ rule.enabled ? 'Вкл' : 'Выкл' }}
+                      </button>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="flex justify-end gap-2">
+                        <button class="proxy-icon" type="button" title="Редактировать" @click="openRouteModal(rule)">✎</button>
+                        <button class="proxy-icon danger" type="button" title="Удалить" @click="deleteRoute(rule)">🗑</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr v-if="!group.routes.length">
+                    <td class="px-4 py-8 text-center font-bold text-slate-400" colspan="5">В папке пока нет маршрутов</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
         </div>
       </section>
     </div>
@@ -344,6 +372,23 @@
               </div>
             </div>
           </div>
+          <div class="space-y-2" aria-label="Папки маршрутов пользователя">
+            <p class="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Маршруты</p>
+            <label
+              v-for="group in routeGroupOptions"
+              :key="group.id"
+              class="proxy-check"
+              :class="{ selected: isUserRouteGroupSelected(group.id) }"
+            >
+              <input
+                :checked="isUserRouteGroupSelected(group.id)"
+                type="checkbox"
+                :disabled="group.id === DEFAULT_ROUTE_GROUP_ID"
+                @change="toggleUserRouteGroup(group.id)"
+              />
+              {{ group.name }}
+            </label>
+          </div>
           <label class="proxy-check">
             <input v-model="userDraft.enabled" type="checkbox" />
             Включен
@@ -351,6 +396,9 @@
         </div>
 
         <div v-else-if="modal.type === 'route'" class="mt-4 space-y-3">
+          <select v-model="routeDraft.group_id" class="proxy-input">
+            <option v-for="group in routeGroupOptions" :key="group.id" :value="group.id">{{ group.name }}</option>
+          </select>
           <input v-model.trim="routeDraft.name" class="proxy-input" placeholder="Название" />
           <select v-model="routeDraft.kind" class="proxy-input">
             <option value="domain">Домен</option>
@@ -361,6 +409,10 @@
             <input v-model="routeDraft.enabled" type="checkbox" />
             Включен
           </label>
+        </div>
+
+        <div v-else-if="modal.type === 'routeGroup'" class="mt-4 space-y-3">
+          <input v-model.trim="routeGroupDraft.name" class="proxy-input" placeholder="Название папки, например evgeny" />
         </div>
 
         <button class="proxy-primary mt-5 w-full" type="submit">
@@ -422,19 +474,23 @@ const runtime = ref(normalizeProxyState().runtime)
 const nodes = ref([])
 const pools = ref([])
 const users = ref([])
+const routeGroups = ref([])
 const routes = ref([])
 const poolPage = ref(1)
 const draggingUserPoolId = ref('')
 const POOL_PAGE_SIZE = 8
 const BROKEN_NODES_GROUP = 'Нерабочие'
+const DEFAULT_ROUTE_GROUP_ID = 'default'
 
 const modal = reactive({ open: false, type: '', mode: 'create', id: '' })
 const vlessModal = reactive({ open: false, title: '', userLabel: '', content: '', filename: '' })
+const collapsedNodeGroups = reactive({ [BROKEN_NODES_GROUP]: true })
 
 const nodeDraft = reactive(defaultNodeDraft())
 const poolDraft = reactive(defaultPoolDraft())
 const userDraft = reactive(defaultUserDraft())
 const routeDraft = reactive(defaultRouteDraft())
+const routeGroupDraft = reactive(defaultRouteGroupDraft())
 
 const activeTab = computed(() => {
   const section = String(route.params.section || 'overview')
@@ -461,6 +517,19 @@ const shortHealthUrl = computed(() => {
 })
 
 const enabledRoutes = computed(() => routes.value.filter((rule) => rule.enabled))
+const routeGroupOptions = computed(() =>
+  routeGroups.value.length
+    ? routeGroups.value
+    : [{ id: DEFAULT_ROUTE_GROUP_ID, name: 'default' }],
+)
+const routeGroupRows = computed(() => {
+  return routeGroupOptions.value.map((group) => ({
+    ...group,
+    routes: routes.value
+      .filter((rule) => (rule.groupId || DEFAULT_ROUTE_GROUP_ID) === group.id)
+      .sort((left, right) => left.name.localeCompare(right.name, 'ru')),
+  }))
+})
 const summaryCards = computed(() => [
   { label: 'Ноды', value: nodes.value.length, hint: `${nodeSummary.value[0].count} up` },
   { label: 'Пулы', value: pools.value.length, hint: 'группы' },
@@ -548,18 +617,19 @@ const userPoolRows = computed(() => {
 
 const modalTitle = computed(() => {
   const action = modal.mode === 'edit' ? 'Редактировать' : 'Добавить'
-  const entity = { node: 'ноду', pool: 'пул', user: 'пользователя', route: 'маршрут' }[modal.type]
+  const entity = { node: 'ноду', pool: 'пул', user: 'пользователя', route: 'маршрут', routeGroup: 'папку маршрутов' }[modal.type]
   return `${action} ${entity || ''}`
 })
 
 const loadProxy = async () => {
   loading.value = true
   try {
-    const [runtimeRes, nodesRes, poolsRes, usersRes, routesRes] = await Promise.all([
+    const [runtimeRes, nodesRes, poolsRes, usersRes, routeGroupsRes, routesRes] = await Promise.all([
       authStore.api.get('/proxy/runtime/status'),
       authStore.api.get('/proxy/nodes'),
       authStore.api.get('/proxy/pools'),
       authStore.api.get('/proxy/users'),
+      authStore.api.get('/proxy/route-groups'),
       authStore.api.get('/proxy/routes'),
     ])
     const state = normalizeProxyState({
@@ -567,12 +637,14 @@ const loadProxy = async () => {
       nodes: nodesRes.data,
       pools: poolsRes.data,
       users: usersRes.data,
+      routeGroups: routeGroupsRes.data,
       routes: routesRes.data,
     })
     runtime.value = state.runtime
     nodes.value = state.nodes
     pools.value = state.pools
     users.value = state.users
+    routeGroups.value = state.routeGroups
     routes.value = state.routes
     errorMessage.value = ''
   } catch (error) {
@@ -605,11 +677,15 @@ function defaultPoolDraft() {
 }
 
 function defaultUserDraft() {
-  return { label: '', enabled: true, pool_priorities: [] }
+  return { label: '', enabled: true, pool_priorities: [], route_groups: [DEFAULT_ROUTE_GROUP_ID] }
 }
 
 function defaultRouteDraft() {
-  return { name: '', kind: 'domain', value: '', enabled: true }
+  return { group_id: DEFAULT_ROUTE_GROUP_ID, name: '', kind: 'domain', value: '', enabled: true }
+}
+
+function defaultRouteGroupDraft() {
+  return { name: '' }
 }
 
 const resetDraft = (target, value) => {
@@ -651,20 +727,30 @@ const openUserModal = (user = null) => {
     pool_priorities: user.poolPriorities.length
       ? orderedUserPoolPriorities(user.poolPriorities)
       : (user.poolId ? [{ poolId: user.poolId, priority: 100 }] : []),
+    route_groups: normalizeUserRouteGroups(user.routeGroups),
   } : defaultUserDraft())
 }
 
-const openRouteModal = (rule = null) => {
+const openRouteModal = (rule = null, groupId = DEFAULT_ROUTE_GROUP_ID) => {
   modal.open = true
   modal.type = 'route'
   modal.mode = rule ? 'edit' : 'create'
   modal.id = rule?.id || ''
   resetDraft(routeDraft, rule ? {
+    group_id: rule.groupId || DEFAULT_ROUTE_GROUP_ID,
     name: rule.name,
     kind: rule.kind,
     value: rule.value,
     enabled: rule.enabled,
-  } : defaultRouteDraft())
+  } : { ...defaultRouteDraft(), group_id: groupId })
+}
+
+const openRouteGroupModal = (group = null) => {
+  modal.open = true
+  modal.type = 'routeGroup'
+  modal.mode = group ? 'edit' : 'create'
+  modal.id = group?.id || ''
+  resetDraft(routeGroupDraft, group ? { name: group.name } : defaultRouteGroupDraft())
 }
 
 const closeModal = () => {
@@ -678,6 +764,7 @@ const submitModal = async () => {
   if (modal.type === 'pool') return savePool()
   if (modal.type === 'user') return saveUser()
   if (modal.type === 'route') return saveRoute()
+  if (modal.type === 'routeGroup') return saveRouteGroup()
 }
 
 const autofillNodeFromUrl = () => {
@@ -744,6 +831,7 @@ const saveUser = async () => {
       enabled: userDraft.enabled,
       pool_id: priorities[0]?.pool_id,
       pool_priorities: priorities,
+      route_groups: normalizeUserRouteGroups(userDraft.route_groups),
       selection_mode: priorities.length ? 'pool_chain' : 'auto_failover',
     }
     if (modal.mode === 'create') {
@@ -766,6 +854,7 @@ const saveRoute = async () => {
   }
   try {
     const payload = {
+      group_id: routeDraft.group_id || DEFAULT_ROUTE_GROUP_ID,
       name: routeDraft.name,
       kind: routeDraft.kind,
       value: routeDraft.value,
@@ -783,6 +872,25 @@ const saveRoute = async () => {
     await loadProxy()
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось сохранить маршрут')
+  }
+}
+
+const saveRouteGroup = async () => {
+  if (!routeGroupDraft.name) {
+    notifications.error('Укажи название папки')
+    return
+  }
+  try {
+    if (modal.mode === 'create') {
+      await authStore.api.post('/proxy/route-groups', { name: routeGroupDraft.name })
+    } else {
+      await authStore.api.patch(`/proxy/route-groups/${modal.id}`, { name: routeGroupDraft.name })
+    }
+    notifications.success('Папка маршрутов сохранена')
+    closeModal()
+    await loadProxy()
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось сохранить папку маршрутов')
   }
 }
 
@@ -813,6 +921,7 @@ const deleteNode = async (node) => deleteAndReload(`/proxy/nodes/${node.id}`, `�
 const deletePool = async (pool) => deleteAndReload(`/proxy/pools/${pool.id}`, `Удалить пул ${pool.name}?`, 'Пул удален', 'Не удалось удалить пул')
 const deleteUser = async (user) => deleteAndReload(`/proxy/users/${user.id}`, `Удалить пользователя ${user.label}?`, 'Пользователь удален', 'Не удалось удалить пользователя')
 const deleteRoute = async (rule) => deleteAndReload(`/proxy/routes/${rule.id}`, `Удалить маршрут ${rule.name}?`, 'Маршрут удален', 'Не удалось удалить маршрут')
+const deleteRouteGroup = async (group) => deleteAndReload(`/proxy/route-groups/${group.id}`, `Удалить папку ${group.name} и все маршруты внутри?`, 'Папка маршрутов удалена', 'Не удалось удалить папку маршрутов')
 
 const deleteAndReload = async (url, question, success, fallback) => {
   if (!window.confirm(question)) return
@@ -935,6 +1044,27 @@ const normalizedUserPoolPayload = () =>
       priority: (index + 1) * 100,
     }))
 
+const normalizeUserRouteGroups = (values = []) => {
+  const result = [DEFAULT_ROUTE_GROUP_ID, ...values]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+  return [...new Set(result)]
+}
+
+const isUserRouteGroupSelected = (groupId) => normalizeUserRouteGroups(userDraft.route_groups).includes(groupId)
+
+const toggleUserRouteGroup = (groupId) => {
+  if (groupId === DEFAULT_ROUTE_GROUP_ID) return
+  const groups = normalizeUserRouteGroups(userDraft.route_groups)
+  const index = groups.indexOf(groupId)
+  if (index >= 0) {
+    groups.splice(index, 1)
+  } else {
+    groups.push(groupId)
+  }
+  userDraft.route_groups.splice(0, userDraft.route_groups.length, ...normalizeUserRouteGroups(groups))
+}
+
 const changePoolPage = (direction) => {
   const next = poolPage.value + direction
   poolPage.value = Math.min(Math.max(next, 1), poolTotalPages.value)
@@ -960,6 +1090,12 @@ const healthDotClass = (status) => {
 }
 
 const isBrokenNode = (node) => String(node?.healthStatus || '').toLowerCase() === 'down'
+
+const isNodeGroupCollapsed = (group) => Boolean(collapsedNodeGroups[group.country])
+
+const setNodeGroupCollapsed = (group, open) => {
+  collapsedNodeGroups[group.country] = !open
+}
 
 const normalizeCountryLabel = (country) => {
   const value = String(country || '').trim().toUpperCase()
@@ -1020,6 +1156,15 @@ onMounted(loadProxy)
   background: rgb(241 245 249);
 }
 
+.proxy-icon:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.proxy-icon:disabled:hover {
+  background: white;
+}
+
 .proxy-icon.danger {
   color: rgb(225 29 72);
 }
@@ -1066,6 +1211,13 @@ onMounted(loadProxy)
 .proxy-routes-table table,
 .proxy-pools-table table {
   table-layout: fixed;
+}
+
+.proxy-route-group {
+  border-radius: 1.25rem;
+  border: 1px solid rgb(226 232 240);
+  background: rgb(248 250 252);
+  padding: 0.75rem;
 }
 
 .proxy-pools-table th:nth-child(1),
@@ -1306,6 +1458,15 @@ onMounted(loadProxy)
   font-size: 0.875rem;
   font-weight: 800;
   color: rgb(51 65 85);
+}
+
+.proxy-check.selected {
+  border-color: rgb(191 219 254);
+  background: rgb(239 246 255);
+}
+
+.proxy-check input:disabled {
+  cursor: default;
 }
 
 .proxy-modal-backdrop {

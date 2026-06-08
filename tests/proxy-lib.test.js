@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { inferVlessCountry } from '../src/lib/proxy.js'
+import { inferVlessCountry, normalizeProxyState } from '../src/lib/proxy.js'
 
 test('infers Finland for known Finnish Hiddify node without matching de inside words', () => {
   const link =
@@ -12,4 +12,16 @@ test('infers Finland for known Finnish Hiddify node without matching de inside w
 test('infers Germany from explicit flag or country token', () => {
   assert.equal(inferVlessCountry('vless://id@example.com:443#🇩🇪 Основной'), 'DE')
   assert.equal(inferVlessCountry('vless://id@example.com:443#Germany'), 'DE')
+})
+
+test('normalizes proxy route groups and user route group links', () => {
+  const state = normalizeProxyState({
+    routeGroups: [{ id: 'default', name: 'default' }],
+    routes: [{ id: 'route-1', group_id: 'default', name: 'RU', kind: 'domain', value: '.ru', enabled: true }],
+    users: [{ id: 'user-1', label: 'evgeny', enabled: true, route_groups: ['default', 'evgeny'] }],
+  })
+
+  assert.equal(state.routeGroups[0].id, 'default')
+  assert.equal(state.routes[0].groupId, 'default')
+  assert.deepEqual(state.users[0].routeGroups, ['default', 'evgeny'])
 })
