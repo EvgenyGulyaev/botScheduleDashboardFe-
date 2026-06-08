@@ -205,26 +205,54 @@
       </section>
 
       <section v-else-if="activeTab === 'routes'" class="proxy-panel">
-        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <article v-for="rule in routes" :key="rule.id" class="proxy-card">
-            <div class="proxy-card-actions">
-              <button class="proxy-icon" type="button" :title="rule.enabled ? 'Выключить' : 'Включить'" @click="toggleRoute(rule)">
-                {{ rule.enabled ? '🟢' : '🔴' }}
-              </button>
-              <button class="proxy-icon" type="button" title="Редактировать" @click="openRouteModal(rule)">✎</button>
-              <button class="proxy-icon danger" type="button" title="Удалить" @click="deleteRoute(rule)">🗑</button>
-            </div>
-            <div class="pr-24">
-              <h4 class="text-lg font-black text-slate-950">{{ rule.name }}</h4>
-              <p class="mt-2 font-mono text-sm font-semibold text-slate-500">{{ rule.value }}</p>
-              <span class="mt-3 inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
-                {{ rule.kind }}
-              </span>
-            </div>
-          </article>
-          <button class="proxy-add-card" type="button" @click="openRouteModal()">
-            <span>+</span>
-          </button>
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-xl font-black text-slate-950">Маршруты</h3>
+          <button class="proxy-add-button" type="button" title="Добавить маршрут" @click="openRouteModal()">+</button>
+        </div>
+
+        <div class="proxy-routes-table mt-4 overflow-x-auto rounded-2xl border border-slate-200">
+          <table class="min-w-[720px] w-full border-collapse text-left text-sm">
+            <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.1em] text-slate-500">
+              <tr>
+                <th class="px-4 py-3">IP / домен</th>
+                <th class="px-4 py-3">Название</th>
+                <th class="px-4 py-3">Значение</th>
+                <th class="px-4 py-3">Статус</th>
+                <th class="px-4 py-3 text-right">Действия</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 bg-white">
+              <tr v-for="rule in routes" :key="rule.id" class="transition hover:bg-slate-50">
+                <td class="px-4 py-3 font-black text-slate-950">{{ routeKindLabel(rule.kind) }}</td>
+                <td class="px-4 py-3 font-bold text-slate-800">
+                  <div class="truncate" :title="rule.name">{{ rule.name }}</div>
+                </td>
+                <td class="px-4 py-3 font-mono text-xs font-bold text-slate-500">
+                  <div class="truncate" :title="rule.value">{{ rule.value }}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <button
+                    class="proxy-status-toggle"
+                    :class="{ off: !rule.enabled }"
+                    type="button"
+                    :title="rule.enabled ? 'Выключить' : 'Включить'"
+                    @click="toggleRoute(rule)"
+                  >
+                    {{ rule.enabled ? 'Вкл' : 'Выкл' }}
+                  </button>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex justify-end gap-2">
+                    <button class="proxy-icon" type="button" title="Редактировать" @click="openRouteModal(rule)">✎</button>
+                    <button class="proxy-icon danger" type="button" title="Удалить" @click="deleteRoute(rule)">🗑</button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="!routes.length">
+                <td class="px-4 py-8 text-center font-bold text-slate-400" colspan="5">Маршрутов пока нет</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
     </div>
@@ -810,6 +838,8 @@ const normalizeCountryLabel = (country) => {
   return labels[value] || value || 'Без страны'
 }
 
+const routeKindLabel = (kind) => (kind === 'ip' ? 'IP' : 'Домен')
+
 onMounted(loadProxy)
 </script>
 
@@ -880,6 +910,61 @@ onMounted(loadProxy)
   color: white;
   font-size: 1.75rem;
   font-weight: 900;
+}
+
+.proxy-add-button {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(15 23 42);
+  color: white;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.proxy-add-button:hover {
+  background: rgb(30 41 59);
+}
+
+.proxy-routes-table table {
+  table-layout: fixed;
+}
+
+.proxy-routes-table th:nth-child(1),
+.proxy-routes-table td:nth-child(1) {
+  width: 6.5rem;
+}
+
+.proxy-routes-table th:nth-child(2),
+.proxy-routes-table td:nth-child(2) {
+  width: 12rem;
+}
+
+.proxy-routes-table th:nth-child(4),
+.proxy-routes-table td:nth-child(4) {
+  width: 6.5rem;
+}
+
+.proxy-routes-table th:nth-child(5),
+.proxy-routes-table td:nth-child(5) {
+  width: 7.5rem;
+}
+
+.proxy-status-toggle {
+  min-width: 3.3rem;
+  border-radius: 999px;
+  background: rgb(16 185 129);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: white;
+}
+
+.proxy-status-toggle.off {
+  background: rgb(244 63 94);
 }
 
 .proxy-runtime-cell {
