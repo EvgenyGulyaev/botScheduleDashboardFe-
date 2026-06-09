@@ -15,6 +15,10 @@ export const normalizeProxyRuntime = (payload = {}) => ({
   failoverCooldownSeconds: Number(
     payload.failover_cooldown_seconds ?? payload.failoverCooldownSeconds ?? 0,
   ),
+  trafficStatsEnabled: Boolean(payload.traffic_stats_enabled ?? payload.trafficStatsEnabled),
+  trafficPollIntervalSeconds: Number(
+    payload.traffic_poll_interval_seconds ?? payload.trafficPollIntervalSeconds ?? 0,
+  ),
 })
 
 export const normalizeProxyNode = (payload = {}) => ({
@@ -54,6 +58,16 @@ export const normalizeProxyUser = (payload = {}) => ({
   selectionMode: payload.selection_mode ?? payload.selectionMode ?? 'pool',
   activeNodeId: payload.active_node_id ?? payload.activeNodeId ?? '',
   trafficLimitBytes: payload.traffic_limit_bytes ?? payload.trafficLimitBytes ?? null,
+  traffic: normalizeUserTraffic(payload.traffic),
+})
+
+export const normalizeUserTraffic = (payload = {}) => ({
+  period: payload?.period ?? '',
+  uplinkBytes: Number(payload?.uplink_bytes ?? payload?.uplinkBytes ?? 0),
+  downlinkBytes: Number(payload?.downlink_bytes ?? payload?.downlinkBytes ?? 0),
+  totalBytes: Number(payload?.total_bytes ?? payload?.totalBytes ?? 0),
+  quotaBytes: payload?.quota_bytes ?? payload?.quotaBytes ?? null,
+  quotaUsedPercent: payload?.quota_used_percent ?? payload?.quotaUsedPercent ?? null,
 })
 
 export const normalizeProxyRouteGroup = (payload = {}) => ({

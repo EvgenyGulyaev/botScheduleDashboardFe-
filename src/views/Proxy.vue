@@ -224,6 +224,23 @@
                 {{ userPoolSummary(user) || 'без пулов' }}
               </p>
             </div>
+            <div class="mt-4 rounded-2xl bg-slate-50 p-3">
+              <div class="flex items-center justify-between gap-3 text-xs font-black uppercase tracking-[0.08em] text-slate-500">
+                <span>{{ user.traffic.period || 'текущий месяц' }}</span>
+                <span>{{ userTrafficPercentLabel(user) }}</span>
+              </div>
+              <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  class="h-full rounded-full"
+                  :class="userTrafficBarClass(user)"
+                  :style="{ width: `${userTrafficProgress(user)}%` }"
+                ></div>
+              </div>
+              <p class="mt-2 text-sm font-black text-slate-900">
+                {{ formatBytes(user.traffic.totalBytes) }}
+                <span class="text-slate-500">/ {{ user.traffic.quotaBytes ? formatBytes(user.traffic.quotaBytes) : 'без лимита' }}</span>
+              </p>
+            </div>
             <div class="mt-5 grid grid-cols-2 gap-2">
               <button class="proxy-primary" type="button" @click="loadVlessLink(user)">Ссылка</button>
               <button class="proxy-secondary" type="button" @click="loadUserConfig(user)">Config</button>
@@ -362,6 +379,10 @@
 
         <div v-else-if="modal.type === 'user'" class="mt-4 space-y-3">
           <input v-model.trim="userDraft.label" class="proxy-input" placeholder="label, например evgeny" />
+          <label class="block">
+            <span class="mb-1 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Квота в месяц, GB</span>
+            <input v-model="userDraft.traffic_limit_gb" class="proxy-input" inputmode="decimal" placeholder="пусто = без лимита" />
+          </label>
           <div class="space-y-2" aria-label="Пулы пользователя">
             <div
               v-for="pool in userPoolRows"
@@ -753,7 +774,13 @@ function defaultPoolDraft() {
 }
 
 function defaultUserDraft() {
-  return { label: '', enabled: true, pool_priorities: [], route_groups: [DEFAULT_ROUTE_GROUP_ID] }
+  return {
+    label: '',
+    enabled: true,
+    pool_priorities: [],
+    route_groups: [DEFAULT_ROUTE_GROUP_ID],
+    traffic_limit_gb: '',
+  }
 }
 
 function defaultRouteDraft() {
@@ -804,6 +831,7 @@ const openUserModal = (user = null) => {
       ? orderedUserPoolPriorities(user.poolPriorities)
       : (user.poolId ? [{ poolId: user.poolId, priority: 100 }] : []),
     route_groups: normalizeUserRouteGroups(user.routeGroups),
+    traffic_limit_gb: bytesToGbInput(user.trafficLimitBytes),
   } : defaultUserDraft())
 }
 
@@ -911,6 +939,7 @@ const saveUser = async () => {
       pool_priorities: priorities,
       route_groups: normalizeUserRouteGroups(userDraft.route_groups),
       selection_mode: priorities.length ? 'pool_chain' : 'auto_failover',
+      traffic_limit_bytes: gbInputToBytes(userDraft.traffic_limit_gb),
     }
     if (modal.mode === 'create') {
       await authStore.api.post('/proxy/users', payload)
@@ -1191,6 +1220,49 @@ const userPoolSummary = (user) =>
     .map((item) => poolName(item.poolId))
     .filter(Boolean)
     .join(' → ')
+
+const GB = 1024 ** 3
+
+const formatBytes = (bytes = 0) => {
+  const value = Number(bytes) || 0
+  if (value >= GB) return `${(value / GB).toFixed(value >= 10 * GB ? 1 : 2)} GB`
+  if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`
+  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`
+  return `${value} B`
+}
+
+const bytesToGbInput = (bytes) => {
+  const value = Number(bytes)
+  if (!Number.isFinite(value) || value <= 0) return ''
+  return Number((value / GB).toFixed(2)).toString()
+}
+
+const gbInputToBytes = (value) => {
+  const normalized = String(value ?? '').trim().replace(',', '.')
+  if (!normalized) return null
+  const numeric = Number(normalized)
+  if (!Number.isFinite(numeric) || numeric <= 0) return null
+  return Math.round(numeric * GB)
+}
+
+const userTrafficProgress = (user) => {
+  const quota = Number(user?.traffic?.quotaBytes || user?.trafficLimitBytes || 0)
+  if (!quota) return 0
+  return Math.min(100, Math.round((Number(user?.traffic?.totalBytes || 0) / quota) * 100))
+}
+
+const userTrafficPercentLabel = (user) => {
+  const quota = Number(user?.traffic?.quotaBytes || user?.trafficLimitBytes || 0)
+  if (!quota) return 'без лимита'
+  return `${userTrafficProgress(user)}%`
+}
+
+const userTrafficBarClass = (user) => {
+  const progress = userTrafficProgress(user)
+  if (progress >= 100) return 'bg-rose-500'
+  if (progress >= 80) return 'bg-amber-400'
+  return 'bg-emerald-500'
+}
 
 const formatDate = (value) => new Date(value).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 
