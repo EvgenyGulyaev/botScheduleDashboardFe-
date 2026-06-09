@@ -77,35 +77,72 @@
         :message="errorMessage"
       />
 
-      <section v-if="activeTab === 'overview'" class="grid gap-4 xl:grid-cols-3">
-        <article class="proxy-panel xl:col-span-2">
+      <section v-if="activeTab === 'overview'" class="grid gap-4 xl:grid-cols-[0.9fr_1.35fr]">
+        <article class="proxy-panel">
           <div class="flex items-center justify-between gap-3">
-            <h3 class="proxy-title">Состояние нод</h3>
-            <RouterLink class="proxy-secondary" to="/proxy/nodes">Открыть</RouterLink>
+            <div>
+              <h3 class="proxy-title">Трафик за месяц</h3>
+              <p class="mt-1 text-xs font-bold text-slate-500">{{ trafficOverview.period }}</p>
+            </div>
+            <span
+              class="rounded-full px-3 py-1 text-xs font-black"
+              :class="runtime.trafficStatsEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'"
+            >
+              {{ runtime.trafficStatsEnabled ? 'учет включен' : 'учет выкл' }}
+            </span>
           </div>
-          <div class="mt-4 grid gap-3 md:grid-cols-3">
-            <div v-for="item in nodeSummary" :key="item.label" class="rounded-2xl bg-slate-50 p-4">
-              <div class="text-2xl font-black text-slate-950">{{ item.count }}</div>
-              <div class="mt-1 text-xs font-black uppercase tracking-[0.18em]" :class="item.class">
-                {{ item.label }}
-              </div>
+          <div class="mt-4 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+            <div class="rounded-2xl bg-slate-950 p-4 text-white">
+              <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Всего</p>
+              <div class="mt-2 text-3xl font-black">{{ formatBytes(trafficOverview.totalBytes) }}</div>
+            </div>
+            <div class="rounded-2xl bg-slate-50 p-4">
+              <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Upload</p>
+              <div class="mt-2 text-2xl font-black text-slate-950">{{ formatBytes(trafficOverview.uplinkBytes) }}</div>
+            </div>
+            <div class="rounded-2xl bg-slate-50 p-4">
+              <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Download</p>
+              <div class="mt-2 text-2xl font-black text-slate-950">{{ formatBytes(trafficOverview.downlinkBytes) }}</div>
             </div>
           </div>
         </article>
 
         <article class="proxy-panel">
           <div class="flex items-center justify-between gap-3">
-            <h3 class="proxy-title">Маршруты</h3>
-            <RouterLink class="proxy-secondary" to="/proxy/routes">Открыть</RouterLink>
-          </div>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <span
-              v-for="rule in enabledRoutes.slice(0, 10)"
-              :key="rule.id"
-              class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700"
-            >
-              {{ rule.value }}
+            <h3 class="proxy-title">Потребление пользователей</h3>
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+              {{ trafficOverview.activeUsers }}/{{ users.length }}
             </span>
+          </div>
+          <div class="mt-4 space-y-3">
+            <div v-if="!users.length" class="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">
+              Пользователей пока нет.
+            </div>
+            <div
+              v-for="user in trafficUsers"
+              :key="user.id"
+              class="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-black text-slate-950">{{ user.label }}</p>
+                  <p class="mt-0.5 text-xs font-bold text-slate-500">
+                    ↑ {{ formatBytes(user.traffic.uplinkBytes) }} · ↓ {{ formatBytes(user.traffic.downlinkBytes) }}
+                  </p>
+                </div>
+                <div class="shrink-0 text-right">
+                  <p class="text-sm font-black text-slate-950">{{ formatBytes(user.traffic.totalBytes) }}</p>
+                  <p class="text-xs font-bold text-slate-500">{{ userTrafficPercentLabel(user) }}</p>
+                </div>
+              </div>
+              <div class="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                <div
+                  class="h-full rounded-full transition-all"
+                  :class="userTrafficBarClass(user)"
+                  :style="{ width: `${userTrafficProgress(user)}%` }"
+                />
+              </div>
+            </div>
           </div>
         </article>
       </section>
@@ -615,6 +652,29 @@ const routeGroupRows = computed(() => {
       .sort((left, right) => left.name.localeCompare(right.name, 'ru')),
   }))
 })
+
+const trafficUsers = computed(() =>
+  users.value
+    .slice()
+    .sort((left, right) => Number(right.traffic?.totalBytes || 0) - Number(left.traffic?.totalBytes || 0)),
+)
+
+const trafficOverview = computed(() => {
+  const period = trafficUsers.value.find((user) => user.traffic?.period)?.traffic?.period || 'текущий месяц'
+  return trafficUsers.value.reduce(
+    (acc, user) => {
+      const traffic = user.traffic || {}
+      const totalBytes = Number(traffic.totalBytes || 0)
+      acc.uplinkBytes += Number(traffic.uplinkBytes || 0)
+      acc.downlinkBytes += Number(traffic.downlinkBytes || 0)
+      acc.totalBytes += totalBytes
+      if (totalBytes > 0) acc.activeUsers += 1
+      return acc
+    },
+    { period, uplinkBytes: 0, downlinkBytes: 0, totalBytes: 0, activeUsers: 0 },
+  )
+})
+
 const summaryCards = computed(() => [
   { label: 'Ноды', value: nodes.value.length, hint: `${nodeSummary.value[0].count} up` },
   { label: 'Пулы', value: pools.value.length, hint: 'группы' },
