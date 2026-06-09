@@ -384,7 +384,9 @@
       <form class="proxy-modal" @submit.prevent="submitModal">
         <div class="flex items-start justify-between gap-3">
           <h3 class="text-xl font-black text-slate-950">{{ modalTitle }}</h3>
-          <button class="proxy-secondary" type="button" @click="closeModal">Закрыть</button>
+          <button class="proxy-secondary" type="button" :disabled="modalSaving" @click="closeModal">
+            Закрыть
+          </button>
         </div>
 
         <div v-if="modal.type === 'node'" class="mt-4 space-y-3">
@@ -484,8 +486,14 @@
           <input v-model.trim="routeGroupDraft.name" class="proxy-input" placeholder="Название папки, например evgeny" />
         </div>
 
-        <button class="proxy-primary mt-5 w-full" type="submit">
-          {{ modal.mode === 'edit' ? 'Сохранить' : 'Добавить' }}
+        <button class="proxy-primary mt-5 w-full" type="submit" :disabled="modalSaving">
+          {{
+            modalSaving
+              ? 'Сохраняем...'
+              : modal.mode === 'edit'
+                ? 'Сохранить'
+                : 'Добавить'
+          }}
         </button>
       </form>
     </div>
@@ -574,6 +582,7 @@ const tabs = [
 
 const loading = ref(false)
 const applying = ref(false)
+const modalSaving = ref(false)
 const errorMessage = ref('')
 const runtime = ref(normalizeProxyState().runtime)
 const nodes = ref([])
@@ -918,17 +927,24 @@ const openRouteGroupModal = (group = null) => {
 }
 
 const closeModal = () => {
+  if (modalSaving.value) return
   modal.open = false
   modal.type = ''
   modal.id = ''
 }
 
 const submitModal = async () => {
-  if (modal.type === 'node') return saveNode()
-  if (modal.type === 'pool') return savePool()
-  if (modal.type === 'user') return saveUser()
-  if (modal.type === 'route') return saveRoute()
-  if (modal.type === 'routeGroup') return saveRouteGroup()
+  if (modalSaving.value) return
+  modalSaving.value = true
+  try {
+    if (modal.type === 'node') return await saveNode()
+    if (modal.type === 'pool') return await savePool()
+    if (modal.type === 'user') return await saveUser()
+    if (modal.type === 'route') return await saveRoute()
+    if (modal.type === 'routeGroup') return await saveRouteGroup()
+  } finally {
+    modalSaving.value = false
+  }
 }
 
 const autofillNodeFromUrl = () => {
@@ -1649,6 +1665,20 @@ onMounted(loadProxy)
 
 .proxy-secondary:hover {
   background: rgb(248 250 252);
+}
+
+.proxy-primary:disabled,
+.proxy-secondary:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.proxy-primary:disabled:hover {
+  background: rgb(15 23 42);
+}
+
+.proxy-secondary:disabled:hover {
+  background: white;
 }
 
 .proxy-input {
