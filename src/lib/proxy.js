@@ -108,25 +108,26 @@ export const proxyHealthTone = (status = '') => {
   }
 }
 
-export const inferVlessName = (raw = '') => {
+export const inferProxyNodeName = (raw = '') => {
   try {
     const url = new URL(raw)
-    if (url.protocol !== 'vless:') return ''
+    if (!isSupportedNodeProtocol(url.protocol)) return ''
     return decodeURIComponent(url.hash.replace(/^#/, '')) || url.hostname
   } catch {
     return ''
   }
 }
 
-export const inferVlessCountry = (raw = '') => {
-  const parsed = parseVlessUrl(raw)
+export const inferProxyNodeCountry = (raw = '') => {
+  const parsed = parseProxyNodeUrl(raw)
   const host = parsed?.hostname || ''
-  const name = inferVlessName(raw)
+  const name = inferProxyNodeName(raw)
   const value = `${name} ${host}`.toLowerCase()
   const tokens = value.split(/[^a-zа-яё0-9]+/iu).filter(Boolean)
   const tokenSet = new Set(tokens)
   const hostCountry = {
     '31.56.196.40': 'FI',
+    '31.56.177.191': 'FI',
   }[host]
 
   if (hostCountry) return hostCountry
@@ -137,10 +138,17 @@ export const inferVlessCountry = (raw = '') => {
   return ''
 }
 
-const parseVlessUrl = (raw = '') => {
+export const inferVlessName = inferProxyNodeName
+export const inferVlessCountry = inferProxyNodeCountry
+
+const isSupportedNodeProtocol = (protocol = '') => (
+  protocol === 'vless:' || protocol === 'hysteria2:' || protocol === 'hy2:'
+)
+
+const parseProxyNodeUrl = (raw = '') => {
   try {
     const url = new URL(raw)
-    return url.protocol === 'vless:' ? url : null
+    return isSupportedNodeProtocol(url.protocol) ? url : null
   } catch {
     return null
   }

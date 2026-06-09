@@ -394,7 +394,7 @@
             v-if="modal.mode === 'create'"
             v-model.trim="nodeDraft.url"
             class="proxy-input min-h-32 font-mono text-xs"
-            placeholder="vless://..."
+            placeholder="vless://... или hysteria2://..."
             @blur="autofillNodeFromUrl"
           ></textarea>
           <input v-model.trim="nodeDraft.name" class="proxy-input" placeholder="Название" />
@@ -558,8 +558,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import InlineNotice from '../components/InlineNotice.vue'
 import {
-  inferVlessCountry,
-  inferVlessName,
+  inferProxyNodeCountry,
+  inferProxyNodeName,
   normalizeProxyState,
   proxyHealthTone,
 } from '../lib/proxy.js'
@@ -949,13 +949,13 @@ const submitModal = async () => {
 
 const autofillNodeFromUrl = () => {
   if (!nodeDraft.url) return
-  if (!nodeDraft.name) nodeDraft.name = inferVlessName(nodeDraft.url)
-  if (!nodeDraft.country) nodeDraft.country = inferVlessCountry(nodeDraft.url)
+  if (!nodeDraft.name) nodeDraft.name = inferProxyNodeName(nodeDraft.url)
+  if (!nodeDraft.country) nodeDraft.country = inferProxyNodeCountry(nodeDraft.url)
 }
 
 const saveNode = async () => {
   if (modal.mode === 'create' && !nodeDraft.url) {
-    notifications.error('Вставь VLESS ссылку')
+    notifications.error('Вставь VLESS или Hysteria2 ссылку')
     return
   }
   autofillNodeFromUrl()
