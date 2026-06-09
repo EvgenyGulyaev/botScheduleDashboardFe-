@@ -18,7 +18,7 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../views/Dashboard.vue'),
-    meta: { requiresAuth: true, requiresSuperAdmin: true, appKey: 'dashboard' },
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
   {
     path: '/dashboard/ssh-accesses',

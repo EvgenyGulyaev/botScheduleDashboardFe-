@@ -304,7 +304,7 @@
               </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div v-if="canControlServices" class="flex items-center gap-2">
               <button
                 type="button"
                 @click="toggleSelectedService"
@@ -486,6 +486,7 @@ const services = [
   'bot-discord',
 ]
 const dashboardTimestampLabel = computed(() => formatLastUpdatedLabel(lastUpdatedAt.value))
+const canControlServices = computed(() => Boolean(authStore.user?.isSuperAdmin))
 const botStatus = computed(() => selectedStatus.value.status)
 const stats = computed(() => selectedStatus.value.stats)
 const healthBadge = computed(() => getServiceHealthBadge(selectedStatus.value.health?.level))
@@ -527,7 +528,10 @@ const maintenanceCleanupItems = computed(() =>
   maintenancePlan.value.items.filter((item) => item.enabled).map((item) => item.key),
 )
 const canRunMaintenanceCleanup = computed(
-  () => maintenancePlan.value.totalReclaimableBytes > 0 && maintenanceCleanupItems.value.length > 0,
+  () =>
+    canControlServices.value &&
+    maintenancePlan.value.totalReclaimableBytes > 0 &&
+    maintenanceCleanupItems.value.length > 0,
 )
 
 const serviceTile = (service) =>
