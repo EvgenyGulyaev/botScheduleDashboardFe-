@@ -213,21 +213,85 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200 bg-white">
-              <tr v-for="pool in pagedPools" :key="pool.id" class="transition hover:bg-slate-50">
-                <td class="px-4 py-3 font-black text-slate-950">
-                  <div class="truncate" :title="pool.name">{{ pool.name }}</div>
-                </td>
-                <td class="px-4 py-3 font-bold text-slate-700">{{ pool.nodeCount }}</td>
-                <td class="px-4 py-3 text-xs font-bold text-slate-500">
-                  <div class="truncate" :title="pool.countries">{{ pool.countries }}</div>
-                </td>
-                <td class="px-4 py-3">
-                  <div class="flex justify-end gap-2">
-                    <button class="proxy-icon" type="button" title="Редактировать" @click="openPoolModal(pool)">✎</button>
-                    <button class="proxy-icon danger" type="button" title="Удалить" @click="deletePool(pool)">🗑</button>
-                  </div>
-                </td>
-              </tr>
+              <template v-for="pool in pagedPools" :key="pool.id">
+                <tr class="transition hover:bg-slate-50">
+                  <td class="px-4 py-3 font-black text-slate-950">
+                    <div class="flex min-w-0 items-center gap-2">
+                      <button
+                        class="proxy-icon shrink-0"
+                        type="button"
+                        :title="isPoolExpanded(pool.id) ? 'Свернуть ноды' : 'Показать ноды'"
+                        @click="togglePoolExpanded(pool.id)"
+                      >
+                        {{ isPoolExpanded(pool.id) ? '−' : '+' }}
+                      </button>
+                      <div class="truncate" :title="pool.name">{{ pool.name }}</div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 font-bold text-slate-700">{{ pool.nodeCount }}</td>
+                  <td class="px-4 py-3 text-xs font-bold text-slate-500">
+                    <div class="truncate" :title="pool.countries">{{ pool.countries }}</div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex justify-end gap-2">
+                      <button class="proxy-icon" type="button" title="Редактировать" @click="openPoolModal(pool)">✎</button>
+                      <button class="proxy-icon danger" type="button" title="Удалить" @click="deletePool(pool)">🗑</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-if="isPoolExpanded(pool.id)" class="bg-slate-50/80">
+                  <td class="px-4 py-4" colspan="4">
+                    <div v-if="pool.nodes.length" class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                      <div
+                        v-for="(node, index) in pool.nodes"
+                        :key="node.id"
+                        class="grid gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 md:grid-cols-[2rem_minmax(0,1fr)_auto] md:items-center"
+                      >
+                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-black text-slate-600">
+                          {{ index + 1 }}
+                        </div>
+                        <div class="min-w-0">
+                          <div class="flex min-w-0 flex-wrap items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full" :class="healthDotClass(node.healthStatus)"></span>
+                            <span class="truncate font-black text-slate-950" :title="node.name || node.host">
+                              {{ node.name || node.host }}
+                            </span>
+                            <span class="proxy-chip">{{ normalizeCountryLabel(node.country) }}</span>
+                            <span class="proxy-chip">{{ node.protocol || 'vless' }}</span>
+                          </div>
+                          <p class="mt-1 break-all font-mono text-xs font-semibold text-slate-500">
+                            {{ node.maskedUrl || `${node.host}:${node.port}` }}
+                          </p>
+                        </div>
+                        <div class="flex justify-end gap-2">
+                          <button
+                            class="proxy-icon"
+                            type="button"
+                            title="Поднять выше"
+                            :disabled="reorderingPoolId === pool.id || index === 0"
+                            @click="movePoolNode(pool.id, node.id, -1)"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            class="proxy-icon"
+                            type="button"
+                            title="Опустить ниже"
+                            :disabled="reorderingPoolId === pool.id || index === pool.nodes.length - 1"
+                            @click="movePoolNode(pool.id, node.id, 1)"
+                          >
+                            ↓
+                          </button>
+                          <button class="proxy-icon" type="button" title="Редактировать ноду" @click="openNodeModal(node)">✎</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm font-bold text-slate-400">
+                      В пуле пока нет нод
+                    </div>
+                  </td>
+                </tr>
+              </template>
               <tr v-if="!poolRows.length">
                 <td class="px-4 py-8 text-center font-bold text-slate-400" colspan="4">Пулов пока нет</td>
               </tr>
@@ -591,6 +655,8 @@ const users = ref([])
 const routeGroups = ref([])
 const routes = ref([])
 const poolPage = ref(1)
+const expandedPoolIds = ref(new Set())
+const reorderingPoolId = ref('')
 const draggingUserPoolId = ref('')
 const POOL_PAGE_SIZE = 8
 const BROKEN_NODES_GROUP = 'Нерабочие'
@@ -725,13 +791,24 @@ const nodesByCountry = computed(() => {
   return result
 })
 
+const orderedPoolNodes = (poolId) =>
+  nodes.value
+    .filter((node) => node.poolId === poolId)
+    .slice()
+    .sort((left, right) => {
+      const byPriority = Number(left.priority || 0) - Number(right.priority || 0)
+      if (byPriority) return byPriority
+      return (left.name || left.host || '').localeCompare(right.name || right.host || '', 'ru')
+    })
+
 const poolRows = computed(() =>
   pools.value
     .map((pool) => {
-      const poolNodes = nodes.value.filter((node) => node.poolId === pool.id)
+      const poolNodes = orderedPoolNodes(pool.id)
       const countries = [...new Set(poolNodes.map((node) => normalizeCountryLabel(node.country)).filter(Boolean))]
       return {
         ...pool,
+        nodes: poolNodes,
         nodeCount: poolNodes.length,
         countries: countries.join(', ') || 'не задано',
       }
@@ -753,6 +830,18 @@ const poolPageRange = computed(() => {
 watch(poolTotalPages, (total) => {
   if (poolPage.value > total) poolPage.value = total
 })
+
+const isPoolExpanded = (poolId) => expandedPoolIds.value.has(poolId)
+
+const togglePoolExpanded = (poolId) => {
+  const next = new Set(expandedPoolIds.value)
+  if (next.has(poolId)) {
+    next.delete(poolId)
+  } else {
+    next.add(poolId)
+  }
+  expandedPoolIds.value = next
+}
 
 const userPoolRows = computed(() => {
   const selectedIds = orderedUserPoolPriorities().map((item) => item.poolId)
@@ -1088,6 +1177,34 @@ const checkNode = async (node) => {
     await loadProxy()
   } catch (error) {
     notifications.errorFrom(error, 'Не удалось проверить ноду')
+  }
+}
+
+const movePoolNode = async (poolId, nodeId, direction) => {
+  if (reorderingPoolId.value) return
+  const ordered = orderedPoolNodes(poolId)
+  const index = ordered.findIndex((node) => node.id === nodeId)
+  const nextIndex = index + direction
+  if (index < 0 || nextIndex < 0 || nextIndex >= ordered.length) return
+
+  const reordered = ordered.slice()
+  ;[reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]]
+  const updates = reordered
+    .map((node, nodeIndex) => ({ node, priority: (nodeIndex + 1) * 10 }))
+    .filter((item) => Number(item.node.priority || 0) !== item.priority)
+
+  if (!updates.length) return
+
+  reorderingPoolId.value = poolId
+  try {
+    await Promise.all(updates.map(({ node, priority }) => authStore.api.patch(`/proxy/nodes/${node.id}`, { priority })))
+    const applied = await applyRuntimeAfterMutation()
+    notifications.success(appliedMutationMessage('Порядок нод сохранен', applied))
+    await loadProxy()
+  } catch (error) {
+    notifications.errorFrom(error, 'Не удалось поменять порядок нод')
+  } finally {
+    reorderingPoolId.value = ''
   }
 }
 
