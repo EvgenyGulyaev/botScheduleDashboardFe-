@@ -1443,7 +1443,7 @@ const failoverSequenceFromPriorities = (items = []) => {
         if (!name) return []
         return [{
           key: `${item.poolId}:${protocol}`,
-          label: `${name} ${protocolLabel(protocol)}`,
+          label: `${shortPoolLabel(name)} ${shortProtocolLabel(protocol)}`,
         }]
       }),
     )
@@ -1463,6 +1463,18 @@ const poolHasProtocol = (poolId, protocol) => poolProtocolKinds(poolId).includes
 const normalizeNodeProtocol = (protocol = '') => (String(protocol).toLowerCase() === 'hysteria2' ? 'hysteria2' : 'vless')
 
 const protocolLabel = (protocol) => (protocol === 'hysteria2' ? 'Hysteria' : 'VLESS')
+
+const shortProtocolLabel = (protocol) => (protocol === 'hysteria2' ? 'Hyst' : 'Vless')
+
+const shortPoolLabel = (name = '') => {
+  const value = String(name || '').trim()
+  const lower = value.toLowerCase()
+  if (lower.includes('фин') || lower.includes('fin') || lower === 'fi') return 'Фин'
+  if (lower.includes('гер') || lower.includes('germ') || lower === 'de') return 'Гер'
+  if (lower.includes('нид') || lower.includes('nether') || lower === 'nl') return 'Нид'
+  if (lower.includes('сша') || lower.includes('usa') || lower === 'us') return 'США'
+  return [...value].slice(0, 3).join('') || '—'
+}
 
 const GB = 1024 ** 3
 
