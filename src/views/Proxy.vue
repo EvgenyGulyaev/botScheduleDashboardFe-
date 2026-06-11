@@ -322,7 +322,7 @@
             <div class="pr-24">
               <h4 class="text-lg font-black text-slate-950">{{ user.label }}</h4>
               <p class="mt-2 text-sm font-semibold text-slate-500">
-                {{ userPoolSummary(user) || 'без пулов' }}
+                {{ userFailoverSummary(user) || 'без пулов' }}
               </p>
             </div>
             <div class="mt-4 rounded-2xl bg-slate-50 p-3">
@@ -500,12 +500,22 @@
             >
               <input :checked="pool.selected" type="checkbox" @change="toggleUserPool(pool.id)" />
               <span class="min-w-0 truncate text-sm font-black text-slate-800">{{ pool.name }}</span>
+              <span class="min-w-0 truncate text-xs font-bold text-slate-500">{{ poolProtocolSummary(pool.id) }}</span>
               <div v-if="pool.selected" class="flex items-center gap-1">
                 <button class="proxy-order-button" type="button" title="Выше" @click="moveUserPool(pool.id, -1)">↑</button>
                 <button class="proxy-order-button" type="button" title="Ниже" @click="moveUserPool(pool.id, 1)">↓</button>
                 <span class="proxy-drag-handle" title="Перетащить">↕</span>
               </div>
             </div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 p-3">
+            <p class="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Итоговая цепочка</p>
+            <div v-if="draftFailoverSequence.length" class="mt-2 flex flex-wrap gap-2">
+              <span v-for="step in draftFailoverSequence" :key="step.key" class="proxy-chip">
+                {{ step.label }}
+              </span>
+            </div>
+            <p v-else class="mt-2 text-sm font-bold text-slate-400">Выбери хотя бы один пул</p>
           </div>
           <div class="space-y-2" aria-label="Папки маршрутов пользователя">
             <p class="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Маршруты</p>
@@ -857,6 +867,8 @@ const userPoolRows = computed(() => {
     .map((pool) => ({ ...pool, selected: false }))
   return [...selected, ...unselected]
 })
+
+const draftFailoverSequence = computed(() => failoverSequenceFromPriorities(orderedUserPoolPriorities()))
 
 const modalTitle = computed(() => {
   const action = modal.mode === 'edit' ? 'Редактировать' : 'Добавить'
@@ -1414,6 +1426,44 @@ const userPoolSummary = (user) =>
     .filter(Boolean)
     .join(' → ')
 
+const poolProtocolSummary = (poolId) => poolProtocolKinds(poolId).map(protocolLabel).join(' / ') || 'нет нод'
+
+const userFailoverSummary = (user) =>
+  failoverSequenceFromPriorities(user.poolPriorities || [])
+    .map((step) => step.label)
+    .join(' → ') || userPoolSummary(user)
+
+const failoverSequenceFromPriorities = (items = []) => {
+  const ordered = orderedUserPoolPriorities(items)
+  return ['vless', 'hysteria2']
+    .flatMap((protocol) =>
+      ordered.flatMap((item) => {
+        if (!poolHasProtocol(item.poolId, protocol)) return []
+        const name = poolName(item.poolId)
+        if (!name) return []
+        return [{
+          key: `${item.poolId}:${protocol}`,
+          label: `${name} ${protocolLabel(protocol)}`,
+        }]
+      }),
+    )
+}
+
+const poolProtocolKinds = (poolId) => {
+  const protocols = new Set(
+    nodes.value
+      .filter((node) => node.enabled && node.poolId === poolId)
+      .map((node) => normalizeNodeProtocol(node.protocol)),
+  )
+  return ['vless', 'hysteria2'].filter((protocol) => protocols.has(protocol))
+}
+
+const poolHasProtocol = (poolId, protocol) => poolProtocolKinds(poolId).includes(protocol)
+
+const normalizeNodeProtocol = (protocol = '') => (String(protocol).toLowerCase() === 'hysteria2' ? 'hysteria2' : 'vless')
+
+const protocolLabel = (protocol) => (protocol === 'hysteria2' ? 'Hysteria' : 'VLESS')
+
 const GB = 1024 ** 3
 
 const formatBytes = (bytes = 0) => {
@@ -1818,7 +1868,7 @@ onMounted(loadProxy)
 
 .proxy-user-pool-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(5.5rem, auto) auto;
   align-items: center;
   gap: 0.6rem;
   border-radius: 1rem;
